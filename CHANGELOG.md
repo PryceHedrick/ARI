@@ -7,17 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [1.0.0] - 2026-01-26
+## [1.0.0] - 2026-01-26 — 影武者 Kagemusha Protocol
 
-### Phase 1: Foundation
+### Phase 1: Constitutional Gateway Foundation
 
-Initial release of ARI vNext - Constitutional Multi-Agent Personal Operating System.
+Complete architectural evolution from Aurora Protocol (V12) to ARI vNext.
+A production-grade TypeScript WebSocket gateway that integrates the shadow
+rather than fighting it, cuts with warrior precision, and records everything
+in radical transparency.
 
 #### Added
 
 **Gateway Service**
 - WebSocket server bound exclusively to 127.0.0.1
-- Configurable port (default: 3000)
+- Configurable port (default: 18789)
 - Health check endpoint
 - Session management
 - Graceful shutdown handling
@@ -125,10 +128,11 @@ None (initial release)
 
 ## Version History
 
-- **v1.0.0** (2026-01-26): Phase 1 Foundation
-  - Core gateway and audit system
-  - CLI interface and daemon support
-  - Security-first architecture
+- **v1.0.0** (2026-01-26): 影武者 Kagemusha Protocol — Phase 1 Foundation
+  - Complete TypeScript WebSocket gateway (127.0.0.1:18789)
+  - 5-stage sanitization with shadow pattern detection
+  - SHA-256 hash-chained audit log
+  - 56 tests, TypeScript strict mode (all flags)
 
-[Unreleased]: https://github.com/prycehedrick/ari-vnext/compare/v1.0.0...HEAD
-[1.0.0]: https://github.com/prycehedrick/ari-vnext/releases/tag/v1.0.0
+[Unreleased]: https://github.com/PryceHedrick/ARI/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/PryceHedrick/ARI/releases/tag/v1.0.0
