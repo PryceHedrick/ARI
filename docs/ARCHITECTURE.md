@@ -1,5 +1,24 @@
 # Architecture
 
+## Evolution
+
+ARI's architecture has been shaped by three protocol generations:
+
+| Version | Protocol | Architecture |
+|---------|----------|-------------|
+| v1.0.0 | **Sentinel** | First multi-agent security framework. Established the "CONTENT ≠ COMMAND" principle and proved that constitutional AI agent governance was viable. |
+| v2.0.0 | **Aurora** | Expanded to a "Universal Life OS" with context namespaces across life domains. Ambition outpaced the architecture — organic growth made security properties hard to verify. |
+| v3.0.0 | **Kagemusha** | Ground-up TypeScript rewrite. Kept the philosophical DNA (shadow integration, radical transparency) but rebuilt every component with ruthless simplicity. This is the current codebase. |
+
+The Kagemusha Protocol carries forward two core insights from its predecessors:
+
+1. **From Sentinel**: Content must never be treated as commands — the separation is absolute
+2. **From Aurora**: A personal OS needs strict component boundaries to remain auditable at scale
+
+Everything else was discarded. The current codebase shares zero code with v1 or v2.
+
+---
+
 ## System Overview
 
 ARI vNext Phase 1 implements a local-first message ingestion and audit pipeline.
