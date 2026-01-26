@@ -1,7 +1,7 @@
 {
   "name": "ari-vnext",
-  "version": "1.0.0",
-  "description": "Constitutional Multi-Agent Personal Operating System",
+  "version": "3.0.0",
+  "description": "ARI Kagemusha Protocol — Constitutional Multi-Agent Personal Operating System",
   "type": "module",
   "engines": {
     "node": ">=22.0.0"
