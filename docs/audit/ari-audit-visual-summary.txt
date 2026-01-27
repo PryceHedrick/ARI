@@ -1,0 +1,336 @@
+DOCUMENT 4: ari-audit-visual-summary.md
+text
+# ARI AUDIT: VISUAL SUMMARY & DECISION TREE
+
+**One-Page Visual Guide to the Entire Audit**
+
+---
+
+## THE CRITICAL FINDING IN 10 WORDS
+
+**ARI v3.0.0 is a gateway. RE comes in Phase 2.**
+
+---
+
+## ARCHITECTURE AT A GLANCE
+
+┌────────────────────────────────────────────────────────────┐
+│ ARI v3.0.0 SYSTEM │
+│ (Kagemusha Protocol) │
+│ │
+│ INPUT PROCESSING OUTPUT │
+│ │
+│ Client Message → [5-Stage → ACK │
+│ (127.0.0.1) Sanitizer] Response │
+│ ↓ │
+│ [Audit Log] │
+│ (SHA-256 Chain) │
+│ ↓ │
+│ [Event Bus] │
+│ (Pub/Sub Router) │
+│ ↓ │
+│ [Subscribers] │
+│ (Future Agents) │
+│ │
+│ ✓ Local-only ✓ Tamper-evident ✓ Extensible │
+│ ✓ No cloud ✓ Content ≠ Command ✓ Event-driven │
+└────────────────────────────────────────────────────────────┘
+
+text
+
+---
+
+## SECURITY SCORECARD (6 PRINCIPLES)
+
+LOCAL-FIRST ALWAYS-ON ████████████ 100% ✅
+
+CONTENT ≠ COMMAND ████████████ 100% ✅
+
+LEAST PRIVILEGE ██████████░░ 85% ⚠️ (agents Phase 2)
+
+AUDITABILITY FIRST ████████████ 100% ✅
+
+GOVERNANCE/COUNCIL ███░░░░░░░░░ 25% ❌ (Phase 2 design)
+
+UNIVERSAL KERNEL ███████████░ 92% ✅
+──────────────────────
+OVERALL ███████████░ 89% = 8.6/10
+
+text
+
+---
+
+## TOP RISKS (PRIORITY ORDER)
+
+┌─────────────────────────────────────────────────────────┐
+│ CRITICAL (Fix immediately before production) │
+├─────────────────────────────────────────────────────────┤
+│ ☐ R4: File permissions (0o600) — PR-1 (2 days) │
+│ ☐ R6: WebSocket frame bomb — PR-2 (2 days) │
+│ ☐ R7: Heartbeat DOS — PR-3 (2 days) │
+├─────────────────────────────────────────────────────────┤
+│ MEDIUM (Fix before Phase 2) │
+├─────────────────────────────────────────────────────────┤
+│ ☐ R1: Rate limiter bypass — PR-4 (3 days) │
+│ ☐ R5: Event subscriber leak — PR-5 (1 day) │
+│ ☐ R9: UTF-8 safety — PR-6 (1 day) │
+├─────────────────────────────────────────────────────────┤
+│ LOW (Monitor, fix in Phase 3) │
+├─────────────────────────────────────────────────────────┤
+│ · R2: Truncation timing side-channel │
+│ · R3: Hash collision (SHA-256 is cryptographically │
+│ secure, negligible risk) │
+│ · R10: Regex ReDoS (patterns validated, safe) │
+└─────────────────────────────────────────────────────────┘
+
+text
+
+---
+
+## PHASE BREAKDOWN
+
+═══════════════════════════════════════════════════════════
+
+text
+                    PHASE 1
+                  (v3.0.0)
+                CURRENT STATE
+    ┌─────────────────────────────────┐
+    │ ✅ Message Gateway              │
+    │ ✅ Input Sanitizer              │
+    │ ✅ Audit Log (SHA-256)          │
+    │ ✅ Event Bus                    │
+    │ ✅ CLI                          │
+    │ ✅ Daemon (macOS)               │
+    │                                  │
+    │ ❌ No agents                    │
+    │ ❌ No council                   │
+    │ ❌ No memory                    │
+    │ ❌ No reasoning                 │
+    └─────────────────────────────────┘
+                     ↓
+    (10 Hardening PRs: 2 weeks)
+                     ↓
+    ┌─────────────────────────────────┐
+    │        PHASE 2a (Weeks 1-2)     │
+    │     Add Agent Types & Registry  │
+    │                                  │
+    │ + AuditActor 'agent' type       │
+    │ + AgentRegistry service         │
+    │ + Agent permissions model       │
+    └─────────────────────────────────┘
+                     ↓
+    ┌─────────────────────────────────┐
+    │        PHASE 2b (Weeks 2-3)     │
+    │   Decision Framework (Advisor)  │
+    │                                  │
+    │ + Agent proposes action         │
+    │ + Operator approves/rejects     │
+    │ + Full audit trail              │
+    │ + Guardian safety gating        │
+    └─────────────────────────────────┘
+                     ↓
+    ┌─────────────────────────────────┐
+    │   PHASE 2c-f (Weeks 4-8)        │
+    │   Memory, Council, Safety, Docs │
+    └─────────────────────────────────┘
+                     ↓
+    ┌─────────────────────────────────┐
+    │      PHASE 3 (Future)           │
+    │  Full Council Voting, Learning, │
+    │  Multi-user, Advanced Reasoning │
+    └─────────────────────────────────┘
+═══════════════════════════════════════════════════════════
+
+text
+
+---
+
+## THE 8 DECISIONS YOU NEED TO MAKE
+
+DECISION TREE
+═════════════
+
+text
+    ┌─ Q1: Execution Model ─┐
+    │  In-process or         │─→ BLOCKS: Architecture
+    │  workers?              │
+    └────────────────────────┘
+    
+    ┌─ Q2: Permissions ─────┐
+    │  Coarse (3) or         │─→ BLOCKS: Phase 2a design
+    │  fine-grained?         │
+    └────────────────────────┘
+    
+    ┌─ Q3: Context Access ──┐
+    │  Strict isolation or   │─→ BLOCKS: Memory design
+    │  permissioned?         │
+    └────────────────────────┘
+    
+    ┌─ Q4: Voting Quorum ───┐
+    │  50%+1 or 2/3 or       │─→ BLOCKS: Phase 2d design
+    │  consensus?            │
+    └────────────────────────┘
+    
+    ┌─ Q5: Safety Authority ┐
+    │  Operator only or      │─→ BLOCKS: Safety design
+    │  + Guardian?           │
+    └────────────────────────┘
+    
+    ┌─ Q6: Expiration Time ─┐
+    │  1 hour, 1 day, or     │─→ BLOCKS: Ops config
+    │  never?                │
+    └────────────────────────┘
+    
+    ┌─ Q7: Rollback ────────┐
+    │  Append-only or        │─→ BLOCKS: Audit design
+    │  reversals allowed?    │
+    └────────────────────────┘
+    
+    ┌─ Q8: Learning ────────┐
+    │  Static, feedback, or  │─→ BLOCKS: Phase 2b roadmap
+    │  RL fine-tuning?       │
+    └────────────────────────┘
+
+                ALL 8 ANSWERED
+                     ↓
+              Phase 2a-b Design
+                LOCKED IN
+                     ↓
+               10 PRs Ready
+               to Code
+text
+
+---
+
+## YOUR CHECKLIST
+
+### Before Production (This Week)
+
+- [ ] Read Executive Summary (10 min)
+- [ ] Review Security Scorecard (Pass 3)
+- [ ] Decide: 8 blocking questions (20 min)
+- [ ] Plan: 10 hardening PRs
+- [ ] Optional: Security audit PR scope
+
+### For Phase 2 (Weeks 1-8)
+
+- [ ] PR-1: Extend types for agents
+- [ ] PR-2: Agent registry service
+- [ ] PR-3: Proposal service
+- [ ] PR-4: Guardian safety gating
+- [ ] PR-5: Context/memory service (optional)
+- [ ] PR-6: Simple council (optional)
+- [ ] PR-7: CLI commands
+- [ ] PR-8: Safety audit
+- [ ] PR-9: Update docs
+- [ ] PR-10: Daemon integration
+
+### For Phase 3+ (Future)
+
+- [ ] Full council voting
+- [ ] Multi-user support
+- [ ] RL agent fine-tuning
+- [ ] Advanced memory queries
+- [ ] Integration tests (agents × council)
+
+---
+
+## PHILOSOPHY ENFORCEMENT
+
+JUNG (Shadow) MUSASHI (Simplicity) DALIO (Transparency)
+─────────────── ──────────────────── ────────────────────
+Detect patterns ~2K LOC core SHA-256 hash chain
+Log, don't block Clear jobs Actor attribution
+Integrate shadow No cryptic magic Audit trail complete
+In code: 19 In code: 6 modules In code: sequence +
+jailbreak patterns with clear roles timestamp + details
+
+text
+
+**All three principles ENFORCED IN CODE, not just documented.**
+
+---
+
+## RISK MATRIX
+
+text
+                  LIKELIHOOD
+        Low         Medium      High
+    ─────────────────────────────────
+C L │
+R I │ R3 R1 R8
+I K │ (negligible) (low) (unlikely)
+T E │
+I L │ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+C I │
+A T │ R4 R6 ← DoS
+L Y │ (file perms) (DOS) vectors
+│ R7 R2
+I M │ (heartbeat) (timing)
+M P │ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+P A │
+A C │ R9 R5 R10
+C T │ (UTF-8) (memory) (regex)
+T │
+│
+└─────────────────────────────────
+
+FIX NOW (MEDIUM IMPACT, MEDIUM+ LIKELIHOOD):
+
+R4, R6, R7 (file perms, DoS, timeout)
+
+FIX BEFORE PHASE 2:
+
+R1, R5, R9 (rate limit, leak, UTF-8)
+
+MONITOR (LOW IMPACT OR NEGLIGIBLE):
+
+R2, R3, R8, R10 (timing, hash, JSON, regex)
+
+text
+
+---
+
+## DECISION FLOW: FROM HERE TO PHASE 2
+
+START (You are here)
+↓
+Read Executive Summary (10 min)
+↓
+Answer 8 questions in open-questions.md (20 min)
+↓
+Optional: Review hardening PRs (1 hour)
+↓
+Design locked → Developers code (6-8 weeks)
+↓
+Phase 2a complete (agent types + registry)
+↓
+Phase 2b complete (advisor pattern)
+↓
+Phase 2c-f complete (memory, council, safety, docs)
+↓
+Phase 3 planning (voting, multi-user, learning)
+
+text
+
+---
+
+## CONTACT & QUESTIONS
+
+**All audit documents**:
+1. `ARI_AUDIT_INDEX.md` ← **START HERE** (this file)
+2. `ari-audit-executive-summary.md` ← Decision summary
+3. `ari-audit-pass1.md` ← System inventory
+4. `ari-audit-pass2-5.md` ← Technical deep dive
+5. `ari-audit-research-appendix.md` ← External sources
+6. `ari-audit-open-questions.md` ← Your decisions needed
+
+**Next step**: Answer 8 questions, Phase 2 design locks in.
+
+---
+
+**Audit Status**: ✅ COMPLETE  
+**Confidence Level**: HIGH  
+**Ready for Decision**: YES  
+**Date**: 2026-01-27

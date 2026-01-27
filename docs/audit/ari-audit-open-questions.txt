@@ -1,0 +1,249 @@
+# ARI AUDIT: OPEN QUESTIONS
+
+**Format**: Only truly blocking questions (max 8, as specified)  
+**Status**: Ready for your response to unblock Phase 2 decisions
+
+---
+
+## BLOCKING QUESTIONS (DECISION-REQUIRED)
+
+### Q1: Agent Execution Model â€” In-Process or Workers?
+
+**Question**: Should Phase 2 agents run in the same Node.js event loop, or in separate worker threads / child processes?
+
+**Context**: 
+- In-process: simpler, faster, shared memory, but one agent crash affects all
+- Workers: isolated, crash-safe, but heavier, potential IPC bottleneck
+
+**Your Phase 1 Codebase**: Single-threaded Node.js event loop, no worker threads present
+
+**Implications**:
+- In-process: Simpler Phase 2a-b. Upgrade to workers for Phase 3 if scaling needed.
+- Workers: Requires task queue + IPC layer. More code now, safer long-term.
+
+**Recommendation**: Start in-process. Migrate to workers if any agent becomes CPU-bound or frequently crashes.
+
+**Status**: UNBLOCKED (in-process is safe default) â€” Your call if you want stronger isolation.
+
+**Decision**: Will you start with in-process agents or multi-worker architecture?
+
+---
+
+### Q2: Agent Permission Granularity â€” Coarse vs Fine-Grained?
+
+**Question**: How specific should agent permissions be?
+
+**Options**:
+
+| Model | Granularity | Phase 2 Scope | Example |
+|-------|-------------|---------------|---------|
+| **Coarse (3 levels)** | `low`, `medium`, `high` risk | YES | Executor can execute all "medium" risk actions |
+| **Medium (roles)** | `read:context`, `write:logs`, `execute:tools` | MAYBE | Executor can execute but not read logs |
+| **Fine (actions)** | `execute:file-save`, `read:memory:ventures`, `write:audit` | PHASE 3 | Executor can only save files, not delete |
+| **Ultra-fine (RBAC)** | Role-based with attribute binding | PHASE 3+ | Executor in ventures context can only save to ventures/ |
+
+**Constraint**: ARI values ruthless simplicity. More complexity = harder to audit.
+
+**Recommendation**: Start coarse (3 levels) for Phase 2. Document migration path to medium/fine in Phase 3.
+
+**Impact**: 
+- Coarse: 20 LOC permission check. Easy to audit.
+- Medium: 50 LOC. Still readable.
+- Fine: 200+ LOC. Requires formal verification.
+
+**Decision**: Will you enforce coarse (3 levels) in Phase 2, or go medium/fine from the start?
+
+---
+
+### Q3: Cross-Context Memory Access â€” Isolated or Permissioned?
+
+**Question**: Can agents from the `ventures/` context namespace read/write to the `life/` namespace?
+
+**Options**:
+
+| Policy | Isolation | Use Case | Risk |
+|--------|-----------|----------|------|
+| **Strict (no access)** | Agents only access their context | Business/personal separation | Can't share learnings across domains |
+| **Permissioned (default deny)** | Agents need explicit permission | Controlled cross-domain reasoning | More management overhead |
+| **Open (all can read)** | Any agent can read any context | Maximum knowledge sharing | Information leakage (venture secrets in personal context) |
+
+**Recommendation**: Strict isolation for Phase 2. Add permissioning in Phase 3 if needed.
+
+**Audit Implications**: Strict isolation is easier to audit (no permission chains to verify).
+
+**Decision**: Will you enforce strict context isolation or implement permissioning?
+
+---
+
+### Q4: Council Voting Quorum â€” 50%+1 or Consensus?
+
+**Question**: For council decisions (Phase 2d), what quorum should be required?
+
+**Options**:
+
+| Quorum | Definition | Phase 2 | Risk |
+|--------|-----------|---------|------|
+| **50%+1** | Simple majority | YES | Minority agents feel unheard |
+| **2/3** | Supermajority | MAYBE | Slower decisions, requires consensus-building |
+| **Unanimous** | Full consensus | NO (Phase 2d only with advisor model) | Deadlock risk, veto power to any agent |
+| **Adaptive** | Depends on risk (low: 50%, high: 2/3) | PHASE 3 | Complex rule engine |
+
+**Recommendation**: 50%+1 for Phase 2d (simple council). Make configurable for Phase 3+.
+
+**Audit Trail**: Whatever quorum is chosen MUST be recorded in every decision entry.
+
+**Decision**: Will you use simple majority (50%+1) or require supermajority (2/3)?
+
+---
+
+### Q5: Stop-the-Line Authority â€” Who Can Trigger?
+
+**Question**: Which agents can invoke the safety veto (stop-the-line)?
+
+**Options**:
+
+| Authority | Who Can Veto | Phase 2 | Trade-off |
+|-----------|--------------|---------|-----------|
+| **Operator only** | Only human decision-maker | YES | Safe but less autonomous. Requires operator presence. |
+| **Operator + Guardian** | Human + dedicated safety agent | MAYBE | Balanced. Safety agent checks invariants. |
+| **Operator + Critical Agents** | Human + any high-risk agents (Guardian, Auditor) | MAYBE | Distributed safety. More agents, but clarity needed. |
+| **Any agent** | Any agent can halt everything | NO | Too powerful. Abuse risk. |
+
+**Recommendation**: Operator + Guardian agent. Guardian role: "verify invariants, have veto power."
+
+**Audit Implication**: Every stop-the-line must be logged with actor + reason.
+
+**Decision**: Will only the operator trigger stop-the-line, or will you empower the Guardian agent?
+
+---
+
+### Q6: Proposal Expiration Policy â€” How Long Are Proposals Valid?
+
+**Question**: How long should a proposal remain pending before auto-expiring?
+
+**Options**:
+
+| Duration | Use Case | Phase 2 | Trade-off |
+|----------|----------|---------|-----------|
+| **1 hour** | Fast decision-making | RECOMMEND | Operator must stay engaged |
+| **1 day** | Asynchronous decisions | MAYBE | Proposal could be forgotten |
+| **No expiration** | Perpetual validity | NO | Stale proposals clutter system |
+| **Adaptive (risk-based)** | Low-risk: 1 day, high-risk: 1 hour | PHASE 3 | Requires rule engine |
+
+**Recommendation**: 1-hour default (configurable). Expired proposals transition to `rejected` status, audit logged.
+
+**Audit Trail**: Expiration MUST be recorded as explicit action (not silent discard).
+
+**Decision**: Will you auto-expire proposals after 1 hour or use a different duration?
+
+---
+
+### Q7: Agent Rollback Safety â€” Can Decisions Be Undone?
+
+**Question**: If a decision causes harm, can the operator "undo" or "revert" it?
+
+**Options**:
+
+| Model | Capability | Phase 2 | Implication |
+|-------|-----------|---------|-------------|
+| **Append-only (no rollback)** | Cannot reverse decisions. Only log reversal. | RECOMMEND | Simple. Matches audit philosophy (no mutation). |
+| **Decision reversal** | Can mark decision as `reverted` (new audit entry) | MAYBE | Adds complexity but more forgiving. |
+| **Time-travel** | Can set system to previous state | PHASE 3+ | Very complex. Requires snapshot system. |
+
+**Recommendation**: Append-only for Phase 2. Add `decision.reverted` audit action (operator initiates, new action logged, no mutation).
+
+**Example**:
+```json
+{
+  "sequence": 102,
+  "action": "decision_reverted",
+  "actor": { "type": "operator", "id": "operator" },
+  "details": {
+    "original_decision_sequence": 100,
+    "reason": "Unintended side effect. Reverting.",
+    "new_action": "decision_to_take_instead"
+  }
+}
+Decision: Will decisions be immutable (append-only), or allow explicit reversals?
+
+Q8: Agent Learning & Fine-Tuning â€” Phase 2 or Phase 3?
+Question: Should agents improve over time? If yes, how?
+
+Options:
+
+Mechanism	Phase	Implementation	Risk
+No learning (Phase 2)	Phase 2 only	Static agent logic	Agents never improve. Limited value long-term.
+Feedback loop (Phase 2b)	Phase 2	Log proposalâ†’decisionâ†’outcome. Operator feedback on quality.	Closes loop, enables analysis. No active learning yet.
+RL fine-tuning (Phase 3)	Phase 3	Reinforce successful proposal patterns. Requires model fine-tuning.	Powerful but requires ML expertise + significant compute.
+Human-in-the-loop tuning (Phase 3)	Phase 3	Operator manually adjusts agent prompts based on outcomes.	Practical, but labor-intensive.
+Recommendation: Feedback loop in Phase 2 (operator rates proposals post-decision). Defer active learning to Phase 3.
+
+Implementation: Add proposal_feedback audit action (operator rates 1-5, explains why).
+
+Decision: Will Phase 2 agents be static, or will you implement feedback loops for continuous improvement?
+
+SUMMARY TABLE: DECISIONS NEEDED
+Question	Impact	Recommendation	Your Decision
+Q1: Execution model	Architecture	In-process (Phase 2) â†’ workers (Phase 3)	TBD
+Q2: Permission granularity	Auditability	Coarse (3 levels) for Phase 2	TBD
+Q3: Cross-context access	Security	Strict isolation (Phase 2) â†’ permissioning (Phase 3)	TBD
+Q4: Council quorum	Governance	50%+1 (simple majority)	TBD
+Q5: Stop-the-line authority	Safety	Operator + Guardian agent	TBD
+Q6: Proposal expiration	Operations	1 hour (configurable)	TBD
+Q7: Decision rollback	Auditability	Append-only (immutable) + reversals logged	TBD
+Q8: Agent learning	Long-term value	Feedback loops (Phase 2) â†’ RL fine-tuning (Phase 3)	TBD
+HOW TO RESPOND
+For each question, pick your answer from the options provided, or propose an alternative.
+
+Example Response Format:
+
+text
+Q1: In-process (Phase 2), migrate to workers for Phase 3 if CPU-bound.
+Q2: Coarse (3 levels) for Phase 2.
+Q3: Strict isolation.
+Q4: 50%+1 (simple majority).
+Q5: Operator + Guardian can trigger.
+Q6: 1 hour expiration, configurable.
+Q7: Append-only + explicit reversals (logged).
+Q8: Feedback loops in Phase 2b, RL fine-tuning Phase 3+.
+Once you provide these 8 answers, all Phase 2 design decisions are locked, and the 10 PRs can proceed.
+
+DECISION IMPACT MATRIX
+Your Decision	Files Affected	Tests Required	Days to Implement
+Q1: In-process	src/agents/*.ts	Agent crash tests	0 (already in-process)
+Q1: Workers	src/agents/*.ts, src/workers/*.ts	IPC tests, worker crash tests	+5 days
+Q2: Coarse	src/agents/permissions.ts	Permission check tests	+1 day
+Q2: Fine-grained	src/agents/permissions.ts, src/agents/rbac.ts	RBAC tests	+5 days
+Q3: Strict	src/memory/*.ts	Context isolation tests	0 (default)
+Q3: Permissioned	src/memory/permissions.ts	Cross-context permission tests	+3 days
+Q4: 50%+1	src/agents/council.ts	Quorum tests	+1 day
+Q4: 2/3	src/agents/council.ts	Supermajority tests	+1 day
+Q5: Operator only	No changes	N/A	0
+Q5: + Guardian	src/agents/guardian.ts	Veto tests	+1 day
+Q6: 1 hour	src/agents/proposal.ts	Expiration tests	+1 day
+Q6: No expiration	No changes	N/A	0
+Q7: Append-only	No changes	N/A	0 (default)
+Q7: Reversals	src/audit/log.ts	Reversal tests	+2 days
+Q8: Static	No changes	N/A	0
+Q8: Feedback loops	src/agents/feedback.ts	Feedback tests	+2 days
+Minimum Phase 2 Timeline (all recommendations): 22 days (~5 weeks)
+Maximum Phase 2 Timeline (all complex options): 40 days (~8 weeks)
+
+FINAL CHECKLIST
+Before answering, ensure you've reviewed:
+
+ Executive Summary (understand overall system state)
+
+ Pass 4 (council design recommendations)
+
+ Research Appendix (external best practices)
+
+ This document (all 8 questions + trade-offs)
+
+Once you answer these 8 questions, the audit is officially complete and Phase 2 design is locked.
+
+Open Questions Document Complete: âœ…
+Status: AWAITING YOUR DECISIONS
+Next Action: Post your 8 answers to unlock Phase 2 implementation
+
+Audit Completed: 2026-01-27

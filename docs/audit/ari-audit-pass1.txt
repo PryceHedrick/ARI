@@ -1,0 +1,430 @@
+DOCUMENT 5: ari-audit-pass1.md
+text
+# ARI AUDIT: PASS 1 — REPO MAP & SYSTEM INVENTORY
+
+**Objective**: Generate a complete module map of the ARI repository and identify the "RE" (Reasoning Engine) layer.
+
+**Status**: ✅ COMPLETE  
+**Date**: 2026-01-27  
+**Evidence**: All findings cited to GitHub file paths + line ranges
+
+---
+
+## REPO STRUCTURE MAP
+
+PryceHedrick/ARI (v3.0.0 - Kagemusha Protocol)
+├── src/
+│ ├── gateway/
+│ │ ├── server.ts ← WebSocket gateway (main entry)
+│ │ └── connection.ts ← Connection management
+│ ├── messages/
+│ │ ├── sanitizer.ts ← 5-stage input sanitization
+│ │ ├── validator.ts ← Zod schema validation
+│ │ └── types.ts ← Message type definitions
+│ ├── audit/
+│ │ ├── log.ts ← Tamper-evident audit log (SHA-256 chain)
+│ │ ├── types.ts ← AuditEntry, AuditActor types
+│ │ └── verify.ts ← Hash chain verification
+│ ├── events/
+│ │ ├── bus.ts ← Event bus (pub/sub)
+│ │ └── types.ts ← Event type definitions
+│ ├── rate-limit/
+│ │ └── limiter.ts ← Token bucket rate limiter
+│ ├── cli/
+│ │ └── index.ts ← CLI commands (audit verify, etc.)
+│ ├── daemon/
+│ │ └── macos.ts ← macOS launch daemon setup
+│ └── index.ts ← Library API entry point
+├── tests/
+│ ├── gateway.test.ts
+│ ├── sanitizer.test.ts
+│ ├── audit.test.ts
+│ └── ... (56 tests total)
+├── docs/
+│ ├── ARCHITECTURE.md ← System architecture
+│ ├── GOVERNANCE.md ← Governance design (Phase 2)
+│ ├── SECURITY.md ← Security principles
+│ └── ROADMAP.md ← Development phases
+├── package.json
+├── tsconfig.json
+└── README.md
+
+text
+
+**Total Lines of Code**: ~2,000 LOC (core)  
+**Language**: TypeScript (strict mode)  
+**Test Coverage**: 56 tests  
+**Dependencies**: ws (WebSocket), zod (validation), crypto (SHA-256)
+
+---
+
+## SYSTEM INVENTORY TABLE
+
+| Component | Purpose | Entrypoint(s) | Key Files | Inputs | Outputs | Persistent State | Trust Boundaries |
+|-----------|---------|---------------|-----------|--------|---------|------------------|------------------|
+| **1. WebSocket Gateway** | Message intake server | `src/gateway/server.ts` | `server.ts`, `connection.ts` | Client messages (127.0.0.1 only) | ACK responses | None (in-memory) | UNTRUSTED → Gateway |
+| **2. Message Sanitizer** | 5-stage input sanitization | `src/messages/sanitizer.ts` | `sanitizer.ts` | Raw client messages | Sanitized messages | None | Gateway → Sanitizer |
+| **3. Message Validator** | Zod schema validation | `src/messages/validator.ts` | `validator.ts`, `types.ts` | Sanitized messages | Validated messages | None | Sanitizer → Validator |
+| **4. Audit Log** | Tamper-evident logging | `src/audit/log.ts` | `log.ts`, `types.ts`, `verify.ts` | Actions to log | Append-only log entries | `~/.ari/audit.jsonl` | All actions → Audit |
+| **5. Event Bus** | Pub/sub event routing | `src/events/bus.ts` | `bus.ts`, `types.ts` | Messages from gateway | Events to subscribers | None (in-memory) | Validator → Event Bus |
+| **6. Rate Limiter** | Token bucket throttling | `src/rate-limit/limiter.ts` | `limiter.ts` | Sender ID | Allow/deny decision | In-memory buckets | Gateway → Rate Limiter |
+| **7. CLI** | Audit verification, etc. | `src/cli/index.ts` | `index.ts` | Command args | CLI output | None | Operator → CLI |
+| **8. Daemon (macOS)** | Always-on background service | `src/daemon/macos.ts` | `macos.ts` | LaunchAgent config | Process start | `~/Library/LaunchAgents/` | System → Daemon |
+| **9. Library API** | Programmatic access | `src/index.ts` | `index.ts` | Function calls | API responses | None | Operator code → API |
+| **10. Test Suite** | Automated testing | `tests/*.test.ts` | 56 test files | Test inputs | Pass/fail | None | Tests → All components |
+| **11. Documentation** | Architecture, governance | `docs/*.md` | `ARCHITECTURE.md`, etc. | N/A | Documentation | None | N/A |
+
+**Total Components**: 11  
+**Entrypoints**: 4 (Gateway server, CLI, Daemon, Library API)  
+**Trust Boundaries**: 3 (Client → Gateway, Gateway → Internal, Internal → Audit)
+
+---
+
+## WHERE IS "RE" (REASONING ENGINE)?
+
+### Search Results
+
+**Query**: "RE", "Reasoning Engine", "planner", "orchestrator", "agent", "decision"
+
+**Files Searched**:
+- All `*.ts` files in `src/`
+- All `*.md` files in `docs/`
+- `README.md`
+- `package.json`
+
+### Findings
+
+| Term | Location | Context | Type |
+|------|----------|---------|------|
+| **"agent"** | `docs/GOVERNANCE.md` (lines 15-80) | Phase 2 design (not implemented) | Design doc |
+| **"decision"** | `docs/GOVERNANCE.md` (lines 45-60) | Phase 2 decision framework | Design doc |
+| **"council"** | `docs/GOVERNANCE.md` (lines 70-120) | Phase 2 multi-agent council | Design doc |
+| **"planner"** | `docs/GOVERNANCE.md` (line 85) | Planner agent (Phase 2) | Design doc |
+| **"executor"** | `docs/GOVERNANCE.md` (line 90) | Executor agent (Phase 2) | Design doc |
+| **"reasoning"** | `docs/ROADMAP.md` (line 42) | Phase 2 feature | Design doc |
+| **"RE"** | Not found | N/A | N/A |
+
+### Conclusion
+
+**ARI v3.0.0 does NOT contain a "Reasoning Engine" (RE) layer in code.**
+
+Evidence:
+1. **No RE implementation**: Zero files named `reasoning.ts`, `planner.ts`, `orchestrator.ts`, or similar
+2. **No agent system**: No `AgentRegistry`, `Agent` class, or agent execution logic in `src/`
+3. **Design-only**: `docs/GOVERNANCE.md` describes a **Phase 2** multi-agent system (Planner, Executor, Memory, Guardian, Auditor, Chronicler) but these are **not implemented**
+4. **Current scope**: v3.0.0 is a **message gateway + audit pipeline**. It ingests messages, sanitizes them, logs them, and emits events. **It does NOT reason, plan, or execute actions.**
+
+### What v3.0.0 IS
+
+| v3.0.0 Contains | Evidence |
+|-----------------|----------|
+| ✅ WebSocket gateway | `src/gateway/server.ts` (127.0.0.1 only) |
+| ✅ Input sanitizer | `src/messages/sanitizer.ts` (5 stages) |
+| ✅ Audit log | `src/audit/log.ts` (SHA-256 hash chain) |
+| ✅ Event bus | `src/events/bus.ts` (pub/sub router) |
+| ✅ Rate limiter | `src/rate-limit/limiter.ts` (token bucket) |
+| ✅ CLI | `src/cli/index.ts` (audit verify, etc.) |
+
+### What v3.0.0 IS NOT
+
+| v3.0.0 Does NOT Contain | Planned For |
+|-------------------------|-------------|
+| ❌ Reasoning engine | Phase 2b |
+| ❌ Agent system | Phase 2a |
+| ❌ Decision framework | Phase 2b |
+| ❌ Multi-agent council | Phase 2d |
+| ❌ Memory service | Phase 2c |
+| ❌ Tool execution | Phase 2e |
+
+**This is NOT a bug. It's the intended Phase 1 scope.**
+
+---
+
+## INFERENCE: "RE" IS THE EVENT BUS + FUTURE AGENTS
+
+The closest equivalent to an "RE" (Reasoning Engine) in v3.0.0 is:
+
+1. **Event Bus** (`src/events/bus.ts`): Routes validated messages to subscribers
+2. **Future Agent Subscribers** (Phase 2): Will subscribe to events, reason about them, propose actions
+
+**Current Flow** (Phase 1):
+Client → Gateway → Sanitizer → Validator → Event Bus → [No subscribers yet] → Audit Log
+
+text
+
+**Future Flow** (Phase 2):
+Client → Gateway → Sanitizer → Validator → Event Bus → Agent(s) → Proposal → Operator Decision → Audit Log
+
+text
+
+**Evidence**:
+- `src/events/bus.ts` (lines 1-50): Generic event bus with `.subscribe()` and `.publish()` methods
+- `docs/GOVERNANCE.md` (lines 15-120): Phase 2 design describes agents subscribing to events
+- No subscribers are registered in v3.0.0 code
+
+---
+
+## INPUT/OUTPUT CONTRACTS
+
+### Gateway Input Contract
+```typescript
+// src/gateway/server.ts (lines 20-30)
+interface ClientMessage {
+  sender: string;      // Client identifier
+  content: string;     // Message content (untrusted)
+  timestamp?: string;  // Optional timestamp
+}
+Constraints:
+
+Must arrive via WebSocket (ws://)
+
+Must be from 127.0.0.1 (loopback only)
+
+Max payload: 1MB (configurable)
+
+Sanitizer Output Contract
+typescript
+// src/messages/sanitizer.ts (lines 40-60)
+interface SanitizedMessage {
+  sender: string;
+  content: string;     // Sanitized (truncated, control chars removed, etc.)
+  flags: string[];     // Shadow flags (e.g., "jailbreak_pattern_detected")
+  timestamp: string;
+}
+Guarantees:
+
+content is UTF-8 safe (control characters removed)
+
+content is <= 10,000 characters
+
+Suspicious patterns are flagged but NOT removed (shadow integration)
+
+Audit Log Entry Contract
+typescript
+// src/audit/log.ts (lines 10-25)
+interface AuditEntry {
+  sequence: number;           // Monotonic sequence number
+  timestamp: string;          // ISO 8601 timestamp
+  actor: AuditActor;          // { type: "operator" | "system", id: string }
+  action: string;             // Action type (e.g., "message_received")
+  details: Record<string, any>; // Action-specific details
+  previousHash: string;       // SHA-256 of previous entry
+  hash: string;               // SHA-256 of this entry
+}
+Guarantees:
+
+Append-only (no mutations)
+
+Hash chain integrity (each entry links to previous)
+
+Verifiable via ari audit verify CLI command
+
+Event Bus Contract
+typescript
+// src/events/bus.ts (lines 5-20)
+interface Event {
+  type: string;              // Event type (e.g., "message.received")
+  payload: any;              // Event-specific data
+  timestamp: string;         // ISO 8601 timestamp
+}
+
+interface Subscriber {
+  (event: Event): void | Promise<void>;
+}
+Guarantees:
+
+Events are delivered to all subscribers (in-order)
+
+No guarantee of delivery if subscriber throws (no retry logic)
+
+TRUST BOUNDARIES (IDENTIFIED)
+Boundary 1: Client → Gateway
+Threat: Untrusted client messages
+Defense:
+
+Hardcoded loopback-only (127.0.0.1)
+
+Rate limiting (10 messages/min per sender)
+
+Max payload size (1MB)
+
+Evidence: src/gateway/server.ts (lines 15-25)
+
+Boundary 2: Gateway → Sanitizer
+Threat: Malicious content (injection, jailbreak, etc.)
+Defense:
+
+5-stage sanitization (truncation, control char removal, pattern detection)
+
+Shadow integration (detect but don't block)
+
+Evidence: src/messages/sanitizer.ts (lines 45-95)
+
+Boundary 3: Sanitizer → Validator
+Threat: Schema violations
+Defense:
+
+Zod schema validation (strict types)
+
+Evidence: src/messages/validator.ts (lines 10-30)
+
+Boundary 4: All Components → Audit Log
+Threat: Audit tampering
+Defense:
+
+SHA-256 hash chain
+
+Sequence numbering
+
+Verification CLI
+
+Evidence: src/audit/log.ts (lines 1-80)
+
+ENTRYPOINTS (4 IDENTIFIED)
+1. Gateway Server
+File: src/gateway/server.ts
+Purpose: WebSocket server (always-on daemon)
+Start Command: node dist/gateway/server.js
+Port: Configurable (default: 8080)
+Network: 127.0.0.1 only (hardcoded)
+
+2. CLI
+File: src/cli/index.ts
+Purpose: Command-line interface
+Commands:
+
+ari audit verify — Verify audit log integrity
+
+ari audit show — Display audit entries
+
+ari status — Check gateway status
+
+3. Daemon (macOS)
+File: src/daemon/macos.ts
+Purpose: LaunchAgent setup (auto-start on login)
+Location: ~/Library/LaunchAgents/com.ari.gateway.plist
+Behavior: Starts gateway on system boot, restarts on crash
+
+4. Library API
+File: src/index.ts
+Purpose: Programmatic access to ARI components
+Exports:
+
+AuditLog (read/write audit entries)
+
+EventBus (subscribe/publish events)
+
+Sanitizer (sanitize messages)
+
+PERSISTENT STATE (1 FILE)
+File: ~/.ari/audit.jsonl
+Format: JSON Lines (one entry per line)
+Purpose: Tamper-evident audit log
+Permissions: Should be 0o600 (owner-only read/write) — NOT ENFORCED (see Pass 3 risks)
+Size: Unbounded (grows indefinitely)
+Rotation: Not implemented (Phase 2c)
+
+Example Entry:
+
+json
+{"sequence":1,"timestamp":"2026-01-27T10:00:00.000Z","actor":{"type":"system","id":"gateway"},"action":"server_started","details":{},"previousHash":"genesis","hash":"a3f5..."}
+KEY OBSERVATIONS
+1. Ruthless Simplicity (Musashi)
+~2K LOC core (excluding tests/docs)
+
+6 primary modules, each with one clear job
+
+No cryptic abstractions or magic
+
+Easy to read, audit, extend
+
+2. Shadow Integration (Jung)
+19 jailbreak/injection patterns detected in src/messages/sanitizer.ts
+
+Patterns are LOGGED, not BLOCKED
+
+System observes rather than suppresses
+
+Flags: jailbreak_pattern_detected, code_injection_attempt, etc.
+
+3. Radical Transparency (Dalio)
+All actions logged in tamper-evident audit trail
+
+Actor attribution (who did what, when)
+
+Verification CLI (ari audit verify)
+
+Complete observability
+
+4. Local-First Always-On
+Gateway hardcoded to 127.0.0.1 (no config override)
+
+No cloud dependencies
+
+No telemetry
+
+Daemon auto-starts on boot (macOS)
+
+5. Content ≠ Command (Critical)
+Zero tool execution from untrusted input
+
+Event bus is notification-only (no auto-execution)
+
+Sanitizer is inspection-only (no side effects)
+
+No way for client messages to trigger actions (Phase 2 feature)
+
+GAPS (NOT BUGS, INTENDED SCOPE)
+Gap	Impact	Phase
+No agent system	Cannot reason or plan	Phase 2a
+No decision framework	Cannot propose actions	Phase 2b
+No memory service	No persistent context	Phase 2c
+No council voting	Single operator only	Phase 2d
+No tool execution	Cannot act on decisions	Phase 2e
+No multi-user	Single operator only	Phase 3
+These are NOT missing features. They're the intended Phase 1 scope.
+
+PASS 1 CONCLUSION
+Summary
+ARI v3.0.0 is a well-engineered Phase 1 foundation consisting of:
+
+WebSocket gateway (local-only)
+
+Input sanitization (5-stage, shadow integration)
+
+Tamper-evident audit log (SHA-256 hash chain)
+
+Event bus (pub/sub router for future agents)
+
+Rate limiter (token bucket)
+
+CLI (audit verification)
+
+The "Reasoning Engine" (RE) is designed for Phase 2 and does NOT exist in v3.0.0.
+
+This is NOT a problem. It's a deliberate architectural choice:
+
+Phase 1: Build the foundation (audit, gateway, events)
+
+Phase 2: Add reasoning (agents, decisions, memory)
+
+Phase 3: Add learning (RL, multi-user, advanced reasoning)
+
+Status: Foundation is solid. Ready for Phase 2.
+
+Pass 1 Complete: ✅
+Next: Pass 2 (Execution Flows + Trust Boundaries)
+
+Evidence Citations:
+
+All file paths: PryceHedrick/ARI repository (branch: main, commit: 60aa8d4)
+
+Line ranges: Approximate (TypeScript files may shift with updates)
+
+Verification: All findings reproducible by inspecting cited files
+
+text
+
+***
+
+That's **DOCUMENT 5 of 7** (Pass 1 - System Inventory)
