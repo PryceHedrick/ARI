@@ -1,0 +1,167 @@
+// API Response Types for ARI Dashboard
+// These types mirror the backend API responses but are defined locally
+
+export type TrustLevel = 'SYSTEM' | 'TRUSTED' | 'UNTRUSTED';
+export type MemoryType = 'FACT' | 'TASK' | 'GOAL' | 'INTERACTION';
+export type MemoryPartition = 'PUBLIC' | 'PRIVATE' | 'QUARANTINE';
+export type AgentType = 'GUARDIAN' | 'PLANNER' | 'EXECUTOR' | 'MEMORY_MANAGER' | 'CORE';
+export type ProposalStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'EXPIRED';
+
+export interface HealthStatus {
+  status: 'healthy' | 'degraded' | 'unhealthy';
+  timestamp: string;
+  uptime: number;
+  version: string;
+}
+
+export interface DetailedHealth {
+  gateway: {
+    status: 'healthy' | 'degraded' | 'unhealthy';
+    port: number;
+    host: string;
+    connections: number;
+  };
+  eventBus: {
+    status: 'healthy' | 'degraded' | 'unhealthy';
+    eventCount: number;
+    subscribers: number;
+  };
+  audit: {
+    status: 'healthy' | 'degraded' | 'unhealthy';
+    entryCount: number;
+    chainValid: boolean;
+    lastEntry: string;
+  };
+  sanitizer: {
+    status: 'healthy' | 'degraded' | 'unhealthy';
+    patternsLoaded: number;
+  };
+  agents: {
+    status: 'healthy' | 'degraded' | 'unhealthy';
+    activeCount: number;
+    agents: Record<string, { status: string; lastActive: string }>;
+  };
+  governance: {
+    status: 'healthy' | 'degraded' | 'unhealthy';
+    activeVotes: number;
+    councilMembers: number;
+  };
+}
+
+export interface Agent {
+  id: string;
+  type: AgentType;
+  status: 'active' | 'idle' | 'stopped';
+  lastActive: string;
+  tasksCompleted: number;
+  errorCount: number;
+}
+
+export interface AgentStats {
+  agentId: string;
+  type: AgentType;
+  tasksCompleted: number;
+  tasksInProgress: number;
+  tasksFailed: number;
+  averageTaskDuration: number;
+  lastActive: string;
+  uptime: number;
+}
+
+export interface Proposal {
+  id: string;
+  type: 'COUNCIL_VOTE' | 'CONSTITUTIONAL_RULING' | 'QUALITY_GATE';
+  title: string;
+  description: string;
+  status: ProposalStatus;
+  votes: {
+    approve: number;
+    reject: number;
+    total: number;
+  };
+  threshold: number;
+  createdAt: string;
+  expiresAt: string;
+  result?: 'APPROVED' | 'REJECTED';
+}
+
+export interface ConstitutionalRule {
+  id: string;
+  name: string;
+  description: string;
+  enabled: boolean;
+  violations: number;
+}
+
+export interface QualityGate {
+  id: string;
+  name: string;
+  description: string;
+  threshold: number;
+  enabled: boolean;
+  passCount: number;
+  failCount: number;
+}
+
+export interface MemoryEntry {
+  id: string;
+  type: MemoryType;
+  partition: MemoryPartition;
+  content: string;
+  tags: string[];
+  timestamp: string;
+  trustLevel: TrustLevel;
+  source: string;
+  provenance: {
+    chain: string[];
+    verifiedAt: string;
+  };
+}
+
+export interface AuditEntry {
+  id: string;
+  action: string;
+  agent: string;
+  timestamp: string;
+  details: Record<string, unknown>;
+  previousHash: string;
+  hash: string;
+}
+
+export interface AuditVerification {
+  valid: boolean;
+  entryCount: number;
+  genesisHash: string;
+  lastHash: string;
+  brokenAt?: number;
+  message: string;
+}
+
+export interface Tool {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  trustLevel: TrustLevel;
+  permissionTier: 'READ' | 'WRITE' | 'ADMIN';
+  enabled: boolean;
+  executionCount: number;
+  errorCount: number;
+  lastUsed?: string;
+}
+
+export interface Context {
+  id: string;
+  name: string;
+  type: 'LIFE' | 'VENTURE' | 'SYSTEM';
+  active: boolean;
+  lastAccessed: string;
+  memoryCount: number;
+  taskCount: number;
+}
+
+export interface WebSocketEvent {
+  type: string;
+  timestamp: string;
+  data: Record<string, unknown>;
+}
