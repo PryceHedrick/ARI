@@ -1,5 +1,6 @@
-import Fastify, { type FastifyRequest, type FastifyReply } from 'fastify';
+import Fastify, { type FastifyRequest, type FastifyReply, type FastifyPluginAsync, type FastifyPluginOptions, type FastifyInstance } from 'fastify';
 import { randomUUID } from 'crypto';
+import type { Server } from 'http';
 import type { Message } from './types.js';
 import type { TrustLevel } from './types.js';
 import { sanitize } from './sanitizer.js';
@@ -180,5 +181,34 @@ export class Gateway {
    */
   getAuditLogger(): AuditLogger {
     return this.audit;
+  }
+
+  /**
+   * Get the underlying Fastify instance for plugin registration
+   */
+  getServer(): FastifyInstance {
+    return this.server;
+  }
+
+  /**
+   * Get the underlying HTTP server (available after start() is called)
+   */
+  getHttpServer(): Server {
+    const server = this.server.server;
+    if (!server) {
+      throw new Error('HTTP server not available. Call start() first.');
+    }
+    return server;
+  }
+
+  /**
+   * Register a Fastify plugin on the gateway
+   * Must be called before start()
+   */
+  async registerPlugin<T extends FastifyPluginOptions = FastifyPluginOptions>(
+    plugin: FastifyPluginAsync<T>,
+    opts?: T
+  ): Promise<void> {
+    await this.server.register(plugin, opts);
   }
 }

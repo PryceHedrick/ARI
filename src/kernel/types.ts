@@ -172,6 +172,46 @@ export const VoteSchema = z.object({
 });
 export type Vote = z.infer<typeof VoteSchema>;
 
+// ── Proposals ────────────────────────────────────────────────────────────
+
+export const ProposalStatusSchema = z.enum([
+  'DRAFT',
+  'PENDING_REVIEW',
+  'VOTING',
+  'APPROVED',
+  'REJECTED',
+  'EXPIRED',
+  'EXECUTED',
+  'REVERTED',
+]);
+export type ProposalStatus = z.infer<typeof ProposalStatusSchema>;
+
+export const RiskLevelSchema = z.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']);
+export type RiskLevel = z.infer<typeof RiskLevelSchema>;
+
+/** Map risk levels to required vote thresholds */
+export const RISK_THRESHOLD_MAP: Record<RiskLevel, VoteThreshold> = {
+  LOW: 'MAJORITY',
+  MEDIUM: 'MAJORITY',
+  HIGH: 'SUPERMAJORITY',
+  CRITICAL: 'UNANIMOUS',
+};
+
+export const ProposalSchema = z.object({
+  id: z.string().uuid(),
+  title: z.string(),
+  description: z.string(),
+  status: ProposalStatusSchema,
+  risk_level: RiskLevelSchema,
+  proposed_by: AgentIdSchema,
+  created_at: z.string(),
+  expires_at: z.string(),
+  vote_id: z.string().uuid().nullable(),
+  execution_result: z.record(z.unknown()).nullable(),
+  revert_reason: z.string().nullable(),
+});
+export type Proposal = z.infer<typeof ProposalSchema>;
+
 // ── Tool Definition ──────────────────────────────────────────────────────────
 
 export const ToolDefinitionSchema = z.object({

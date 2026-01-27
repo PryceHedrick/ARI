@@ -299,4 +299,22 @@ export class Council {
   getAllVotes(): Vote[] {
     return Array.from(this.votes.values());
   }
+
+  /**
+   * Expires all votes that have passed their deadline.
+   * @returns The number of votes expired
+   */
+  expireOverdueVotes(): number {
+    let expired = 0;
+    const now = new Date();
+
+    for (const [id, vote] of this.votes) {
+      if (vote.status === 'OPEN' && new Date(vote.deadline) < now) {
+        this.closeVote(id, 'EXPIRED');
+        expired++;
+      }
+    }
+
+    return expired;
+  }
 }

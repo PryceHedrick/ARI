@@ -1,4 +1,4 @@
-import type { Message, AuditEvent, SecurityEvent, AgentId, Vote } from './types.js';
+import type { Message, AuditEvent, SecurityEvent, AgentId } from './types.js';
 
 /**
  * EventMap interface defining event name to payload mappings.
@@ -16,6 +16,8 @@ export interface EventMap {
   'gateway:stopped': { reason: string };
   'system:ready': { version: string };
   'system:error': { error: Error; context: string };
+  'system:halted': { authority: string; reason: string; timestamp: Date };
+  'system:resumed': { authority: string; timestamp: Date };
 
   // ── System events ──────────────────────────────────────────────────────
   'system:routed': { messageId: string; contextId?: string; route: string; timestamp: Date };
