@@ -1,4 +1,3 @@
-import { createHash } from 'crypto';
 import type { AuditLogger } from '../kernel/audit.js';
 import type { EventBus } from '../kernel/event-bus.js';
 import type { Message, TrustLevel } from '../kernel/types.js';
@@ -71,7 +70,7 @@ export class Guardian {
    */
   start(): void {
     this.unsubscribe = this.eventBus.on('message:accepted', (message) => {
-      this.analyzeMessage(message);
+      void this.analyzeMessage(message);
     });
   }
 

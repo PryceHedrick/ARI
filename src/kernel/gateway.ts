@@ -14,7 +14,7 @@ import { EventBus } from './event-bus.js';
  * This ensures the gateway cannot be exposed to external networks.
  */
 export class Gateway {
-  private server: ReturnType<typeof Fastify>;
+  private server: FastifyInstance;
   private audit: AuditLogger;
   private eventBus: EventBus;
   private readonly HOST = '127.0.0.1';
@@ -194,7 +194,7 @@ export class Gateway {
    * Get the underlying HTTP server (available after start() is called)
    */
   getHttpServer(): Server {
-    const server = this.server.server;
+    const server = this.server.server as Server;
     if (!server) {
       throw new Error('HTTP server not available. Call start() first.');
     }

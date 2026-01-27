@@ -15,6 +15,14 @@ import { apiRoutes } from '../../api/routes.js';
 import { WebSocketBroadcaster } from '../../api/ws.js';
 import * as Storage from '../../system/storage.js';
 
+interface GatewayStartOptions {
+  port: string;
+}
+
+interface GatewayStatusOptions {
+  port: string;
+}
+
 export function registerGatewayCommand(program: Command): void {
   const gateway = program
     .command('gateway')
@@ -24,7 +32,7 @@ export function registerGatewayCommand(program: Command): void {
     .command('start')
     .description('Start the ARI Gateway server with full system')
     .option('-p, --port <number>', 'Port to bind the gateway to', '3141')
-    .action(async (options) => {
+    .action(async (options: GatewayStartOptions) => {
       const port = parseInt(options.port, 10);
 
       if (isNaN(port) || port < 1 || port > 65535) {
@@ -130,8 +138,12 @@ export function registerGatewayCommand(program: Command): void {
         }
       };
 
-      process.on('SIGINT', () => shutdown('SIGINT'));
-      process.on('SIGTERM', () => shutdown('SIGTERM'));
+      process.on('SIGINT', () => {
+        void shutdown('SIGINT');
+      });
+      process.on('SIGTERM', () => {
+        void shutdown('SIGTERM');
+      });
 
       try {
         // Start the gateway
@@ -170,7 +182,7 @@ export function registerGatewayCommand(program: Command): void {
     .command('status')
     .description('Check if the ARI Gateway is running')
     .option('-p, --port <number>', 'Port the gateway is running on', '3141')
-    .action(async (options) => {
+    .action(async (options: GatewayStatusOptions) => {
       const port = parseInt(options.port, 10);
       const url = `http://127.0.0.1:${port}/health`;
 

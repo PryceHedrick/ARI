@@ -25,9 +25,9 @@ export const DEFAULT_CONFIG: Config = {
 export async function loadConfig(): Promise<Config> {
   try {
     const content = await fs.readFile(CONFIG_PATH, 'utf-8');
-    const parsed = JSON.parse(content);
+    const parsed: unknown = JSON.parse(content);
     return ConfigSchema.parse(parsed);
-  } catch (error) {
+  } catch {
     // Return default config if file doesn't exist or parsing fails
     return DEFAULT_CONFIG;
   }

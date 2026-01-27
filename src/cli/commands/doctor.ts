@@ -60,7 +60,7 @@ export function registerDoctorCommand(program: Command): void {
       total++;
       try {
         await logger.load();
-        const result = await logger.verify();
+        const result = logger.verify();
         if (result.valid) {
           console.log('[✓] Audit chain integrity verified');
           passed++;

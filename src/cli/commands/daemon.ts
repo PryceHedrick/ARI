@@ -4,6 +4,15 @@ import { readFile } from 'fs/promises';
 import { existsSync } from 'fs';
 import { spawn } from 'child_process';
 
+interface DaemonInstallOptions {
+  port: string;
+}
+
+interface DaemonLogsOptions {
+  follow?: boolean;
+  lines: string;
+}
+
 export function registerDaemonCommand(program: Command): void {
   const daemon = program
     .command('daemon')
@@ -13,7 +22,7 @@ export function registerDaemonCommand(program: Command): void {
     .command('install')
     .description('Install and start the ARI Gateway as a launchd daemon')
     .option('-p, --port <number>', 'Port to bind the gateway to', '3141')
-    .action(async (options) => {
+    .action(async (options: DaemonInstallOptions) => {
       const port = parseInt(options.port, 10);
 
       if (isNaN(port) || port < 1 || port > 65535) {
@@ -65,7 +74,7 @@ export function registerDaemonCommand(program: Command): void {
     .description('View gateway log files')
     .option('-f, --follow', 'Follow log output (like tail -f)')
     .option('-n, --lines <number>', 'Number of lines to show', '50')
-    .action(async (options) => {
+    .action(async (options: DaemonLogsOptions) => {
       try {
         const logPaths = getLogPaths();
         const lines = parseInt(options.lines, 10);

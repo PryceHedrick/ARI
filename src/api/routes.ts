@@ -257,7 +257,7 @@ export const apiRoutes: FastifyPluginAsync<ApiRouteOptions> = async (
   });
 
   fastify.get('/api/audit/verify', async () => {
-    return await deps.audit.verify();
+    return deps.audit.verify();
   });
 
   // ── Tool endpoints ──────────────────────────────────────────────────────

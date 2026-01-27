@@ -47,10 +47,10 @@ export class Core {
   private readonly executor: Executor;
   private readonly planner: Planner;
 
-  // Governance components (optional, typed as any for forward compatibility)
-  private council: any = null;
-  private arbiter: any = null;
-  private overseer: any = null;
+  // Governance components (optional, typed as unknown for forward compatibility)
+  private council: unknown = null;
+  private arbiter: unknown = null;
+  private overseer: unknown = null;
 
   private started = false;
 
@@ -70,7 +70,7 @@ export class Core {
   /**
    * Set governance components (optional)
    */
-  setGovernance(components: { council?: any; arbiter?: any; overseer?: any }): void {
+  setGovernance(components: { council?: unknown; arbiter?: unknown; overseer?: unknown }): void {
     if (components.council) this.council = components.council;
     if (components.arbiter) this.arbiter = components.arbiter;
     if (components.overseer) this.overseer = components.overseer;

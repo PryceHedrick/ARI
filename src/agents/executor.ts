@@ -1,13 +1,11 @@
-import { randomUUID } from 'crypto';
 import type { AuditLogger } from '../kernel/audit.js';
 import type { EventBus } from '../kernel/event-bus.js';
 import type {
   AgentId,
   TrustLevel,
   ToolDefinition,
-  PermissionTier,
 } from '../kernel/types.js';
-import { TRUST_SCORES, PERMISSION_LEVELS } from '../kernel/types.js';
+import { TRUST_SCORES } from '../kernel/types.js';
 
 interface ToolCall {
   id: string;
@@ -63,7 +61,7 @@ export class Executor {
   registerTool(tool: ToolDefinition): void {
     this.tools.set(tool.id, tool);
 
-    this.auditLogger.log('tool:register', 'executor', 'system', {
+    void this.auditLogger.log('tool:register', 'executor', 'system', {
       tool_id: tool.id,
       permission_tier: tool.permission_tier,
       required_trust_level: tool.required_trust_level,
@@ -337,11 +335,11 @@ export class Executor {
   /**
    * Execute actual tool logic (stub implementations for built-in tools)
    */
-  private async executeToolLogic(call: ToolCall, tool: ToolDefinition): Promise<unknown> {
+  private executeToolLogic(call: ToolCall, tool: ToolDefinition): unknown {
     // Built-in tool implementations
     switch (tool.id) {
       case 'file_read':
-        return { content: `Mock file content for ${call.parameters.path}` };
+        return { content: `Mock file content for ${String(call.parameters.path)}` };
       case 'file_write':
         return { written: true, path: call.parameters.path };
       case 'file_delete':

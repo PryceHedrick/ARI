@@ -53,7 +53,7 @@ export class Council {
     this.votes.set(voteId, vote);
 
     // Audit the vote creation
-    this.auditLogger.log(
+    void this.auditLogger.log(
       'vote:created',
       request.initiated_by,
       'verified',
@@ -66,7 +66,7 @@ export class Council {
     );
 
     // Emit vote:started event
-    this.eventBus.emit('vote:started', {
+    void this.eventBus.emit('vote:started', {
       voteId,
       topic: request.topic,
       threshold: request.threshold,
@@ -123,7 +123,7 @@ export class Council {
     };
 
     // Audit the vote cast
-    this.auditLogger.log(
+    void this.auditLogger.log(
       'vote:cast',
       agent,
       'verified',
@@ -135,7 +135,7 @@ export class Council {
     );
 
     // Emit vote:cast event
-    this.eventBus.emit('vote:cast', {
+    void this.eventBus.emit('vote:cast', {
       voteId,
       agent,
       option,
@@ -255,7 +255,7 @@ export class Council {
     };
 
     // Audit the vote closure
-    this.auditLogger.log(
+    void this.auditLogger.log(
       'vote:closed',
       'system',
       'system',
@@ -268,7 +268,7 @@ export class Council {
     );
 
     // Emit vote:completed event
-    this.eventBus.emit('vote:completed', {
+    void this.eventBus.emit('vote:completed', {
       voteId,
       status,
       result: vote.result,

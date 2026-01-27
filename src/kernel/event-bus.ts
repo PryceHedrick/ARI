@@ -43,7 +43,7 @@ export interface EventMap {
  * Typed pub/sub event system for ARI
  */
 export class EventBus {
-  private listeners: Map<string, Set<Function>> = new Map();
+  private listeners: Map<string, Set<(payload: unknown) => void>> = new Map();
 
   /**
    * Subscribe to an event
@@ -59,7 +59,7 @@ export class EventBus {
       this.listeners.set(event, new Set());
     }
 
-    this.listeners.get(event)!.add(handler);
+    this.listeners.get(event)!.add(handler as (payload: unknown) => void);
 
     // Return unsubscribe function
     return () => this.off(event, handler);
@@ -76,7 +76,7 @@ export class EventBus {
   ): void {
     const handlers = this.listeners.get(event);
     if (handlers) {
-      handlers.delete(handler);
+      handlers.delete(handler as (payload: unknown) => void);
       if (handlers.size === 0) {
         this.listeners.delete(event);
       }
