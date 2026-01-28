@@ -4,7 +4,7 @@
 
 1. Ensure the ARI gateway is running:
    ```bash
-   cd /Users/prycehedrick/ARI
+   cd /Users/prycehedrick/ari
    npm run gateway:start
    ```
 

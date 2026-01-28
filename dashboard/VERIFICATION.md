@@ -5,7 +5,7 @@
 ### Completed Tasks
 
 1. **Directory Structure Created**
-   - ✅ `/Users/prycehedrick/ARI/dashboard/` created
+   - ✅ `/Users/prycehedrick/ari/dashboard/` created
    - ✅ All required subdirectories in place
    - ✅ Proper separation from parent project
 
@@ -67,7 +67,7 @@
 
 5. **Build Verification**
    ```bash
-   cd /Users/prycehedrick/ARI/dashboard
+   cd /Users/prycehedrick/ari/dashboard
    npm run build
    ```
    - ✅ TypeScript compilation successful (0 errors)
@@ -162,7 +162,7 @@ npm run typecheck        # Type check only
 
 1. Start the ARI gateway:
    ```bash
-   cd /Users/prycehedrick/ARI
+   cd /Users/prycehedrick/ari
    npm run gateway:start
    ```
 

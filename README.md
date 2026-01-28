@@ -2,12 +2,23 @@
 
 **Your Life Operating System**
 
+[![Version](https://img.shields.io/badge/Version-12.0.0-blue)](CHANGELOG.md)
 [![Node.js](https://img.shields.io/badge/Node.js-20%2B-green)](https://nodejs.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.3-blue)](https://www.typescriptlang.org)
 [![Tests](https://img.shields.io/badge/Tests-187-brightgreen)](tests/)
 [![License](https://img.shields.io/badge/License-MIT-blue)](LICENSE)
 
-ARI is a secure, local-first, multi-agent personal operating system that orchestrates AI agents for life management, venture operations, and system coordination. Built on principles of radical transparency and constitutional governance, ARI provides tamper-evident audit trails, 21-pattern injection detection, and loopback-only security. Every decision is traceable, every operation audited, every command justified.
+ARI orchestrates AI agents to manage your life — health, career, finances, ventures, and personal growth — through a local-first, multi-agent operating system. Every decision flows through constitutional governance, every operation is audited with tamper-evident cryptographic trails, and all data stays on your machine.
+
+## Key Features
+
+- **Life Domain Management** — Organize across health, career, finance, family, learning, and systems contexts
+- **Multi-Agent Orchestration** — Five specialized agents (Guardian, Planner, Executor, Memory Manager, Core) coordinate through typed events
+- **Constitutional Governance** — 13-member democratic council, 5 immutable constitutional rules, 5 quality gates
+- **Tamper-Evident Audit** — SHA-256 hash-chained logging from genesis block; every operation traceable
+- **Local-First Security** — Loopback-only gateway (127.0.0.1), 21-pattern injection detection, 6-level trust scoring
+- **Web Dashboard** — Real-time monitoring of agents, governance, memory, and audit trails
+- **Venture Operations** — Dedicated contexts for business ventures with isolated memory partitions
 
 ## Core Philosophy
 
@@ -142,15 +153,25 @@ cd dashboard && npm install && npm run dev    # Development
 cd dashboard && npm run build                 # Production build
 ```
 
+## Installation
+
+### Prerequisites
+
+- **Node.js** 20.0.0 or higher
+- **macOS** 12.0+ (for daemon support; core system works on any OS with Node.js)
+
+### Setup
+
+```bash
+git clone https://github.com/PryceHedrick/ari.git
+cd ari
+npm install
+npm run build
+```
+
 ## Quick Start
 
 ```bash
-# Install dependencies
-npm install
-
-# Build the system
-npm run build
-
 # Initialize ARI (creates ~/.ari/, config, genesis audit)
 npx ari onboard init
 
@@ -159,6 +180,26 @@ npx ari doctor
 
 # Start the gateway (127.0.0.1:3141)
 npx ari gateway start
+```
+
+### First Interaction
+
+With the gateway running, try these in another terminal:
+
+```bash
+# Check system health
+curl http://127.0.0.1:3141/health
+
+# Submit a message through the pipeline
+curl -X POST http://127.0.0.1:3141/message \
+  -H "Content-Type: application/json" \
+  -d '{"content": "Plan my week", "source": "standard"}'
+
+# Verify audit chain integrity
+curl http://127.0.0.1:3141/api/audit/verify
+
+# View governance rules
+curl http://127.0.0.1:3141/api/governance/rules
 ```
 
 ## CLI Reference
@@ -364,8 +405,6 @@ Comprehensive documentation is available in the `docs/` directory:
 
 **12.0.0** — Life Operating System
 
-Identity evolution: Aurora Protocol → ARI Life OS (2026-01-27)
-
 ## License
 
 MIT License. See [LICENSE](LICENSE) for details.
@@ -375,4 +414,4 @@ MIT License. See [LICENSE](LICENSE) for details.
 **Operator**: Pryce Hedrick
 **Repository**: [github.com/PryceHedrick/ari](https://github.com/PryceHedrick/ari)
 
-*"Secure reasoning, local-first, auditable"*
+*"Your life, your rules, fully auditable"*
