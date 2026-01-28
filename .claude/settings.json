@@ -1,5 +1,37 @@
 {
   "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit:src/kernel/*|Write:src/kernel/*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '⚠️  KERNEL LAYER - Requires security review. Proceed with caution.'",
+            "blocking": false
+          }
+        ]
+      },
+      {
+        "matcher": "Edit:src/governance/*|Write:src/governance/*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '⚠️  GOVERNANCE LAYER - Constitutional changes require council review.'",
+            "blocking": false
+          }
+        ]
+      },
+      {
+        "matcher": "Bash:*rm *|Bash:*delete*|Bash:*--force*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '⚠️  DESTRUCTIVE OPERATION - Double-check before proceeding.'",
+            "blocking": false
+          }
+        ]
+      }
+    ],
     "PostToolUse": [
       {
         "matcher": "Edit:*.ts|Write:*.ts",
@@ -26,7 +58,27 @@
         "hooks": [
           {
             "type": "command",
-            "command": "echo '⚠️  KERNEL LAYER MODIFIED - Security review required'",
+            "command": "echo '✓ KERNEL MODIFIED - Running security validation...' && cd /Users/prycehedrick/Work/ARI && npm test -- tests/security/ --reporter=dot 2>&1 | tail -5",
+            "blocking": false
+          }
+        ]
+      },
+      {
+        "matcher": "Edit:src/agents/*|Write:src/agents/*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd /Users/prycehedrick/Work/ARI && npm test -- tests/unit/agents/ --reporter=dot 2>&1 | tail -5",
+            "blocking": false
+          }
+        ]
+      },
+      {
+        "matcher": "Edit:package.json",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd /Users/prycehedrick/Work/ARI && npm audit --audit-level=high 2>&1 | tail -10",
             "blocking": false
           }
         ]

@@ -7,11 +7,13 @@ set -e
 
 echo "╔══════════════════════════════════════════════════════════════╗"
 echo "║           ARI Claude Code Environment Setup                   ║"
+echo "║         Artificial Reasoning Intelligence v2.0                ║"
 echo "╚══════════════════════════════════════════════════════════════╝"
 echo ""
 
 CLAUDE_DIR="$HOME/.claude"
 PLUGINS_DIR="$CLAUDE_DIR/plugins/marketplaces"
+ARI_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 
 # Create directories
 mkdir -p "$PLUGINS_DIR"
@@ -186,6 +188,25 @@ cat > "$CLAUDE_DIR/settings.json" << 'SETTINGS_EOF'
 SETTINGS_EOF
 
 echo ""
+echo "🔗 Setting up ARI MCP Server..."
+
+# Add ARI MCP server to Claude Code config
+if [ -f "$CLAUDE_DIR/settings.json" ]; then
+  # Create temp file with MCP server config
+  node -e "
+    const fs = require('fs');
+    const config = JSON.parse(fs.readFileSync('$CLAUDE_DIR/settings.json', 'utf8'));
+    config.mcpServers = config.mcpServers || {};
+    config.mcpServers.ari = {
+      command: 'npx',
+      args: ['tsx', './src/mcp/server.ts'],
+      cwd: '$ARI_DIR'
+    };
+    fs.writeFileSync('$CLAUDE_DIR/settings.json', JSON.stringify(config, null, 2));
+  " 2>/dev/null || echo "   → Note: MCP server config requires manual setup (node not available)"
+fi
+
+echo ""
 echo "✅ Setup complete!"
 echo ""
 echo "╔══════════════════════════════════════════════════════════════╗"
@@ -193,10 +214,22 @@ echo "║                    CONFIGURATION SUMMARY                      ║"
 echo "╠══════════════════════════════════════════════════════════════╣"
 echo "║  📦 Marketplaces installed: 12                                ║"
 echo "║  🔌 Plugins enabled: 80                                       ║"
-echo "║  🎯 ARI skills: 26 (in repo)                                  ║"
+echo "║  🎯 ARI skills: 29 (in repo .claude/skills/)                  ║"
+echo "║  🤖 ARI agents: 8 (in repo .claude/agents/)                   ║"
+echo "║  ⚡ ARI commands: 12 (in repo .claude/commands/)              ║"
+echo "║  🔧 MCP Server: Configured                                    ║"
+echo "╠══════════════════════════════════════════════════════════════╣"
+echo "║  ARI CAPABILITIES:                                            ║"
+echo "║  • 15 MCP tools for direct system access                      ║"
+echo "║  • Self-improvement pipeline (/ari-evolve)                    ║"
+echo "║  • Session memory (/ari-remember, /ari-recall)                ║"
+echo "║  • Emergency response (/ari-emergency)                        ║"
+echo "║  • Comprehensive dashboard (/ari-dashboard)                   ║"
+echo "║  • Parallel agent orchestration                               ║"
 echo "╠══════════════════════════════════════════════════════════════╣"
 echo "║  NEXT STEPS:                                                  ║"
 echo "║  1. Restart Claude Code to load plugins                       ║"
 echo "║  2. cd to ARI directory                                       ║"
 echo "║  3. Run: npm install && npm run build                         ║"
+echo "║  4. Try: /ari-status or /ari-dashboard                        ║"
 echo "╚══════════════════════════════════════════════════════════════╝"
