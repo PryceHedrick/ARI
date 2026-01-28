@@ -1,6 +1,6 @@
 <div align="center">
 
-# ARI
+# 🖤 ARI
 
 **Artificial Reasoning Intelligence**
 
@@ -13,7 +13,7 @@ Your Life Operating System
 [![Tests](https://img.shields.io/badge/tests-187-brightgreen)](tests/)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-*Observe. Decide. Act. Audit.*
+*Observe. Decide. Act. Audit.* 🔐
 
 </div>
 
@@ -281,10 +281,18 @@ npm run lint:fix           # ESLint with auto-fix
 
 <div align="center">
 
-**ARI v2.0.0** · Life Operating System
+🖤 **ARI v2.0.0** · Aurora Protocol 🖤
+
+*Life Operating System*
+
+```
+The shadow reveals truth. Every decision audited. No hidden state.
+```
 
 MIT License · [Pryce Hedrick](https://github.com/PryceHedrick)
 
 *Your life, your rules, fully auditable.*
+
+`127.0.0.1:3141` — The only address that matters.
 
 </div>
