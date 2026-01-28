@@ -2,6 +2,7 @@
 
 **Your Life Operating System**
 
+[![CI](https://github.com/PryceHedrick/ARI/actions/workflows/ci.yml/badge.svg)](https://github.com/PryceHedrick/ARI/actions/workflows/ci.yml)
 [![Version](https://img.shields.io/badge/Version-12.0.0-blue)](CHANGELOG.md)
 [![Node.js](https://img.shields.io/badge/Node.js-20%2B-green)](https://nodejs.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.3-blue)](https://www.typescriptlang.org)
