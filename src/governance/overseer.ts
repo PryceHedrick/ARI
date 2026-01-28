@@ -1,4 +1,3 @@
-import { randomUUID } from 'crypto';
 import type { AuditLogger } from '../kernel/audit.js';
 import type { EventBus } from '../kernel/event-bus.js';
 
@@ -170,7 +169,7 @@ export class Overseer {
     };
 
     // Audit the gate evaluation
-    this.auditLogger.log(
+    void this.auditLogger.log(
       'overseer:gate_evaluation',
       'overseer',
       'system',
@@ -184,7 +183,7 @@ export class Overseer {
     );
 
     // Emit gate event
-    this.eventBus.emit('overseer:gate', {
+    void this.eventBus.emit('overseer:gate', {
       gateId,
       passed: result.passed,
       reason: result.reason,
@@ -215,7 +214,7 @@ export class Overseer {
     const blockers = failures.map(f => `${f.gate_id}: ${f.reason}`);
 
     // Audit the release decision
-    this.auditLogger.log(
+    void this.auditLogger.log(
       'overseer:release_decision',
       'overseer',
       'system',
@@ -255,7 +254,7 @@ export class Overseer {
 
       if (!result.passed) {
         // Log the security gate failure
-        this.auditLogger.logSecurity({
+        void this.auditLogger.logSecurity({
           eventType: 'unauthorized_access',
           severity: 'high',
           source: 'overseer',

@@ -1,5 +1,27 @@
 import { Command } from 'commander';
 import { Gateway } from '../../kernel/gateway.js';
+import { AuditLogger } from '../../kernel/audit.js';
+import { EventBus } from '../../kernel/event-bus.js';
+import { Guardian } from '../../agents/guardian.js';
+import { MemoryManager } from '../../agents/memory-manager.js';
+import { Executor } from '../../agents/executor.js';
+import { Planner } from '../../agents/planner.js';
+import { Core } from '../../agents/core.js';
+import { Council } from '../../governance/council.js';
+import { Arbiter } from '../../governance/arbiter.js';
+import { Overseer } from '../../governance/overseer.js';
+import { SystemRouter } from '../../system/router.js';
+import { apiRoutes } from '../../api/routes.js';
+import { WebSocketBroadcaster } from '../../api/ws.js';
+import * as Storage from '../../system/storage.js';
+
+interface GatewayStartOptions {
+  port: string;
+}
+
+interface GatewayStatusOptions {
+  port: string;
+}
 
 export function registerGatewayCommand(program: Command): void {
   const gateway = program
@@ -8,9 +30,9 @@ export function registerGatewayCommand(program: Command): void {
 
   gateway
     .command('start')
-    .description('Start the ARI Gateway server')
+    .description('Start the ARI Gateway server with full system')
     .option('-p, --port <number>', 'Port to bind the gateway to', '3141')
-    .action(async (options) => {
+    .action(async (options: GatewayStartOptions) => {
       const port = parseInt(options.port, 10);
 
       if (isNaN(port) || port < 1 || port > 65535) {
@@ -18,13 +40,96 @@ export function registerGatewayCommand(program: Command): void {
         process.exit(1);
       }
 
-      const gatewayInstance = new Gateway(port);
+      // Initialize kernel components
+      const audit = new AuditLogger();
+      const eventBus = new EventBus();
+
+      // Load audit log
+      try {
+        await audit.load();
+        console.log('Audit log loaded successfully');
+      } catch (error) {
+        console.warn('Could not load audit log:', error);
+      }
+
+      // Initialize agents
+      const guardian = new Guardian(audit, eventBus);
+      const memoryManager = new MemoryManager(audit, eventBus);
+      const executor = new Executor(audit, eventBus);
+      const planner = new Planner(audit, eventBus);
+
+      // Initialize core orchestrator
+      const core = new Core(audit, eventBus, {
+        guardian,
+        memoryManager,
+        executor,
+        planner,
+      });
+
+      // Initialize governance components
+      const council = new Council(audit, eventBus);
+      const arbiter = new Arbiter(audit, eventBus);
+      const overseer = new Overseer(audit, eventBus);
+
+      // Set governance on core
+      core.setGovernance({ council, arbiter, overseer });
+
+      // Initialize system router
+      const router = new SystemRouter(eventBus, audit);
+
+      // Create gateway
+      const gatewayInstance = new Gateway(port, audit, eventBus);
+
+      // Register API routes plugin BEFORE starting the server
+      try {
+        await gatewayInstance.registerPlugin(apiRoutes, {
+          deps: {
+            audit,
+            eventBus,
+            core,
+            council,
+            arbiter,
+            overseer,
+            memoryManager,
+            executor,
+            storage: Storage,
+          },
+        });
+        console.log('API routes registered');
+      } catch (error) {
+        console.error('Failed to register API routes:', error);
+        process.exit(1);
+      }
+
+      // WebSocket broadcaster (will be initialized after server starts)
+      let wsBroadcaster: WebSocketBroadcaster | null = null;
+
+      // Vote expiration interval (ADR-006: 1-hour proposal expiration)
+      let voteExpirationInterval: ReturnType<typeof setInterval> | null = null;
 
       // Graceful shutdown handlers
       const shutdown = async (signal: string) => {
         console.log(`\nReceived ${signal}, shutting down gracefully...`);
         try {
+          // Stop agents and core
+          await core.stop('shutdown');
+          router.stop();
+          arbiter.stop();
+          overseer.stop();
+
+          // Stop vote expiration checks
+          if (voteExpirationInterval) {
+            clearInterval(voteExpirationInterval);
+          }
+
+          // Close WebSocket broadcaster
+          if (wsBroadcaster) {
+            wsBroadcaster.close();
+          }
+
+          // Stop gateway
           await gatewayInstance.stop();
+
           console.log('Gateway stopped successfully');
           process.exit(0);
         } catch (error) {
@@ -33,12 +138,40 @@ export function registerGatewayCommand(program: Command): void {
         }
       };
 
-      process.on('SIGINT', () => shutdown('SIGINT'));
-      process.on('SIGTERM', () => shutdown('SIGTERM'));
+      process.on('SIGINT', () => {
+        void shutdown('SIGINT');
+      });
+      process.on('SIGTERM', () => {
+        void shutdown('SIGTERM');
+      });
 
       try {
+        // Start the gateway
         await gatewayInstance.start();
         console.log(`ARI Gateway running at ${gatewayInstance.getAddress()}`);
+
+        // Attach WebSocket broadcaster to HTTP server
+        const httpServer = gatewayInstance.getHttpServer();
+        wsBroadcaster = new WebSocketBroadcaster(httpServer, eventBus);
+        console.log('WebSocket broadcaster attached at ws://127.0.0.1:' + port + '/ws');
+
+        // Start system components
+        router.start();
+        arbiter.start();
+        overseer.start();
+        await core.start();
+
+        // Start periodic vote expiration check (ADR-006: 1-hour expiration)
+        // Runs every 60 seconds to expire overdue votes
+        voteExpirationInterval = setInterval(() => {
+          const expired = council.expireOverdueVotes();
+          if (expired > 0) {
+            console.log(`Expired ${expired} overdue vote(s)`);
+          }
+        }, 60_000);
+
+        console.log('ARI system fully initialized');
+        console.log('API endpoints available at http://127.0.0.1:' + port + '/api/*');
       } catch (error) {
         console.error('Failed to start gateway:', error);
         process.exit(1);
@@ -49,7 +182,7 @@ export function registerGatewayCommand(program: Command): void {
     .command('status')
     .description('Check if the ARI Gateway is running')
     .option('-p, --port <number>', 'Port the gateway is running on', '3141')
-    .action(async (options) => {
+    .action(async (options: GatewayStatusOptions) => {
       const port = parseInt(options.port, 10);
       const url = `http://127.0.0.1:${port}/health`;
 
@@ -58,7 +191,7 @@ export function registerGatewayCommand(program: Command): void {
         const data = await response.json();
         console.log('Gateway Status:');
         console.log(JSON.stringify(data, null, 2));
-      } catch (error) {
+      } catch {
         console.log('Gateway is not running');
         process.exit(1);
       }

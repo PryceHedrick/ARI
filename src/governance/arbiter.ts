@@ -101,7 +101,6 @@ export class Arbiter {
         name: 'Least Privilege',
         description: 'Default deny for destructive operations',
         check: (context) => {
-          const operation = context.operation as string | undefined;
           const approved = context.approved as boolean | undefined;
           const destructive = context.destructive as boolean | undefined;
 
@@ -160,7 +159,7 @@ export class Arbiter {
     const allowed = violations.length === 0;
 
     // Audit the evaluation
-    this.auditLogger.log(
+    void this.auditLogger.log(
       'arbiter:evaluation',
       'arbiter',
       'system',
@@ -174,7 +173,7 @@ export class Arbiter {
     );
 
     // Emit ruling event
-    this.eventBus.emit('arbiter:ruling', {
+    void this.eventBus.emit('arbiter:ruling', {
       ruleId: rulingId,
       type: 'evaluation',
       decision: allowed ? 'ALLOWED' : 'DENIED',
@@ -211,7 +210,7 @@ export class Arbiter {
     }
 
     // Audit the dispute
-    this.auditLogger.log(
+    void this.auditLogger.log(
       'arbiter:dispute',
       'arbiter',
       'system',
@@ -224,7 +223,7 @@ export class Arbiter {
     );
 
     // Emit ruling event
-    this.eventBus.emit('arbiter:ruling', {
+    void this.eventBus.emit('arbiter:ruling', {
       ruleId: rulingId,
       type: 'dispute',
       decision: ruling,
@@ -256,7 +255,7 @@ export class Arbiter {
 
       if (!evaluation.allowed) {
         // Log critical security ruling
-        this.auditLogger.logSecurity({
+        void this.auditLogger.logSecurity({
           eventType: 'unauthorized_access',
           severity: 'critical',
           source: 'arbiter',

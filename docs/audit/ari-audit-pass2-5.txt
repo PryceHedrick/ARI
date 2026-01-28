@@ -1,0 +1,601 @@
+DOCUMENT 6: ari-audit-pass2-5.md (Part 2 of 2)
+text
+# PASS 4: COUNCIL & AGENTS AUDIT
+
+## CURRENT STATE (v3.0.0)
+
+**Agent Count**: 0  
+**Council**: None  
+**Governance**: Single operator only  
+**Decision Framework**: Manual (operator-initiated CLI commands)
+
+**Evidence**: No agent implementation in `src/`. All decisions are operator-driven.
+
+---
+
+## DESIGNED STATE (Phase 2)
+
+### From `docs/GOVERNANCE.md` (lines 15-120)
+
+**6-Agent Council Design**:
+
+| Agent | Role | Primary Responsibility | Trust Level | Permissions |
+|-------|------|------------------------|-------------|-------------|
+| **Planner** | Strategic reasoning | Analyze context, propose high-level plans | Medium | Read context, propose plans |
+| **Executor** | Action execution | Execute approved plans, use tools | High | Execute tools (with approval) |
+| **Memory** | Context management | Store/retrieve context, maintain state | Medium | Read/write memory |
+| **Guardian** | Safety enforcement | Check invariants, veto unsafe actions | Critical | Veto, halt execution |
+| **Auditor** | Compliance monitoring | Verify decisions align with principles | Critical | Read audit log, flag violations |
+| **Chronicler** | Documentation | Document decisions, maintain changelog | Low | Write docs, read decisions |
+
+**Design Quality Assessment**: âœ… **HIGH**
+
+**Strengths**:
+1. **Separation of concerns**: Each agent has one clear responsibility
+2. **Safety-first**: Guardian + Auditor have veto power
+3. **Respects CONTENT â‰  COMMAND**: Executor requires approval for tool execution
+4. **Audit trail preserved**: All agent actions logged
+5. **Incremental phases**: Advisor model (Phase 2b) â†’ Simple council (Phase 2d) â†’ Voting (Phase 3)
+
+**Weaknesses**:
+1. **Not implemented**: Design-only (no code)
+2. **Permission model not enforced**: Described in docs, not in code
+3. **No conflict resolution**: What if Guardian vetoes Planner's proposal?
+4. **No escalation path**: What if operator disagrees with Guardian?
+
+---
+
+## CURRENT VS RECOMMENDED AGENT ROSTER
+
+### Phase 1 (v3.0.0) â€” Current
+
+| Actor | Type | Capabilities | Trust | Notes |
+|-------|------|--------------|-------|-------|
+| **Operator** | Human | Full control (CLI, API) | FULL | Only actor in v3.0.0 |
+| **System** | Gateway daemon | Receive messages, log actions | TRUSTED | Automated logging |
+
+**Total Actors**: 2 (1 human, 1 system)
+
+---
+
+### Phase 2a (Weeks 1-2) â€” Add Agent Types
+
+| Actor | Type | Capabilities | Trust | Implementation |
+|-------|------|--------------|-------|----------------|
+| **Operator** | Human | Full control | FULL | Existing |
+| **System** | Gateway daemon | Logging | TRUSTED | Existing |
+| **Agent (generic)** | AI advisor | Propose actions | MEDIUM | NEW: Add `AuditActor` type = "agent" |
+
+**Changes**:
+1. Extend `AuditActor` type: `"operator" | "system" | "agent"`
+2. Add `AgentRegistry` service (register/lookup agents)
+3. Add agent metadata: `{ id, role, permissions, status }`
+
+**PR**: Phase 2a PR-1 (2 days)
+
+---
+
+### Phase 2b (Weeks 2-3) â€” Advisor Pattern
+
+| Agent | Role | Minimal v1 Responsibilities | Permissions | Event Topics | Why |
+|-------|------|----------------------------|-------------|--------------|-----|
+| **Planner** | Strategic | Read context, propose 1-step plan | `read:context`, `propose:plan` | `message.received` | Start simple: 1-step plans only |
+| **Guardian** | Safety | Check proposal against invariants | `read:proposal`, `veto:action` | `proposal.created` | Critical: enforce CONTENT â‰  COMMAND |
+| **Auditor** | Compliance | Flag proposal if violates principles | `read:audit`, `flag:violation` | `proposal.created` | Passive: flag only, don't block |
+
+**Total Agents**: 3 (minimal council)
+
+**Changes**:
+1. Add `Proposal` service (agent â†’ proposal â†’ audit log)
+2. Add `Decision` service (operator approves/rejects â†’ audit log)
+3. Guardian checks proposal before logging (safety gate)
+
+**PR**: Phase 2b PR-2 (3 days)
+
+**Why these 3 agents?**
+- **Planner**: Core reasoning capability (advisor model)
+- **Guardian**: Safety enforcement (non-negotiable)
+- **Auditor**: Transparency + principle alignment (non-negotiable)
+
+**Why NOT Executor/Memory/Chronicler in Phase 2b?**
+- **Executor**: Requires tool execution (Phase 2e)
+- **Memory**: Requires persistent storage (Phase 2c)
+- **Chronicler**: Nice-to-have, not critical (Phase 2f)
+
+---
+
+### Phase 2c (Week 4) â€” Add Memory Agent
+
+| Agent | Added | Reason |
+|-------|-------|--------|
+| **Memory** | Week 4 | Persistent context storage (JSONL) |
+
+**Changes**:
+1. Add `MemoryService` (read/write `~/.ari/memory.jsonl`)
+2. Memory agent subscribes to `decision.approved` events
+3. Stores context for future retrieval
+
+**PR**: Phase 2c PR-3 (3 days)
+
+---
+
+### Phase 2d (Weeks 5-6) â€” Simple Council Voting
+
+| Agent | Added | Reason |
+|-------|-------|--------|
+| **Executor** | Week 5 | Tool execution (with operator approval) |
+| **Chronicler** | Week 6 | Document decisions |
+
+**Changes**:
+1. Add voting system (agents vote on proposals)
+2. Quorum: 50%+1 (configurable)
+3. Operator has final say (override vote)
+
+**PR**: Phase 2d PR-4 (5 days)
+
+---
+
+### Phase 3+ (Future) â€” Full Council
+
+| Enhancement | Description | Phase |
+|-------------|-------------|-------|
+| **Learning** | RL fine-tuning based on operator feedback | Phase 3a |
+| **Multi-user** | Multiple operators with different permissions | Phase 3b |
+| **Advanced voting** | Context-dependent quorum (low-risk: 50%, high-risk: 2/3) | Phase 3c |
+
+---
+
+## COUNCIL DECISION MODEL
+
+### Phase 2a-b: Advisor Pattern (Operator in Control)
+
+â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚ EVENT: message.received â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+â†“
+â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚ PLANNER AGENT â”‚
+â”‚ - Reads context â”‚
+â”‚ - Proposes 1-step action â”‚
+â”‚ - Logs proposal to audit trail â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+â†“
+â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚ GUARDIAN AGENT (Safety Gate) â”‚
+â”‚ - Checks proposal against invariants â”‚
+â”‚ - If unsafe: veto (log reason, halt) â”‚
+â”‚ - If safe: pass to operator â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+â†“
+â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚ AUDITOR AGENT (Compliance) â”‚
+â”‚ - Checks proposal against principles (Jung, etc.) â”‚
+â”‚ - If violation: flag (log warning, don't block) â”‚
+â”‚ - If compliant: pass to operator â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+â†“
+â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚ OPERATOR (Human Decision) â”‚
+â”‚ - Reviews proposal + flags â”‚
+â”‚ - Approves or rejects â”‚
+â”‚ - Decision logged to audit trail â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+â†“
+â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚ APPROVED? â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+â†“YES â†“NO
+â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â” â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚ Execute â”‚ â”‚ Discard â”‚
+â”‚ (Phase2e)â”‚ â”‚ (logged) â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜ â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+
+text
+
+**Key Properties**:
+1. **Operator has final say**: Always approves/rejects
+2. **Guardian can veto**: But operator can override (logged)
+3. **All decisions audited**: Full transparency
+4. **No auto-execution**: CONTENT â‰  COMMAND preserved
+
+---
+
+### Phase 2d: Simple Council Voting
+
+â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚ EVENT: message.received â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+â†“
+â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚ PLANNER proposes action â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+â†“
+â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚ COUNCIL VOTE â”‚
+â”‚ - Guardian: APPROVE/REJECT/ABSTAIN â”‚
+â”‚ - Auditor: APPROVE/REJECT/ABSTAIN â”‚
+â”‚ - Memory: APPROVE/REJECT/ABSTAIN â”‚
+â”‚ - Executor: APPROVE/REJECT/ABSTAIN â”‚
+â”‚ - Chronicler: APPROVE/REJECT/ABSTAIN â”‚
+â”‚ â”‚
+â”‚ Quorum: 50%+1 (3 of 5 agents) â”‚
+â”‚ Result: APPROVED or REJECTED â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+â†“
+â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚ OPERATOR (Final Review) â”‚
+â”‚ - Can override council decision (logged) â”‚
+â”‚ - Can delegate routine decisions to council â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+
+text
+
+**Key Properties**:
+1. **Council votes first**: Agents reach consensus
+2. **Operator can override**: But encouraged to trust council
+3. **Delegation option**: Operator can auto-approve low-risk decisions
+4. **Vetoes logged**: If Guardian vetoes, reason is recorded
+
+---
+
+## AGENT CONTRACTS (CONCISE)
+
+### Planner Agent
+
+**Inputs**:
+- Event: `message.received` (from event bus)
+- Context: Read from Memory service
+
+**Outputs**:
+- Proposal: `{ action, reasoning, risk_level }`
+- Logged to audit trail
+
+**Error Model**:
+- If Claude API fails: Log error, skip proposal
+- If context unavailable: Propose with limited info (flag as "incomplete")
+
+**Audit Hooks**:
+- Proposal created: `{ actor: "agent:planner", action: "proposal.created", details: {...} }`
+
+**Permission Requests**:
+- `read:context` (required)
+- `propose:plan` (required)
+
+---
+
+### Guardian Agent
+
+**Inputs**:
+- Event: `proposal.created`
+- Proposal: Read from audit log
+
+**Outputs**:
+- Decision: `APPROVE` or `VETO`
+- If veto: Log reason
+
+**Error Model**:
+- If invariant check fails: Default to VETO (fail-safe)
+
+**Audit Hooks**:
+- Veto: `{ actor: "agent:guardian", action: "proposal.vetoed", details: { reason: "..." } }`
+
+**Permission Requests**:
+- `read:proposal` (required)
+- `veto:action` (critical)
+
+---
+
+### Auditor Agent
+
+**Inputs**:
+- Event: `proposal.created`
+- Audit log: Read full history
+
+**Outputs**:
+- Flag: `{ violation_type, severity, explanation }`
+- Logged to audit trail
+
+**Error Model**:
+- If audit log read fails: Skip check (log warning)
+
+**Audit Hooks**:
+- Violation flagged: `{ actor: "agent:auditor", action: "violation.flagged", details: {...} }`
+
+**Permission Requests**:
+- `read:audit` (required)
+- `flag:violation` (required)
+
+---
+
+# PASS 5: PRIORITIZED IMPLEMENTATION ROADMAP
+
+## PR ROADMAP (10 PRs, 8 WEEKS)
+
+### Week 1: Hardening (Critical Fixes)
+
+#### PR-1: File Permission Hardening
+**Goal**: Ensure `~/.ari/` directory and `audit.jsonl` have secure permissions (0o700, 0o600)  
+**Files Touched**:
+- `src/audit/log.ts` (add `chmod` calls)
+**Tests Added**:
+- Test: Verify `~/.ari/` mode = 0o700
+- Test: Verify `audit.jsonl` mode = 0o600
+**Acceptance Checks**:
+- [ ] `ls -la ~/.ari` shows `drwx------`
+- [ ] `ls -la ~/.ari/audit.jsonl` shows `-rw-------`
+**Rollback Plan**: Revert commit, existing behavior restored
+**Complexity**: S (Small, 2 days)
+
+---
+
+#### PR-2: WebSocket DoS Mitigation
+**Goal**: Reduce max payload to 256KB, add connection limit, disable compression  
+**Files Touched**:
+- `src/gateway/server.ts` (update `maxPayload`, add `maxConnections`)
+**Tests Added**:
+- Test: 256KB frame accepted, 257KB frame rejected
+- Test: 11th connection rejected (maxConnections = 10)
+**Acceptance Checks**:
+- [ ] 100 concurrent 256KB frames â†’ no crash
+- [ ] Memory usage < 50MB under load
+**Rollback Plan**: Revert to 1MB payload limit
+**Complexity**: S (Small, 2 days)
+
+---
+
+### Week 2: Hardening (Medium Priority)
+
+#### PR-3: Rate Limiter Resilience
+**Goal**: Track rate limits by session + sender (not sender alone)  
+**Files Touched**:
+- `src/rate-limit/limiter.ts` (add session ID to bucket key)
+- `src/gateway/connection.ts` (pass session ID to rate limiter)
+**Tests Added**:
+- Test: Multiple senders from same session â†’ combined limit
+- Test: Sender spoofing â†’ doesn't bypass limit
+**Acceptance Checks**:
+- [ ] 100 messages from different senders, same session â†’ rate limited at 10
+**Rollback Plan**: Revert to per-sender only
+**Complexity**: M (Medium, 3 days)
+
+---
+
+#### PR-4: Event Subscriber Cleanup
+**Goal**: Unsubscribe event subscribers on session disconnect  
+**Files Touched**:
+- `src/events/bus.ts` (add `unsubscribe()` method)
+- `src/gateway/connection.ts` (call `unsubscribe()` on disconnect)
+**Tests Added**:
+- Test: Subscribe â†’ disconnect â†’ event not delivered
+- Test: 1000 connect/disconnect cycles â†’ memory stable
+**Acceptance Checks**:
+- [ ] Memory usage doesn't grow after repeated connections
+**Rollback Plan**: Revert commit, subscribers persist (existing behavior)
+**Complexity**: S (Small, 1 day)
+
+---
+
+#### PR-5: Heartbeat Timeout
+**Goal**: Separate read timeout from heartbeat, terminate idle connections  
+**Files Touched**:
+- `src/gateway/connection.ts` (add `readTimeout` separate from `heartbeatInterval`)
+**Tests Added**:
+- Test: Connection idle 61 seconds â†’ terminated
+- Test: Heartbeat every 30s, no data â†’ connection alive
+**Acceptance Checks**:
+- [ ] Idle connection terminated after 60 seconds
+**Rollback Plan**: Revert to heartbeat-only timeout
+**Complexity**: S (Small, 2 days)
+
+---
+
+#### PR-6: UTF-8 Safety in Sanitizer
+**Goal**: Use proper UTF-8 decoder, handle invalid sequences  
+**Files Touched**:
+- `src/messages/sanitizer.ts` (use `TextDecoder` instead of byte-level filtering)
+**Tests Added**:
+- Test: Invalid UTF-8 â†’ replaced with U+FFFD
+- Test: Control chars in multi-byte UTF-8 â†’ removed
+**Acceptance Checks**:
+- [ ] Invalid UTF-8 input doesn't corrupt output
+**Rollback Plan**: Revert to byte-level filtering
+**Complexity**: S (Small, 1 day)
+
+---
+
+### Weeks 3-4: Phase 2a (Agent Types + Registry)
+
+#### PR-7: Extend Agent Types
+**Goal**: Add "agent" to `AuditActor` type, extend audit schema  
+**Files Touched**:
+- `src/audit/types.ts` (add `"agent"` to `AuditActor` union)
+- `src/audit/log.ts` (handle agent actor type)
+**Tests Added**:
+- Test: Log entry with `actor: { type: "agent", id: "planner" }` â†’ valid
+**Acceptance Checks**:
+- [ ] Agent actions appear in audit log
+**Rollback Plan**: Remove "agent" type, existing behavior restored
+**Complexity**: S (Small, 2 days)
+
+---
+
+#### PR-8: Agent Registry Service
+**Goal**: Create `AgentRegistry` to register/lookup agents  
+**Files Touched**:
+- `src/agents/registry.ts` (NEW: agent registry)
+- `src/agents/types.ts` (NEW: agent metadata types)
+**Tests Added**:
+- Test: Register agent â†’ lookup by ID â†’ returns metadata
+- Test: Unregister agent â†’ lookup returns null
+**Acceptance Checks**:
+- [ ] Can register 6 agents (Planner, Executor, etc.)
+- [ ] Registry persists across restarts (in-memory for Phase 2a)
+**Rollback Plan**: Remove agent registry, no impact on existing features
+**Complexity**: M (Medium, 3 days)
+
+---
+
+### Weeks 5-6: Phase 2b (Advisor Pattern)
+
+#### PR-9: Proposal Service
+**Goal**: Agent proposes action, operator approves/rejects  
+**Files Touched**:
+- `src/agents/proposal.ts` (NEW: proposal service)
+- `src/agents/planner.ts` (NEW: Planner agent)
+**Tests Added**:
+- Test: Planner proposes action â†’ logged to audit
+- Test: Operator approves â†’ decision logged
+- Test: Operator rejects â†’ decision logged
+**Acceptance Checks**:
+- [ ] End-to-end flow: message â†’ proposal â†’ decision â†’ audit
+**Rollback Plan**: Disable Planner agent, revert to manual decisions
+**Complexity**: M (Medium, 3 days)
+
+---
+
+#### PR-10: Guardian Safety Gating
+**Goal**: Guardian checks proposals before operator review  
+**Files Touched**:
+- `src/agents/guardian.ts` (NEW: Guardian agent)
+- `src/agents/proposal.ts` (add Guardian check before operator)
+**Tests Added**:
+- Test: Unsafe proposal â†’ Guardian vetoes â†’ logged
+- Test: Safe proposal â†’ Guardian approves â†’ passes to operator
+**Acceptance Checks**:
+- [ ] Unsafe action (violates CONTENT â‰  COMMAND) â†’ vetoed
+**Rollback Plan**: Disable Guardian, proposals go directly to operator
+**Complexity**: M (Medium, 3 days)
+
+---
+
+## ROADMAP SUMMARY
+
+| Week | PRs | Focus | Days | Complexity |
+|------|-----|-------|------|------------|
+| 1 | PR-1, PR-2 | Critical hardening | 4 | S |
+| 2 | PR-3, PR-4, PR-5, PR-6 | Medium hardening | 7 | S-M |
+| 3-4 | PR-7, PR-8 | Phase 2a (types, registry) | 5 | S-M |
+| 5-6 | PR-9, PR-10 | Phase 2b (advisor pattern) | 6 | M |
+
+**Total**: 10 PRs, 22 days (~6 weeks accounting for testing/review)
+
+---
+
+## DEPENDENCY GRAPH
+
+PR-1 (file perms) â”€â”€â”€â”€â”€â”
+PR-2 (WebSocket DoS) â”€â”€â”¤
+PR-3 (rate limiter) â”€â”€â”€â”¤
+PR-4 (subscriber leak) â”¤
+PR-5 (heartbeat) â”€â”€â”€â”€â”€â”€â”¤
+PR-6 (UTF-8) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
+â”œâ”€â”€â†’ Hardening Complete
+â”‚
+â†“
+PR-7 (agent types) â”€â”€â”€â”€â”
+â”œâ”€â”€â†’ Phase 2a Complete
+PR-8 (agent registry) â”€â”˜
+â”‚
+â†“
+PR-9 (proposal svc) â”€â”€â”€â”
+â”œâ”€â”€â†’ Phase 2b Complete
+PR-10 (guardian) â”€â”€â”€â”€â”€â”€â”˜
+
+text
+
+**All PRs can proceed in parallel within their phase.**
+
+---
+
+## PHASE 2c-f (OPTIONAL, DEFERRED)
+
+### Phase 2c: Memory Service (Week 7, optional)
+- Add persistent memory (`~/.ari/memory.jsonl`)
+- Memory agent stores context
+- 3 days
+
+### Phase 2d: Simple Council Voting (Week 8, optional)
+- Add voting system (agents vote on proposals)
+- Quorum: 50%+1
+- 5 days
+
+### Phase 2e: Safety Audit (Week 9, optional)
+- Full security audit of agent system
+- Penetration testing
+- 3 days
+
+### Phase 2f: Documentation + Deployment (Week 10, optional)
+- Update all docs (ARCHITECTURE.md, GOVERNANCE.md)
+- Deployment guide
+- 2 days
+
+**Total for Phase 2c-f**: 13 days (~3 weeks)
+
+---
+
+## MINIMAL VIABLE PHASE 2
+
+**If you only do PR-1 through PR-10 (6 weeks)**:
+- âœ… Security hardened
+- âœ… Agent types defined
+- âœ… Advisor pattern working (Planner proposes, operator decides)
+- âœ… Guardian safety gating
+- âŒ No persistent memory (in-memory only)
+- âŒ No council voting (single Planner only)
+
+**This is sufficient for daily use.** Memory and voting can be deferred.
+
+---
+
+## ROLLBACK STRATEGY
+
+**Every PR has a rollback plan**:
+1. PR-1 to PR-6: Revert commit, existing behavior restored
+2. PR-7 to PR-10: Disable agent system (feature flag), fallback to manual
+
+**Feature Flag**:
+```typescript
+const AGENTS_ENABLED = process.env.ARI_AGENTS_ENABLED === 'true';
+if (AGENTS_ENABLED) {
+  // Use agent system
+} else {
+  // Use manual decisions (v3.0.0 behavior)
+}
+Graceful Degradation: If agent system fails, gateway continues operating (messages still logged, audit trail intact).
+
+TESTING STRATEGY
+Each PR includes:
+
+Unit tests: Test individual functions
+
+Integration tests: Test end-to-end flows
+
+Property-based tests: Test invariants (e.g., audit chain integrity)
+
+Performance tests: Ensure no regression (e.g., 1000 messages/sec throughput)
+
+Test Coverage Target: 80%+ (currently 56 tests, expand to ~100 tests after Phase 2b)
+
+Pass 5 Complete: âœ…
+
+AUDIT COMPLETE
+All 5 passes executed:
+
+âœ… Pass 1: Repo map + system inventory
+
+âœ… Pass 2: Execution flows + trust boundaries
+
+âœ… Pass 3: Security + reliability audit
+
+âœ… Pass 4: Council + agents audit + design
+
+âœ… Pass 5: Prioritized implementation roadmap
+
+Status: READY FOR DECISION (8 open questions remain)
+
+Next Action: Answer 8 questions in ari-audit-open-questions.md
+
+Audit Completed: 2026-01-27
+Evidence: All findings cited to GitHub permalinks
+Confidence: HIGH
+Scope: COMPLETE

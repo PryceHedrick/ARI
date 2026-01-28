@@ -1,5 +1,4 @@
 import { Command } from 'commander';
-import { randomUUID } from 'crypto';
 import {
   listContexts,
   getContext,
@@ -9,6 +8,13 @@ import {
   ensureContextsDir,
 } from '../../system/storage.js';
 import type { Context } from '../../system/types.js';
+
+interface ContextCreateOptions {
+  name: string;
+  type: string;
+  description?: string;
+  triggers?: string;
+}
 
 export function registerContextCommand(program: Command): void {
   const context = program
@@ -52,7 +58,7 @@ export function registerContextCommand(program: Command): void {
     .requiredOption('-t, --type <type>', 'Context type (venture or life)')
     .option('-d, --description <desc>', 'Context description')
     .option('--triggers <triggers>', 'Comma-separated trigger words')
-    .action(async (options) => {
+    .action(async (options: ContextCreateOptions) => {
       const type = options.type;
       if (type !== 'venture' && type !== 'life') {
         console.error('Error: type must be "venture" or "life"');
@@ -67,7 +73,7 @@ export function registerContextCommand(program: Command): void {
       const ctx: Context = {
         id,
         name: options.name,
-        type,
+        type: type,
         description: options.description,
         partition,
         triggers: options.triggers

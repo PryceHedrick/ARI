@@ -23,5 +23,13 @@
     "no-eval": "error",
     "no-implied-eval": "error"
   },
-  "ignorePatterns": ["dist", "node_modules", "*.test.ts", "vitest.config.ts"]
+  "ignorePatterns": ["dist", "node_modules", "*.test.ts", "vitest.config.ts"],
+  "overrides": [
+    {
+      "files": ["src/cli/**/*.ts", "src/governance/**/*.ts", "src/ops/**/*.ts", "src/api/**/*.ts", "src/system/**/*.ts", "src/kernel/event-bus.ts"],
+      "rules": {
+        "no-console": "off"
+      }
+    }
+  ]
 }

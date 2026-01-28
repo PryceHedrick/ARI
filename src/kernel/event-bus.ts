@@ -1,4 +1,4 @@
-import type { Message, AuditEvent, SecurityEvent, AgentId, Vote } from './types.js';
+import type { Message, AuditEvent, SecurityEvent, AgentId } from './types.js';
 
 /**
  * EventMap interface defining event name to payload mappings.
@@ -16,6 +16,8 @@ export interface EventMap {
   'gateway:stopped': { reason: string };
   'system:ready': { version: string };
   'system:error': { error: Error; context: string };
+  'system:halted': { authority: string; reason: string; timestamp: Date };
+  'system:resumed': { authority: string; timestamp: Date };
 
   // ── System events ──────────────────────────────────────────────────────
   'system:routed': { messageId: string; contextId?: string; route: string; timestamp: Date };
@@ -41,7 +43,7 @@ export interface EventMap {
  * Typed pub/sub event system for ARI
  */
 export class EventBus {
-  private listeners: Map<string, Set<Function>> = new Map();
+  private listeners: Map<string, Set<(payload: unknown) => void>> = new Map();
 
   /**
    * Subscribe to an event
@@ -57,7 +59,7 @@ export class EventBus {
       this.listeners.set(event, new Set());
     }
 
-    this.listeners.get(event)!.add(handler);
+    this.listeners.get(event)!.add(handler as (payload: unknown) => void);
 
     // Return unsubscribe function
     return () => this.off(event, handler);
@@ -74,7 +76,7 @@ export class EventBus {
   ): void {
     const handlers = this.listeners.get(event);
     if (handlers) {
-      handlers.delete(handler);
+      handlers.delete(handler as (payload: unknown) => void);
       if (handlers.size === 0) {
         this.listeners.delete(event);
       }

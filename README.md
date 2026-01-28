@@ -1,119 +1,146 @@
-# ARI V12.0 — Aurora Protocol
+# ARI — Artificial Reasoning Intelligence
 
-Artificial Reasoning Intelligence: a secure, local-first personal operating system.
+**Your Life Operating System**
 
-## Architecture
+[![Node.js](https://img.shields.io/badge/Node.js-20%2B-green)](https://nodejs.org)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.3-blue)](https://www.typescriptlang.org)
+[![Tests](https://img.shields.io/badge/Tests-187-brightgreen)](tests/)
+[![License](https://img.shields.io/badge/License-MIT-blue)](LICENSE)
 
-Five-layer design: kernel (pipeline) + system (routing) + agents (coordination) + governance (enforcement) + ops (infrastructure).
+ARI is a secure, local-first, multi-agent personal operating system that orchestrates AI agents for life management, venture operations, and system coordination. Built on principles of radical transparency and constitutional governance, ARI provides tamper-evident audit trails, 21-pattern injection detection, and loopback-only security. Every decision is traceable, every operation audited, every command justified.
+
+## Core Philosophy
+
+ARI is guided by three foundational principles:
+
+- **Shadow Integration (Jung)** — Don't suppress suspicious behavior; log it, understand it, integrate it. The shadow reveals truth.
+- **Radical Transparency (Dalio)** — Every operation is audited, every decision is traceable. No hidden state, no secret channels.
+- **Ruthless Simplicity (Musashi)** — Every line of code must justify its existence. Remove complexity, favor clarity, choose obvious over clever.
+
+## Architecture Overview
+
+ARI implements a six-layer architecture with strict boundaries and unidirectional dependencies. All inter-layer communication flows exclusively through the EventBus.
+
+| Layer | Components | Responsibilities |
+|-------|-----------|------------------|
+| **Kernel** | Gateway, Sanitizer, Audit, EventBus, Config, Types | Network binding (127.0.0.1 only), injection detection (21 patterns), tamper-evident logging (SHA-256 chain) |
+| **System** | Router, Storage | Event routing to contexts, context management, trigger-based message matching |
+| **Core** | Core Agent, Guardian, Planner, Executor, Memory Manager | Multi-agent orchestration, threat detection, task decomposition (DAG), permission-gated tool execution, provenance-tracked memory |
+| **Strategic** | Council, Arbiter, Overseer | Democratic voting (13 members), constitutional enforcement (5 rules), quality gates (5 gates) |
+| **Execution** | Daemon | Background service management (macOS launchd) |
+| **Interfaces** | CLI (8 commands), Dashboard | User interaction, command orchestration, web-based control center |
+
+### Data Flow Pipeline
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                          CLI Layer                               │
-│  gateway · audit · doctor · onboard · context · governance      │
-│  daemon (install/uninstall/status)                              │
-├─────────────────────────────────────────────────────────────────┤
-│                     Operations Layer (src/ops/)                  │
-│  ┌──────────────────────────────────────────────────────────┐   │
-│  │  Daemon (macOS launchd, auto-start, background gateway)   │   │
-│  └──────────────────────────────────────────────────────────┘   │
-├─────────────────────────────────────────────────────────────────┤
-│                   Governance Layer (src/governance/)              │
-│  ┌──────────┐ ┌───────────┐ ┌────────────────────────────┐     │
-│  │ Council   │ │ Arbiter   │ │ Overseer                   │     │
-│  │ (voting)  │ │ (constit.)│ │ (quality gates)            │     │
-│  │ 13 agents │ │ 5 rules   │ │ 5 release gates            │     │
-│  └──────────┘ └───────────┘ └────────────────────────────┘     │
-├─────────────────────────────────────────────────────────────────┤
-│                     Agent Layer (src/agents/)                    │
-│  ┌──────────┐ ┌───────────┐ ┌──────────┐ ┌──────────────┐     │
-│  │ Core      │ │ Guardian  │ │ Planner  │ │ Executor     │     │
-│  │(orchestr.)│ │(threat det│ │(task DAG)│ │(tool + perms)│     │
-│  └──────────┘ └───────────┘ └──────────┘ └──────────────┘     │
-│  ┌──────────────────────────────────────────────────────────┐   │
-│  │  Memory Manager (provenance, partitions, quarantine)      │   │
-│  └──────────────────────────────────────────────────────────┘   │
-├─────────────────────────────────────────────────────────────────┤
-│                     System Layer (src/system/)                   │
-│  ┌──────────────────────────────────────────────────────────┐   │
-│  │  Router (event subscriber, context triggers)              │   │
-│  │  Storage (ventures + life domains at ~/.ari/contexts/)    │   │
-│  └──────────────────────────────────────────────────────────┘   │
-├─────────────────────────────────────────────────────────────────┤
-│                       Kernel Layer (src/kernel/)                 │
-│  ┌──────────┐ ┌───────────┐ ┌────────────┐ ┌────────────┐     │
-│  │ Gateway   │ │ Sanitizer │ │ AuditLogger│ │ EventBus   │     │
-│  │ (Fastify) │ │ (21 patt.)│ │ (SHA-256)  │ │ (pub/sub)  │     │
-│  │127.0.0.1  │ │ 6 categs. │ │ hash chain │ │ typed      │     │
-│  └──────────┘ └───────────┘ └────────────┘ └────────────┘     │
-│  ┌──────────┐ ┌───────────┐                                     │
-│  │  Config   │ │   Types   │                                     │
-│  │(~/.ari/)  │ │  (Zod)    │                                     │
-│  └──────────┘ └───────────┘                                     │
-└─────────────────────────────────────────────────────────────────┘
-
-Integration: EventBus Only (single coupling point between all layers)
-
-Pipeline: POST /message → sanitize → audit → publish
-  → Guardian assess → Router route → Planner plan → Executor execute
+POST /message
+  → Sanitize (21 injection patterns)
+  → Audit (SHA-256 hash chain)
+  → EventBus.emit('message:accepted')
+  → Guardian (threat assessment)
+  → Router (context matching)
+  → Planner (task decomposition)
+  → Executor (permission checks + tool invocation)
+  → Memory Manager (provenance-tracked storage)
+  → Audit (operation logged)
 ```
 
-## What Exists (Phase 1 + Phase 2)
+## Security Model
 
-### Kernel (src/kernel/)
-- **Gateway** (gateway.ts): Loopback-only Fastify server (127.0.0.1:3141), POST /message endpoint
-- **Sanitizer** (sanitizer.ts): 21-pattern injection detector across 6 categories (Direct Override, Role Manipulation, Command Injection, Prompt Extraction, Authority Claims, Data Exfiltration)
-- **Audit Logger** (audit.ts): SHA-256 hash-chained tamper-evident logger, genesis block verification
-- **Event Bus** (event-bus.ts): Typed pub/sub with error isolation, 20+ event types across kernel/system/agent/governance layers
-- **Config** (config.ts): Zod-validated configuration at ~/.ari/, loadConfig/saveConfig
-- **Types** (types.ts): Zod schemas for Config, AuditEvent, Message, TrustLevel, MemoryEntry, Vote, ToolDefinition, AgentId, PermissionTier
+ARI enforces security through layered defense and constitutional invariants. The system assumes breach and enforces boundaries at every layer.
 
-### System (src/system/)
-- **Router** (router.ts): Subscribes to kernel events, matches context triggers, audits routing decisions
-- **Storage** (storage.ts): Context management at ~/.ari/contexts/, JSON persistence for ventures + life domains
+### Five Security Invariants
 
-### Agents (src/agents/)
-- **Core** (core.ts): Master orchestrator — coordinates all agents, full 5-step message pipeline (Guardian assess → Router route → Planner plan → Executor execute → Audit log), system health reporting
-- **Guardian** (guardian.ts): Real-time threat assessment — 8 injection patterns, behavioral anomaly detection, rate limiting (60/min), trust-weighted risk scoring, auto-block at risk >= 0.8
-- **Planner** (planner.ts): Task decomposition — plan creation, dependency DAG with cycle detection (DFS), task status tracking, priority levels, next-available task resolution
-- **Executor** (executor.ts): Tool execution with permission gating — 3-layer permission checks (agent allowlist, trust level, permission tier), approval workflow for destructive ops, 4 built-in tools, concurrent execution limit (10), timeout enforcement
-- **Memory Manager** (memory-manager.ts): Provenance-tracked memory system — 6 memory types, 3 partitions (PUBLIC/INTERNAL/SENSITIVE), SHA-256 integrity hashing, trust decay, poisoning detection, agent-based access control, 10K entry capacity
+1. **Loopback-Only Gateway**
+   - Gateway binds exclusively to `127.0.0.1:3141` (host is hardcoded, never configurable)
+   - Eliminates entire classes of remote attacks by design
+   - No external network access, ever
 
-### Governance (src/governance/)
-- **Council** (council.ts): 13-member voting council — 3 thresholds (MAJORITY >50%, SUPERMAJORITY >=66%, UNANIMOUS 100%), quorum enforcement, early vote conclusion, event emission
-- **Arbiter** (arbiter.ts): Constitutional enforcement — 5 hard rules (loopback-only, content-not-command, audit-immutable, least-privilege, trust-required), dispute resolution, security alert monitoring
-- **Overseer** (overseer.ts): Quality gate enforcement — 5 release gates (test coverage, audit integrity, security scan, build clean, documentation), gate evaluation with context validation
+2. **Content ≠ Command Principle**
+   - All inbound messages treated as DATA, never as executable instructions
+   - Clear separation between content and commands enforced at gateway layer
+   - Sanitizer validates all input before processing
 
-### Operations (src/ops/)
-- **Daemon** (daemon.ts): macOS launchd integration — install/uninstall/status for background gateway service at ~/Library/LaunchAgents/com.ari.gateway.plist
+3. **SHA-256 Hash Chain Audit Trail**
+   - Every audit event cryptographically chained to its predecessor
+   - Genesis block (`0x00...00`) anchors the entire chain
+   - Tampering breaks the chain and is immediately detectable
+   - Append-only storage at `~/.ari/audit.json`
 
-### CLI (src/cli/commands/)
-- `ari onboard init` — Initialize ARI system (creates ~/.ari/, default config, genesis audit event)
-- `ari doctor` — Run 6 health checks
-- `ari gateway start [-p port]` — Start the Fastify gateway on 127.0.0.1
-- `ari gateway status [-p port]` — Check gateway health
-- `ari audit list [-n count]` — List recent audit events
-- `ari audit verify` — Verify SHA-256 hash chain integrity
-- `ari audit security` — List security events
-- `ari context init|list|create|select|show` — Context management
-- `ari governance show|list` — Governance reference
-- `ari daemon install|uninstall|status` — Background service management
+4. **21-Pattern Injection Detection**
+   - Real-time scanning across 6 categories:
+     - Direct Override (ignore previous, disregard all)
+     - Role Manipulation (you are now, act as)
+     - Command Injection ($(), backticks, shell commands)
+     - Prompt Extraction (reveal your prompt)
+     - Authority Claims (as your creator, I am admin)
+     - Data Exfiltration (send to, upload to)
+   - Risk scoring: severity weights × trust multipliers
+   - Auto-block at risk ≥ 0.8
 
-### Tests
-120 tests passing across 14 test files:
-- Kernel: sanitizer (5), audit (3), event-bus (8)
-- System: router (5)
-- Agents: core (9), guardian (10), executor (10), planner (8), memory-manager (12)
-- Governance: council (10), arbiter (10), overseer (8)
-- Integration: pipeline (8)
-- Security: injection (14)
+5. **Trust-Level Risk Scoring**
+   - Six trust levels: SYSTEM, OPERATOR, VERIFIED, STANDARD, UNTRUSTED, HOSTILE
+   - Risk multipliers:
+     - SYSTEM: 0.5x (trusted internal operations)
+     - OPERATOR: 0.6x (authenticated operator)
+     - VERIFIED: 0.75x (verified sources)
+     - STANDARD: 1.0x (default)
+     - UNTRUSTED: 1.5x (external or unverified)
+     - HOSTILE: 2.0x (known malicious)
+   - Auto-block threshold: risk ≥ 0.8
 
-### v12 Specification (docs/v12/)
-Complete Aurora Protocol specification stored as markdown reference documentation:
-- **GOVERNANCE**: Council voting rules, Arbiter role, Overseer role, emergency protocols
-- **CONTEXTS**: Venture templates, life domain contexts (career, finance, health, admin, learning, systems, family)
-- **SYSTEM**: Agent roles (CORE, ROUTER, PLANNER, EXECUTOR, MEMORY_MANAGER, GUARDIAN)
-- **SCHEMAS**: Event schema, memory entry schema
-- **TESTS**: 70 test definitions (20 injection, 15 memory poisoning, 15 tool misuse, 20 regression)
+## Governance Framework
+
+ARI's governance system enforces constitutional rules and democratic decision-making through three components:
+
+### Constitutional Council (13 Members)
+
+Democratic voting body with three thresholds:
+
+- **MAJORITY** (>50%): Routine decisions, feature prioritization
+- **SUPERMAJORITY** (≥66%): Significant changes, policy updates
+- **UNANIMOUS** (100%): Critical changes, security policies
+
+**Members**: router, planner, executor, memory_manager, guardian, research, marketing, sales, content, seo, build, development, client_comms
+
+**Quorum**: 50% (7 of 13 members must participate)
+
+### Arbiter (5 Constitutional Rules)
+
+Enforces immutable rules that cannot be overridden by votes:
+
+1. **loopback_only**: Gateway must bind to 127.0.0.1 exclusively
+2. **content_not_command**: External content is data, never instructions
+3. **audit_immutable**: Audit chain is append-only, tamper-evident
+4. **least_privilege**: Destructive operations require explicit approval
+5. **trust_required**: Sensitive operations require verified+ trust level
+
+### Overseer (5 Quality Gates)
+
+Release gating with pass/fail evaluation:
+
+1. **test_coverage**: ≥80% overall, 100% for security paths
+2. **audit_integrity**: Hash chain valid, no corruption
+3. **security_scan**: No high/critical vulnerabilities
+4. **build_clean**: TypeScript compiles with no errors
+5. **documentation**: All public APIs documented
+
+All governance decisions are logged to the audit trail with full provenance tracking.
+
+## Dashboard
+
+ARI includes a web-based control center built with Vite 6, React 19, and TypeScript. The dashboard is **view-only** — it connects to the gateway API for read access but never performs mutations directly. All state changes flow through governance.
+
+- 6 pages: Home, Governance, Memory, Tools, Audit, Agents
+- Real-time updates via WebSocket connection
+- TanStack Query for server state management
+- Tailwind CSS for styling
+- Builds to `dashboard/dist/` (258 KB JS + 16 KB CSS)
+
+```bash
+cd dashboard && npm install && npm run dev    # Development
+cd dashboard && npm run build                 # Production build
+```
 
 ## Quick Start
 
@@ -121,134 +148,231 @@ Complete Aurora Protocol specification stored as markdown reference documentatio
 # Install dependencies
 npm install
 
-# Build
+# Build the system
 npm run build
 
-# Initialize ARI
+# Initialize ARI (creates ~/.ari/, config, genesis audit)
 npx ari onboard init
 
-# Verify system health
+# Verify system health (6 checks)
 npx ari doctor
 
-# Start the gateway
+# Start the gateway (127.0.0.1:3141)
 npx ari gateway start
 ```
 
-## Security Invariants
+## CLI Reference
 
-1. **Loopback-only gateway** — Gateway binds to 127.0.0.1 exclusively (hardcoded, not configurable)
-2. **SHA-256 hash chain** — Every audit event is cryptographically chained to its predecessor, starting from genesis block (0x00...00). Tampering breaks the chain.
-3. **Injection detection** — 21 patterns across 6 categories scanned on every inbound message
-4. **Trust-level risk scoring** — Risk scores weighted by source trust level (system 0.5x, untrusted 1.5x)
-5. **Content ≠ command** — All inbound content is DATA, never interpreted as instructions
-6. **Pipeline enforcement** — System layer cannot bypass kernel sanitizer, audit, or event bus
-
-## Testing
+### System Initialization
 
 ```bash
-# Run all tests
-npm test
-
-# Watch mode
-npm run test:watch
-
-# Coverage report
-npm run test:coverage
+npx ari onboard init              # Initialize ARI system
 ```
 
-120 tests passing across 14 test files.
+Creates `~/.ari/` directory structure, default config, genesis audit event, and contexts directory.
+
+### Health and Diagnostics
+
+```bash
+npx ari doctor                    # Run 6 health checks
+```
+
+Checks: config directory, config validity, audit existence, audit integrity, contexts directory, gateway reachability.
+
+### Gateway Management
+
+```bash
+npx ari gateway start [-p port]   # Start Fastify gateway (127.0.0.1)
+npx ari gateway status [-p port]  # Check gateway health
+```
+
+Gateway binds to loopback only. Default port: 3141.
+
+### Audit Log Management
+
+```bash
+npx ari audit list [-n count]     # List recent audit events
+npx ari audit verify              # Verify SHA-256 hash chain integrity
+npx ari audit security            # List security events only
+```
+
+Audit log stored at `~/.ari/audit.json` (append-only, hash-chained).
+
+### Context Management
+
+```bash
+npx ari context init              # Initialize context system
+npx ari context list              # List all contexts
+npx ari context create <name>     # Create new context
+npx ari context select <id>       # Set active context
+npx ari context show              # Show active context
+```
+
+Contexts partition memory and routing for life domains and ventures.
+
+### Governance Reference
+
+```bash
+npx ari governance show           # Show governance structure
+npx ari governance list           # List council members
+```
+
+Displays constitutional rules, council composition, and quality gates.
+
+### Daemon Management (macOS)
+
+```bash
+npx ari daemon install            # Install background service (launchd)
+npx ari daemon status             # Check daemon status
+npx ari daemon uninstall          # Remove background service
+```
+
+Daemon runs ARI as a background service on macOS using launchd integration.
 
 ## Project Structure
 
 ```
 ari/
 ├── src/
-│   ├── kernel/                 # Kernel layer (owns pipeline)
-│   │   ├── gateway.ts          # Fastify loopback server
-│   │   ├── sanitizer.ts        # 21-pattern injection detector
-│   │   ├── audit.ts            # SHA-256 hash-chained logger
-│   │   ├── event-bus.ts        # Typed pub/sub event system
-│   │   ├── config.ts           # Config loading/saving
-│   │   ├── types.ts            # Zod schemas (all layers)
-│   │   └── index.ts
-│   ├── system/                 # System layer (subscribes to events)
-│   │   ├── router.ts           # Event subscriber, context routing
-│   │   ├── storage.ts          # Context storage at ~/.ari/contexts/
-│   │   ├── types.ts            # Context, RouteResult
-│   │   └── index.ts
-│   ├── agents/                 # Agent layer (coordination)
-│   │   ├── core.ts             # Orchestrator (full pipeline)
-│   │   ├── guardian.ts         # Threat detection + anomaly
-│   │   ├── planner.ts          # Task decomposition + DAG
-│   │   ├── executor.ts         # Tool execution + permissions
-│   │   ├── memory-manager.ts   # Provenance-tracked memory
-│   │   ├── domain/             # Domain agents (future)
-│   │   └── index.ts
-│   ├── governance/             # Governance layer (enforcement)
-│   │   ├── council.ts          # 13-member voting
-│   │   ├── arbiter.ts          # Constitutional enforcement
-│   │   ├── overseer.ts         # Quality gates
-│   │   └── index.ts
-│   ├── ops/                    # Operations layer (infrastructure)
-│   │   ├── daemon.ts           # macOS launchd integration
-│   │   └── index.ts
-│   ├── cli/                    # CLI commands
-│   │   ├── commands/
-│   │   │   ├── gateway.ts      # Gateway management
-│   │   │   ├── audit.ts        # Audit log management
-│   │   │   ├── doctor.ts       # Health checks
-│   │   │   ├── onboard.ts      # System initialization
-│   │   │   ├── context.ts      # Context management
-│   │   │   ├── governance.ts   # Governance reference
-│   │   │   └── daemon.ts       # Daemon management
-│   │   └── index.ts
-│   └── index.ts
+│   ├── kernel/              # Layer 0: Security boundary
+│   │   ├── gateway.ts       # Fastify server (127.0.0.1 only)
+│   │   ├── sanitizer.ts     # 21-pattern injection detection
+│   │   ├── audit.ts         # SHA-256 hash-chained logger
+│   │   ├── event-bus.ts     # Typed pub/sub system
+│   │   ├── config.ts        # Zod-validated configuration
+│   │   └── types.ts         # All system type definitions
+│   ├── system/              # Layer 1: Event routing
+│   │   ├── router.ts        # Context matching and routing
+│   │   └── storage.ts       # Context persistence
+│   ├── agents/              # Layer 2: Multi-agent coordination
+│   │   ├── core.ts          # Master orchestrator
+│   │   ├── guardian.ts      # Threat detection
+│   │   ├── planner.ts       # Task decomposition (DAG)
+│   │   ├── executor.ts      # Tool execution (permission-gated)
+│   │   └── memory-manager.ts # Provenance-tracked memory
+│   ├── governance/          # Layer 3: Constitutional enforcement
+│   │   ├── council.ts       # 13-member voting
+│   │   ├── arbiter.ts       # 5 constitutional rules
+│   │   └── overseer.ts      # 5 quality gates
+│   ├── api/                 # API expansion layer
+│   │   ├── routes.ts        # 15 REST endpoints (Fastify plugin)
+│   │   └── ws.ts            # WebSocket event broadcaster
+│   ├── ops/                 # Layer 4: Infrastructure
+│   │   └── daemon.ts        # macOS launchd integration
+│   └── cli/                 # Layer 5: User interface
+│       ├── commands/        # 8 CLI commands
+│       └── index.ts         # Commander setup
+├── dashboard/               # Web control center (Vite + React 19)
+│   └── src/                 # Pages, components, hooks, API client
 ├── tests/
-│   ├── unit/
-│   │   ├── kernel/             # sanitizer, audit, event-bus
-│   │   ├── system/             # router
-│   │   ├── agents/             # core, guardian, executor, planner, memory-manager
-│   │   └── governance/         # council, arbiter, overseer
-│   ├── integration/            # Full pipeline tests
-│   └── security/               # Injection defense tests
+│   ├── unit/                # Component tests (18 files)
+│   ├── integration/         # Full pipeline tests
+│   └── security/            # Injection defense tests
 ├── docs/
-│   ├── v12/                    # Aurora Protocol specs (reference)
-│   ├── ARCHITECTURE.md         # Layer model, boundaries, data layout
-│   ├── SECURITY.md             # Security model, injection defense
-│   ├── OPERATIONS.md           # Build, run, troubleshoot
-│   ├── GOVERNANCE.md           # Council rules, voting thresholds
-│   └── PRINCIPLES.md           # Engineering philosophy
-├── README.md                   # This file
-└── CHANGELOG.md                # Version history
+│   ├── architecture/        # ARCHITECTURE.md, SECURITY_MODEL.md
+│   ├── governance/          # GOVERNANCE.md
+│   └── operations/          # RUNBOOK_MAC_MINI.md
+└── scripts/                 # Setup and maintenance scripts
 
-Data layout:
-~/.ari/
-├── config.json                 # Zod-validated configuration
-├── audit.json                  # Hash-chained audit log
-├── logs/                       # Application + daemon logs
-└── contexts/                   # Context storage
-    ├── active.json             # Active context metadata
-    └── {context_id}.json       # Individual context files
+Data Layout (~/.ari/):
+├── config.json              # Zod-validated configuration
+├── audit.json               # Hash-chained audit log
+├── logs/                    # Application logs
+└── contexts/                # Context storage
 ```
+
+## Development
+
+### Build Commands
+
+```bash
+npm run build                # Compile TypeScript to dist/
+npm run dev                  # Watch mode for development
+npm run clean                # Remove dist/ directory
+```
+
+### Testing
+
+```bash
+npm test                     # Run all tests (187 tests)
+npm run test:watch           # Watch mode for tests
+npm run test:coverage        # Coverage report (target: 80%+, 100% security)
+```
+
+### Code Quality
+
+```bash
+npm run typecheck            # TypeScript type checking
+npm run lint                 # ESLint (no auto-fix)
+npm run lint:fix             # ESLint with auto-fix
+npm run format               # Prettier formatting
+```
+
+## API Endpoints
+
+ARI exposes a REST API and WebSocket on `127.0.0.1:3141` (loopback only):
+
+| Category | Endpoint | Description |
+|----------|----------|-------------|
+| **Health** | `GET /health` | Health check with uptime |
+| | `GET /status` | System status and security configuration |
+| | `GET /api/health` | Alias for `/health` |
+| | `GET /api/health/detailed` | Component-level health status |
+| **Messages** | `POST /message` | Submit message with sanitization |
+| **Agents** | `GET /api/agents` | List all registered agents |
+| | `GET /api/agents/:id/stats` | Agent statistics |
+| **Governance** | `GET /api/proposals` | List proposals and votes |
+| | `GET /api/proposals/:id` | Get specific vote |
+| | `GET /api/governance/rules` | Constitutional rules |
+| | `GET /api/governance/gates` | Quality gates |
+| **Memory** | `GET /api/memory` | Search memories |
+| | `GET /api/memory/:id` | Get memory by ID |
+| **Audit** | `GET /api/audit` | Audit entries (paginated) |
+| | `GET /api/audit/verify` | Verify hash chain integrity |
+| **Tools** | `GET /api/tools` | List registered tools |
+| **Contexts** | `GET /api/contexts` | List all contexts |
+| | `GET /api/contexts/active` | Get active context |
+| **WebSocket** | `WS /ws` | Real-time event streaming (12 event types) |
+
+All endpoints enforce loopback-only access. API routes are GET-only (read-only). Mutations flow through governance.
+
+## Documentation
+
+Comprehensive documentation is available in the `docs/` directory:
+
+### Architecture
+
+- [ARCHITECTURE.md](docs/architecture/ARCHITECTURE.md) — Six-layer system design
+- [DECISIONS.md](docs/architecture/DECISIONS.md) — Architectural decision records (ADRs)
+- [SECURITY_MODEL.md](docs/architecture/SECURITY_MODEL.md) — Security invariants and threat model
+
+### Governance
+
+- [GOVERNANCE.md](docs/governance/GOVERNANCE.md) — Council, Arbiter, Overseer framework
+
+### Operations
+
+- [RUNBOOK_MAC_MINI.md](docs/operations/RUNBOOK_MAC_MINI.md) — Deployment guide for Mac Mini
+- [CONTRIBUTING.md](CONTRIBUTING.md) — Contribution guidelines
+- [SECURITY.md](SECURITY.md) — Security policy and reporting
+
+### AI Assistant Context
+
+- [CLAUDE.md](CLAUDE.md) — Context for AI assistants working on ARI codebase
 
 ## Version
 
-12.0.0 — Aurora Protocol (2026-01-27)
+**12.0.0** — Life Operating System
 
-Phase 1 + Phase 2 complete:
-- Phase 1: Kernel hardening (gateway, sanitizer, audit, event bus) + system layer (router, storage, contexts)
-- Phase 2: Agent layer (Core, Guardian, Planner, Executor, Memory Manager) + governance (Council, Arbiter, Overseer) + operations (daemon)
+Identity evolution: Aurora Protocol → ARI Life OS (2026-01-27)
 
 ## License
 
-Private repository. All rights reserved.
-
-## Contact
-
-**Operator**: Pryce Hedrick
-**Repository**: github.com/PryceHedrick/ari
+MIT License. See [LICENSE](LICENSE) for details.
 
 ---
 
-*ARI V12.0 — Aurora Protocol*
+**Operator**: Pryce Hedrick
+**Repository**: [github.com/PryceHedrick/ari](https://github.com/PryceHedrick/ari)
+
 *"Secure reasoning, local-first, auditable"*

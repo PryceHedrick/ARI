@@ -7,7 +7,6 @@ import type {
   MemoryType,
   MemoryPartition,
   TrustLevel,
-  TRUST_SCORES,
 } from '../kernel/types.js';
 
 interface StoreParams {

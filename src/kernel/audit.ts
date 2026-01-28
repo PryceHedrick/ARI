@@ -104,11 +104,11 @@ export class AuditLogger {
    * 1. Each event's hash is correctly computed
    * 2. Each event's previousHash matches the actual previous event's hash
    */
-  async verify(): Promise<{
+  verify(): {
     valid: boolean;
     brokenAt?: number;
     details: string;
-  }> {
+  } {
     if (this.events.length === 0) {
       return {
         valid: true,
@@ -165,13 +165,13 @@ export class AuditLogger {
   async load(): Promise<void> {
     try {
       const data = await fs.readFile(this.auditPath, 'utf-8');
-      const parsed = JSON.parse(data);
+      const parsed = JSON.parse(data) as unknown[];
 
       // Convert ISO timestamp strings back to Date objects
-      this.events = parsed.map((event: AuditEvent) => ({
+      this.events = (parsed as Array<Record<string, unknown>>).map((event) => ({
         ...event,
-        timestamp: new Date(event.timestamp),
-      }));
+        timestamp: new Date(event.timestamp as string),
+      })) as AuditEvent[];
     } catch (error) {
       // Silently skip if file doesn't exist
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') {

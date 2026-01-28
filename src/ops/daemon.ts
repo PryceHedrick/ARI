@@ -19,6 +19,7 @@ const PLIST_PATH = join(LAUNCH_AGENTS_DIR, `${PLIST_NAME}.plist`);
 export interface DaemonOptions {
   port?: number;
   logPath?: string;
+  ariPath?: string;
 }
 
 export interface DaemonStatus {
@@ -27,14 +28,21 @@ export interface DaemonStatus {
   plistPath: string;
 }
 
+export interface LogPaths {
+  stdout: string;
+  stderr: string;
+}
+
 export async function installDaemon(options: DaemonOptions = {}): Promise<void> {
   const port = options.port || 3141;
-  const logPath = options.logPath || join(homedir(), '.ari', 'logs', 'gateway.log');
-  const ariPath = join(homedir(), 'ari');
+  const logDir = join(homedir(), '.ari', 'logs');
+  const stdoutLog = join(logDir, 'gateway-stdout.log');
+  const stderrLog = join(logDir, 'gateway-stderr.log');
+  const ariPath = options.ariPath || process.cwd();
 
   // Ensure directories exist
   await mkdir(LAUNCH_AGENTS_DIR, { recursive: true });
-  await mkdir(join(homedir(), '.ari', 'logs'), { recursive: true });
+  await mkdir(logDir, { recursive: true });
 
   // Find node path safely
   let nodePath: string;
@@ -60,18 +68,27 @@ export async function installDaemon(options: DaemonOptions = {}): Promise<void> 
         <string>--port</string>
         <string>${port}</string>
     </array>
+    <key>WorkingDirectory</key>
+    <string>${ariPath}</string>
     <key>RunAtLoad</key>
     <true/>
     <key>KeepAlive</key>
-    <true/>
+    <dict>
+        <key>SuccessfulExit</key>
+        <false/>
+    </dict>
+    <key>ThrottleInterval</key>
+    <integer>10</integer>
+    <key>ProcessType</key>
+    <string>Background</string>
     <key>StandardOutPath</key>
-    <string>${logPath}</string>
+    <string>${stdoutLog}</string>
     <key>StandardErrorPath</key>
-    <string>${logPath}</string>
-    <key>WorkingDirectory</key>
-    <string>${ariPath}</string>
+    <string>${stderrLog}</string>
     <key>EnvironmentVariables</key>
     <dict>
+        <key>PATH</key>
+        <string>/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
         <key>NODE_ENV</key>
         <string>production</string>
     </dict>
@@ -113,4 +130,12 @@ export async function getDaemonStatus(): Promise<DaemonStatus> {
   }
 
   return { installed, running, plistPath: PLIST_PATH };
+}
+
+export function getLogPaths(): LogPaths {
+  const logDir = join(homedir(), '.ari', 'logs');
+  return {
+    stdout: join(logDir, 'gateway-stdout.log'),
+    stderr: join(logDir, 'gateway-stderr.log'),
+  };
 }

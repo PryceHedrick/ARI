@@ -1,6 +1,10 @@
 import { Command } from 'commander';
 import { AuditLogger } from '../../kernel/audit.js';
 
+interface AuditListOptions {
+  count: string;
+}
+
 export function registerAuditCommand(program: Command): void {
   const audit = program
     .command('audit')
@@ -10,7 +14,7 @@ export function registerAuditCommand(program: Command): void {
     .command('list')
     .description('List recent audit events')
     .option('-n, --count <number>', 'Number of recent events to display', '10')
-    .action(async (options) => {
+    .action(async (options: AuditListOptions) => {
       const count = parseInt(options.count, 10);
 
       if (isNaN(count) || count < 1) {
@@ -49,7 +53,7 @@ export function registerAuditCommand(program: Command): void {
       const logger = new AuditLogger();
       await logger.load();
 
-      const result = await logger.verify();
+      const result = logger.verify();
 
       if (result.valid) {
         console.log(`✓ ${result.details}`);
@@ -79,10 +83,10 @@ export function registerAuditCommand(program: Command): void {
         const details = event.details;
 
         console.log(`[${timestamp}]`);
-        console.log(`  Type: ${details?.eventType}`);
-        console.log(`  Severity: ${details?.severity}`);
-        console.log(`  Source: ${details?.source}`);
-        console.log(`  Mitigated: ${details?.mitigated}`);
+        console.log(`  Type: ${String(details?.eventType)}`);
+        console.log(`  Severity: ${String(details?.severity)}`);
+        console.log(`  Source: ${String(details?.source)}`);
+        console.log(`  Mitigated: ${String(details?.mitigated)}`);
         if (details?.details) {
           console.log(`  Details: ${JSON.stringify(details.details, null, 2)}`);
         }
