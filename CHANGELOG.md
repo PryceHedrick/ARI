@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [12.0.0] — 2026-01-28 — Aurora Protocol
+## [2.0.0] — 2026-01-28 — Aurora Protocol
 
 > *The dawn of a new era. Your life, your rules, fully auditable.*
 
@@ -145,13 +145,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 |---------|----------|---------|------------|
 | v0.1.0 | **Genesis** | The beginning, first light | Shadow Integration — acknowledging origins |
 | v1.0.0 | **Kagemusha** | Shadow warrior, the guardian | Shadow Integration — the protective foundation |
-| v12.0.0 | **Aurora** | Dawn, new beginning | Radical Transparency — the Life OS emerges |
+| v2.0.0 | **Aurora** | Dawn, new beginning | Radical Transparency — the Life OS emerges |
 
 ---
 
 ## Links
 
-[Unreleased]: https://github.com/PryceHedrick/ARI/compare/v12.0.0...HEAD
-[12.0.0]: https://github.com/PryceHedrick/ARI/compare/v1.0.0...v12.0.0
+[Unreleased]: https://github.com/PryceHedrick/ARI/compare/v2.0.0...HEAD
+[2.0.0]: https://github.com/PryceHedrick/ARI/compare/v1.0.0...v2.0.0
 [1.0.0]: https://github.com/PryceHedrick/ARI/compare/v0.1.0...v1.0.0
 [0.1.0]: https://github.com/PryceHedrick/ARI/releases/tag/v0.1.0

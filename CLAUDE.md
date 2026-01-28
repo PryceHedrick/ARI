@@ -6,7 +6,7 @@ This file provides essential context for AI assistants (like Claude) working on 
 
 **Name**: ARI — Artificial Reasoning Intelligence
 **Description**: Your Life Operating System
-**Version**: 12.0.0
+**Version**: 2.0.0
 **Technology**: TypeScript 5.3, Node.js 20+
 **Architecture**: Six-layer multi-agent system with strict layer boundaries
 
@@ -391,4 +391,4 @@ Before making changes, read these files:
 ---
 
 **Last Updated**: 2026-01-27
-**Version**: 12.0.0
+**Version**: 2.0.0

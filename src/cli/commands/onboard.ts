@@ -10,9 +10,9 @@ export function registerOnboardCommand(program: Command): void {
 
   onboard
     .command('init')
-    .description('Initialize ARI V12.0 system')
+    .description('Initialize ARI V2.0 system')
     .action(async () => {
-      console.log('Initializing ARI V12.0 (Aurora Protocol)...\n');
+      console.log('Initializing ARI V2.0 (Aurora Protocol)...\n');
 
       try {
         // Step 1: Create config directory
@@ -30,14 +30,14 @@ export function registerOnboardCommand(program: Command): void {
         // Step 4: Initialize audit log
         const logger = new AuditLogger();
         await logger.log('system_initialized', 'system', 'system', {
-          version: '12.0.0',
+          version: '2.0.0',
           protocol: 'aurora',
           timestamp: new Date().toISOString(),
         });
         console.log('[✓] Initialized audit log');
 
         // Success message
-        console.log('\nARI V12.0 (Aurora Protocol) initialization complete.');
+        console.log('\nARI V2.0 (Aurora Protocol) initialization complete.');
         console.log("Run 'ari doctor' to verify system health.");
       } catch (error) {
         console.error('\nInitialization failed:', error);

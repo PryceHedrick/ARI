@@ -1,6 +1,6 @@
 # ARI Operations Guide
 
-Version 12.0.0 — Aurora Protocol
+Version 2.0.0 — Aurora Protocol
 
 ## Build and Development
 
@@ -571,4 +571,4 @@ Planned:
 
 ---
 
-*Operations guide for ARI V12.0*
+*Operations guide for ARI V2.0*

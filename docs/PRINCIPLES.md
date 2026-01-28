@@ -1,6 +1,6 @@
 # ARI Engineering Principles
 
-Version 12.0.0 — Aurora Protocol
+Version 2.0.0 — Aurora Protocol
 
 ## Overview
 
@@ -365,6 +365,6 @@ find src/kernel -name "*.ts" -type f
 
 ---
 
-*Engineering principles for ARI V12.0*
+*Engineering principles for ARI V2.0*
 
 *These are not philosophical aspirations. They are implemented features.*

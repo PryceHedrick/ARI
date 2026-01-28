@@ -12,8 +12,8 @@ const program = new Command();
 
 program
   .name('ari')
-  .description('ARI — Artificial Reasoning Intelligence V12.0 (Aurora Protocol)')
-  .version('12.0.0');
+  .description('ARI — Artificial Reasoning Intelligence V2.0 (Aurora Protocol)')
+  .version('2.0.0');
 
 registerGatewayCommand(program);
 registerAuditCommand(program);
