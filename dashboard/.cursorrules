@@ -1,0 +1,153 @@
+# ARI Dashboard - Cursor Rules
+
+## Project Context
+
+This is the ARI Dashboard - a monitoring interface for ARI (Artificial Reasoning Intelligence), a multi-agent AI orchestration system.
+
+## Tech Stack
+
+- **React 19** with TypeScript 5.7
+- **Tailwind CSS v4** (default config, utility-first)
+- **TanStack React Query** for server state
+- **Vite 7** for build/dev
+- **No component library** - custom primitives only
+
+## File Structure
+
+```
+src/
+├── api/client.ts          # API calls to backend (127.0.0.1:3141)
+├── types/api.ts           # TypeScript interfaces
+├── hooks/useHealth.ts     # Custom React Query hooks
+├── components/
+│   ├── Layout.tsx         # Main layout wrapper
+│   ├── Sidebar.tsx        # Navigation sidebar
+│   ├── StatusBadge.tsx    # Status indicator
+│   ├── AuditEntry.tsx     # Audit log entry
+│   ├── ErrorBoundary.tsx  # Error catch boundary
+│   └── ui/
+│       ├── LoadingState.tsx
+│       ├── EmptyState.tsx
+│       └── ErrorState.tsx
+└── pages/
+    ├── Home.tsx           # System overview
+    ├── Agents.tsx         # Agent status cards
+    ├── Audit.tsx          # Hash-chained audit log
+    ├── Governance.tsx     # Proposals, rules, quality gates
+    ├── Memory.tsx         # Memory system with filters
+    └── Tools.tsx          # Tool registry
+```
+
+## Design System
+
+### Color Palette (Dark Theme Only)
+
+```
+Backgrounds:
+- bg-gray-950: Main background (darkest)
+- bg-gray-900: Sidebar background
+- bg-gray-800: Card background
+- bg-gray-700: Borders, hover states
+
+Text:
+- text-white: Primary headings
+- text-gray-100: Primary text
+- text-gray-300: Secondary text
+- text-gray-400: Labels
+- text-gray-500: Muted text
+
+Status Colors:
+- green-400/500: Healthy, Active, Success
+- yellow-400/500: Degraded, Idle, Warning
+- red-400/500: Unhealthy, Stopped, Error
+- blue-300/900: Highlights, badges
+- purple-300/900: TASK memory type
+```
+
+### Component Patterns
+
+```tsx
+// Cards
+<div className="border border-gray-700 bg-gray-800 rounded-lg p-4">
+
+// Status badges
+<span className="px-2 py-1 rounded-full text-xs font-medium bg-green-900/50 text-green-400">
+
+// Buttons
+<button className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 rounded text-sm text-gray-300 disabled:opacity-50">
+
+// Inputs/Selects
+<select className="bg-gray-800 border border-gray-700 rounded px-3 py-1.5 text-gray-300 focus:border-blue-500">
+
+// Lists with dividers
+<div className="border-b border-gray-700 pb-3 last:border-0 last:pb-0">
+```
+
+### Typography
+
+- **Headings**: `text-white font-semibold`
+- **Body**: `text-gray-300`
+- **Labels**: `text-xs uppercase tracking-wide text-gray-400`
+- **Technical data**: `font-mono text-sm text-gray-300`
+
+## Coding Rules
+
+### TypeScript
+
+- Use explicit return types on functions
+- Use `Array.isArray()` guards before `.map()` calls
+- Handle loading/error/empty states for all data fetching
+- Use optional chaining for nested object access
+
+### React
+
+- Functional components only
+- Use React Query for server state
+- Use `useState` for local UI state
+- Wrap page content in ErrorBoundary
+- Always provide loading and empty states
+
+### Styling
+
+- Tailwind utility classes only (no custom CSS)
+- No inline styles
+- Responsive: `grid-cols-1 md:grid-cols-2 lg:grid-cols-3`
+- Consistent spacing: `p-4`, `p-6`, `p-8`, `gap-4`, `gap-6`
+
+### Data Fetching Pattern
+
+```tsx
+const { data, isLoading, error, refetch } = useQuery({
+  queryKey: ['resource'],
+  queryFn: () => api.getResource(),
+  refetchInterval: 30000,
+});
+
+const safeData = Array.isArray(data) ? data : [];
+
+if (isLoading) return <LoadingState message="Loading..." />;
+if (error) return <ErrorState title="Error" message={error.message} onRetry={refetch} />;
+if (safeData.length === 0) return <EmptyState title="No data" message="Nothing found" />;
+```
+
+## Backend API
+
+- Base URL: `http://127.0.0.1:3141` (loopback only)
+- All endpoints return JSON
+- Key endpoints:
+  - `GET /health` - System health
+  - `GET /agents/status` - Agent statuses
+  - `GET /audit/recent` - Audit entries
+  - `GET /governance/proposals` - Active proposals
+  - `GET /memory/search` - Memory entries
+  - `GET /tools/registry` - Tool registry
+
+## Don'ts
+
+- Don't add light theme (dark only)
+- Don't use CSS-in-JS libraries
+- Don't add animations beyond simple transitions
+- Don't import external UI component libraries
+- Don't use `any` type
+- Don't suppress errors silently - always show error states
+- Don't call `.map()` without array guard

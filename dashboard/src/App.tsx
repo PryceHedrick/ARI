@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Layout } from './components/Layout';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { Home } from './pages/Home';
 import { Governance } from './pages/Governance';
 import { Memory } from './pages/Memory';
@@ -41,7 +42,9 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <Layout currentPage={currentPage} onNavigate={setCurrentPage}>
-        {renderPage()}
+        <ErrorBoundary>
+          {renderPage()}
+        </ErrorBoundary>
       </Layout>
     </QueryClientProvider>
   );
