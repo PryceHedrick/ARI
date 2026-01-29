@@ -2,7 +2,7 @@
 
 <img src="docs/assets/aripfp.jpg" alt="ARI" width="200" />
 
-# ARI
+# 🖤 ARI
 
 **Artificial Reasoning Intelligence**
 
@@ -263,6 +263,6 @@ npm run lint               # ESLint
 
 ---
 
-🖤💜 Built by **Pryce**
+Built with 🖤 by **Pryce**
 
 </div>
