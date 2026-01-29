@@ -38,7 +38,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "cd /Users/prycehedrick/Work/ARI && npx tsc --noEmit 2>&1 | head -20",
+            "command": "npx tsc --noEmit 2>&1 | head -20",
             "blocking": false
           }
         ]
@@ -48,7 +48,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "cd /Users/prycehedrick/Work/ARI && npm test -- --reporter=dot 2>&1 | tail -10",
+            "command": "npm test -- --reporter=dot 2>&1 | tail -10",
             "blocking": false
           }
         ]
@@ -58,7 +58,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "echo '✓ KERNEL MODIFIED - Running security validation...' && cd /Users/prycehedrick/Work/ARI && npm test -- tests/security/ --reporter=dot 2>&1 | tail -5",
+            "command": "echo '✓ KERNEL MODIFIED - Running security validation...' && npm test -- tests/security/ --reporter=dot 2>&1 | tail -5",
             "blocking": false
           }
         ]
@@ -68,7 +68,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "cd /Users/prycehedrick/Work/ARI && npm test -- tests/unit/agents/ --reporter=dot 2>&1 | tail -5",
+            "command": "npm test -- tests/unit/agents/ --reporter=dot 2>&1 | tail -5",
             "blocking": false
           }
         ]
@@ -78,7 +78,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "cd /Users/prycehedrick/Work/ARI && npm audit --audit-level=high 2>&1 | tail -10",
+            "command": "npm audit --audit-level=high 2>&1 | tail -10",
             "blocking": false
           }
         ]
@@ -90,7 +90,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "cd /Users/prycehedrick/Work/ARI && npm run typecheck 2>&1 | tail -5",
+            "command": "npm run typecheck 2>&1 | tail -5",
             "blocking": true
           }
         ]

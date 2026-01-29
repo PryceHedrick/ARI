@@ -30,6 +30,7 @@ Thumbs.db
 # Development artifacts
 .overhaul/
 *.local
+.claude/settings.local.json
 
 # Temporary files
 tmp/
