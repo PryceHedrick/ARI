@@ -7,6 +7,7 @@ import { registerOnboardCommand } from './commands/onboard.js';
 import { registerContextCommand } from './commands/context.js';
 import { registerGovernanceCommand } from './commands/governance.js';
 import { registerDaemonCommand } from './commands/daemon.js';
+import { createAutonomousCommand } from './commands/autonomous.js';
 
 const program = new Command();
 
@@ -22,5 +23,6 @@ registerOnboardCommand(program);
 registerContextCommand(program);
 registerGovernanceCommand(program);
 registerDaemonCommand(program);
+program.addCommand(createAutonomousCommand());
 
 program.parse();

@@ -25,7 +25,7 @@ export type SourceType = z.infer<typeof SourceTypeSchema>;
 
 export const AgentIdSchema = z.enum([
   'core', 'router', 'planner', 'executor', 'memory_manager', 'guardian',
-  'arbiter', 'overseer',
+  'arbiter', 'overseer', 'autonomous',
   'research', 'marketing', 'sales', 'content', 'seo',
   'build', 'development', 'client_comms',
 ]);
