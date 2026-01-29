@@ -284,4 +284,37 @@ export const apiRoutes: FastifyPluginAsync<ApiRouteOptions> = async (
     }
     return await deps.storage.getActiveContext();
   });
+
+  // ── Daily Audit Report endpoints ─────────────────────────────────────────
+
+  fastify.get('/api/reports/today', async () => {
+    const { dailyAudit } = await import('../autonomous/daily-audit.js');
+    await dailyAudit.init();
+    return await dailyAudit.getTodayAudit();
+  });
+
+  fastify.get<{ Params: { date: string } }>('/api/reports/:date', async (request, reply) => {
+    const { date } = request.params;
+    const { dailyAudit } = await import('../autonomous/daily-audit.js');
+    await dailyAudit.init();
+    const report = await dailyAudit.getAudit(date);
+    if (!report) {
+      reply.code(404);
+      return { error: `No audit report found for ${date}` };
+    }
+    return report;
+  });
+
+  fastify.get('/api/reports', async () => {
+    const { dailyAudit } = await import('../autonomous/daily-audit.js');
+    await dailyAudit.init();
+    const dates = await dailyAudit.listAudits();
+    return { audits: dates, total: dates.length };
+  });
+
+  fastify.get('/api/reports/metrics', async () => {
+    const { dailyAudit } = await import('../autonomous/daily-audit.js');
+    await dailyAudit.init();
+    return dailyAudit.getMetrics();
+  });
 };

@@ -9,6 +9,7 @@ import { registerGovernanceCommand } from './commands/governance.js';
 import { registerDaemonCommand } from './commands/daemon.js';
 import { createAutonomousCommand } from './commands/autonomous.js';
 import { createKnowledgeCommand } from './commands/knowledge.js';
+import { createAuditReportCommand } from './commands/audit-report.js';
 
 const program = new Command();
 
@@ -26,5 +27,6 @@ registerGovernanceCommand(program);
 registerDaemonCommand(program);
 program.addCommand(createAutonomousCommand());
 program.addCommand(createKnowledgeCommand());
+program.addCommand(createAuditReportCommand());
 
 program.parse();
