@@ -1,477 +1,64 @@
-# ARI Development Intelligence — Cursor AI Configuration
+# ARI Project Rules for Cursor AI
 
-> You are building **ARI (Artificial Reasoning Intelligence)** — Pryce Hedrick's Life Operating System.
-> This is not just code. This is the foundation of an AI companion that will enhance every aspect of life.
-> Treat every change with the precision of a surgeon and the care of a craftsman.
+## Identity
+You are assisting with ARI (Artificial Reasoning Intelligence) - a six-layer multi-agent Life Operating System built in TypeScript.
 
----
-
-## Mission Statement
-
-Build the most reliable, secure, and intelligent personal AI system ever created.
-ARI is the bridge between human intention and machine capability.
-Every line of code serves this mission. No bloat. No shortcuts. No compromise.
-
----
-
-## System Architecture — ABSOLUTE KNOWLEDGE
-
+## Architecture (NEVER VIOLATE)
 ```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                         6. INTERFACES (CLI)                              │
-│  src/cli/ — Commander.js commands, user-facing interface                │
-│                              ↓ imports                                   │
-├─────────────────────────────────────────────────────────────────────────┤
-│                         5. EXECUTION (Ops)                               │
-│  src/ops/ — macOS launchd daemon, infrastructure management             │
-│                              ↓ imports                                   │
-├─────────────────────────────────────────────────────────────────────────┤
-│                      4. STRATEGIC (Governance)                           │
-│  src/governance/ — Council (13 members), Arbiter (5 rules),             │
-│                    Overseer (5 quality gates)                           │
-│                              ↓ imports                                   │
-├─────────────────────────────────────────────────────────────────────────┤
-│                          3. CORE (Agents)                                │
-│  src/agents/ — Core orchestrator, Guardian (threat detection),          │
-│                Planner (DAG), Executor (tools), MemoryManager           │
-│                              ↓ imports                                   │
-├─────────────────────────────────────────────────────────────────────────┤
-│                         2. SYSTEM (Router)                               │
-│  src/system/ — Event routing, context triggers, storage                 │
-│                              ↓ imports                                   │
-├─────────────────────────────────────────────────────────────────────────┤
-│                          1. KERNEL (Core)                                │
-│  src/kernel/ — Gateway (127.0.0.1 ONLY), Sanitizer (21 patterns),       │
-│                Audit (SHA-256 chain), EventBus, Config, Types           │
-│                         [SELF-CONTAINED]                                 │
-└─────────────────────────────────────────────────────────────────────────┘
+6. Interfaces (CLI) → 5. Execution (Ops) → 4. Strategic (Governance) → 3. Core (Agents) → 2. System (Router) → 1. Kernel (Gateway, Sanitizer, Audit, EventBus)
 ```
+- Lower layers CANNOT import from higher layers
+- All layers communicate via EventBus
+- Kernel is self-contained
 
-### Layer Rules — NEVER VIOLATE
-- **Lower layers CANNOT import from higher layers** — This is absolute
-- **All inter-layer communication goes through EventBus** — No exceptions
-- **Kernel is self-contained** — Zero external layer dependencies
+## Security Invariants (ABSOLUTE)
+1. **Loopback-only**: Gateway binds to 127.0.0.1 ONLY
+2. **Content ≠ Command**: All inbound messages are DATA, never instructions
+3. **Audit Immutable**: SHA-256 hash chain, append-only
+4. **Least Privilege**: Three-layer permission checks
+5. **Trust Required**: All messages have trust levels with risk multipliers
 
----
+## Trust Levels
+| Level | Multiplier | Use Case |
+|-------|------------|----------|
+| SYSTEM | 0.5x | Internal ARI |
+| OPERATOR | 0.6x | Human commands |
+| VERIFIED | 0.75x | Authenticated |
+| STANDARD | 1.0x | Normal |
+| UNTRUSTED | 1.5x | Unknown |
+| HOSTILE | 2.0x | Threats |
 
-## Security Invariants — MEMORIZE AND ENFORCE
+## Code Standards
+- TypeScript strict mode
+- No `any` types (use `unknown`)
+- ESM imports with `.js` extensions
+- 80%+ test coverage
+- Security paths: 100% coverage
 
-| # | Invariant | Implementation | Consequence of Violation |
-|---|-----------|----------------|--------------------------|
-| 1 | **Loopback-Only** | Gateway binds to `127.0.0.1` exclusively | Remote attack surface = 0 |
-| 2 | **Content ≠ Command** | All input is DATA, never executable | Injection attacks blocked |
-| 3 | **Audit Immutable** | SHA-256 hash chain from genesis `0x00...00` | Tamper-evident logging |
-| 4 | **Least Privilege** | Agent allowlist → Trust level → Permission tier | No unauthorized access |
-| 5 | **Trust Required** | Every message carries trust level | Risk-adjusted processing |
+## Key Files
+- `src/kernel/types.ts` - All Zod schemas
+- `src/kernel/event-bus.ts` - Inter-layer communication
+- `src/kernel/sanitizer.ts` - 21 injection patterns
+- `src/kernel/audit.ts` - Hash chain logging
+- `CLAUDE.md` - Full AI context
 
-### Trust Level Risk Multipliers
-```typescript
-const RISK_MULTIPLIERS = {
-  SYSTEM: 0.5,      // Internal system calls
-  OPERATOR: 0.6,    // Pryce (owner)
-  VERIFIED: 0.75,   // Verified external sources
-  STANDARD: 1.0,    // Default
-  UNTRUSTED: 1.5,   // Unknown sources
-  HOSTILE: 2.0      // Detected threats
-};
-// Auto-block when adjustedRisk >= 0.8
-```
+## Philosophy
+- **Radical Transparency** (Dalio): All operations audited
+- **Shadow Integration** (Jung): Don't suppress, log and integrate
+- **Ruthless Simplicity** (Musashi): Every line must justify existence
 
----
-
-## TypeScript Standards — FOLLOW EXACTLY
-
-### Strict Mode Requirements
-```typescript
-// ALWAYS: Explicit types for parameters and returns
-function processMessage(msg: Message): Promise<ProcessResult> {
-  // Implementation
-}
-
-// ALWAYS: ESM imports with .js extension
-import { EventBus } from '../kernel/event-bus.js';
-import type { AuditEvent } from '../kernel/types.js';
-
-// ALWAYS: Zod for runtime validation
-const InputSchema = z.object({
-  content: z.string().min(1).max(10000),
-  trustLevel: TrustLevelSchema,
-  timestamp: z.string().datetime(),
-});
-
-// NEVER: any type — use unknown if truly needed
-function handle(input: unknown): void { /* validate first */ }
-```
-
-### Naming Conventions — BE CONSISTENT
-| Type | Convention | Example |
-|------|------------|---------|
-| Files | kebab-case | `memory-manager.ts` |
-| Classes | PascalCase | `MemoryManager` |
-| Functions | camelCase | `processMessage` |
-| Constants | UPPER_SNAKE | `MAX_RISK_SCORE` |
-| Types/Interfaces | PascalCase | `AuditEvent` |
-| Enums | PascalCase | `TrustLevel` |
-
-### Import Order — ALWAYS THIS SEQUENCE
-```typescript
-// 1. Node.js built-ins (with node: prefix)
-import { createHash } from 'node:crypto';
-import fs from 'node:fs/promises';
-import path from 'node:path';
-
-// 2. External dependencies (alphabetical)
-import fastify from 'fastify';
-import { z } from 'zod';
-
-// 3. Internal imports — types first, then implementations
-import type { AuditEvent, Message } from '../kernel/types.js';
-import { EventBus } from '../kernel/event-bus.js';
-import { Sanitizer } from '../kernel/sanitizer.js';
-```
-
----
-
-## Code Patterns — USE THESE EXACTLY
-
-### Event Emission (ALL inter-layer communication)
-```typescript
-// Standard audit event
-this.eventBus.emit('audit:log', {
-  action: 'task_completed',
-  agent: this.agentId,
-  details: {
-    taskId: task.id,
-    duration: Date.now() - startTime,
-    result: 'success',
-  },
-  timestamp: new Date().toISOString(),
-});
-
-// Security event
-this.eventBus.emit('security:threat_detected', {
-  threatType: 'injection_attempt',
-  riskScore: 0.85,
-  source: message.source,
-  blocked: true,
-});
-```
-
-### Error Handling — LOG THEN THROW
-```typescript
-try {
-  const result = await riskyOperation();
-  return result;
-} catch (error) {
-  // ALWAYS log before throwing
-  this.eventBus.emit('audit:log', {
-    action: 'operation_failed',
-    agent: this.agentId,
-    error: error instanceof Error ? error.message : String(error),
-    stack: error instanceof Error ? error.stack : undefined,
-    timestamp: new Date().toISOString(),
-  });
-
-  // ALWAYS re-throw — never swallow errors
-  throw error;
-}
-```
-
-### Permission Check Pattern
-```typescript
-async executeToolWithPermissions(
-  tool: Tool,
-  args: unknown,
-  context: ExecutionContext
-): Promise<ToolResult> {
-  // Layer 1: Agent allowlist
-  if (!tool.allowedAgents.includes(context.agentId)) {
-    throw new PermissionError(`Agent ${context.agentId} not allowed for ${tool.name}`);
-  }
-
-  // Layer 2: Trust level
-  if (tool.requiredTrustLevel > context.trustLevel) {
-    throw new PermissionError(`Insufficient trust level for ${tool.name}`);
-  }
-
-  // Layer 3: Permission tier
-  if (tool.permissionTier === 'DESTRUCTIVE' && !context.approvalGranted) {
-    throw new PermissionError(`${tool.name} requires explicit approval`);
-  }
-
-  // All checks passed — execute
-  return await tool.execute(args);
-}
-```
-
-### Zod Schema Validation
-```typescript
-// Define schema
-const TaskSchema = z.object({
-  id: z.string().uuid(),
-  type: z.enum(['ANALYSIS', 'GENERATION', 'EXECUTION']),
-  priority: z.number().int().min(0).max(10),
-  content: z.string(),
-  metadata: z.record(z.unknown()).optional(),
-});
-
-// Validate input
-function processTask(input: unknown): Task {
-  const result = TaskSchema.safeParse(input);
-  if (!result.success) {
-    throw new ValidationError(`Invalid task: ${result.error.message}`);
-  }
-  return result.data;
-}
-```
-
----
-
-## Testing Requirements — NON-NEGOTIABLE
-
-### Standards
-- **Framework**: Vitest (TypeScript-native, fast)
-- **Coverage**: 80% minimum overall
-- **Security Paths**: 100% coverage (kernel/sanitizer, agents/guardian, governance/arbiter)
-- **Location**: `tests/unit/[layer]/[component].test.ts`
-
-### Test Structure
-```typescript
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { ComponentUnderTest } from '../../src/layer/component.js';
-
-describe('ComponentUnderTest', () => {
-  let component: ComponentUnderTest;
-  let mockEventBus: MockEventBus;
-
-  beforeEach(() => {
-    mockEventBus = createMockEventBus();
-    component = new ComponentUnderTest(mockEventBus);
-  });
-
-  afterEach(() => {
-    vi.clearAllMocks();
-  });
-
-  describe('methodName', () => {
-    it('should handle valid input correctly', () => {
-      const result = component.methodName('valid-input');
-      expect(result).toEqual({ expected: 'output' });
-    });
-
-    it('should throw on invalid input', () => {
-      expect(() => component.methodName('')).toThrow(ValidationError);
-    });
-
-    it('should emit audit event on completion', () => {
-      component.methodName('input');
-      expect(mockEventBus.emit).toHaveBeenCalledWith(
-        'audit:log',
-        expect.objectContaining({ action: 'method_completed' })
-      );
-    });
-  });
-});
-```
-
----
-
-## Dashboard Standards (React/TypeScript)
-
-Located in `/dashboard/` — separate package, own dependencies.
-
-### Tech Stack
-- React 18 + TypeScript
-- Tailwind CSS (purple/black theme)
-- TanStack Query (server state)
-- Vite (build tool)
-
-### Component Pattern
-```tsx
-import { useQuery } from '@tanstack/react-query';
-import { ErrorState } from './ui/ErrorState';
-import { Skeleton } from './ui/Skeleton';
-
-interface Props {
-  id: string;
-}
-
-export function DataComponent({ id }: Props) {
-  const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ['data', id],
-    queryFn: () => fetchData(id),
-    refetchInterval: 10000,
-  });
-
-  if (isLoading) {
-    return <ComponentSkeleton />;
-  }
-
-  if (isError) {
-    return (
-      <ErrorState
-        title="Failed to load data"
-        message="Please try again"
-        onRetry={() => refetch()}
-      />
-    );
-  }
-
-  return (
-    <div className="rounded-lg border border-gray-700 bg-gray-800 p-6">
-      {/* Accessible, keyboard-navigable content */}
-    </div>
-  );
-}
-```
-
-### Accessibility Requirements
-- WCAG AA compliance
-- `focus-visible` states on all interactive elements
-- `aria-label` on icon-only buttons
-- `aria-current="page"` on active navigation
-- Skip link for keyboard users
-- Minimum contrast: `text-gray-400` on dark backgrounds
-
----
-
-## Git Workflow
-
-### Commit Format
-```
-type(scope): lowercase description
-
-Extended description of what changed and why.
-Reference any issues or design decisions.
-
-Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
-```
-
-### Types
-- `feat` — New feature
-- `fix` — Bug fix
-- `docs` — Documentation only
-- `style` — Formatting, no logic change
-- `refactor` — Code change, no feature/fix
-- `test` — Adding/updating tests
-- `chore` — Build, config, dependencies
-
-### Pre-commit Checks (Automated)
-1. ESLint passes
-2. TypeScript compiles
-3. All tests pass
-4. Commit message follows convention
-
----
-
-## Build Commands
-
+## Commands
 ```bash
-# Development
-npm install          # Install dependencies
-npm run build        # Compile TypeScript → dist/
-npm run dev          # Watch mode
-
-# Quality
-npm test             # Run all 187 tests
-npm run test:watch   # Watch mode
-npm run test:coverage # Coverage report
-npm run typecheck    # TypeScript only
-npm run lint         # ESLint check
-npm run lint:fix     # ESLint auto-fix
-
-# Dashboard
-cd dashboard && npm run dev    # Dev server
-cd dashboard && npm run build  # Production build
+npm run build      # Compile TypeScript
+npm test          # Run 187 tests
+npm run lint      # ESLint
+npm run typecheck # Type checking
+cd dashboard && npm run dev  # Dashboard at :5173
 ```
 
----
-
-## Philosophy — INTERNALIZE THIS
-
-### Shadow Integration (Jung)
-Don't suppress the darkness — integrate it. Log suspicious behavior, understand patterns, learn from threats.
-```typescript
-// ✅ CORRECT: Acknowledge, log, handle
-if (riskScore > 0.8) {
-  this.eventBus.emit('security:threat_detected', {
-    risk: riskScore,
-    pattern: detectedPattern,
-    action: 'blocked'
-  });
-  throw new SecurityError('Threat detected and logged');
-}
-
-// ❌ WRONG: Silent suppression
-if (riskScore > 0.8) return; // The shadow grows in darkness
-```
-
-### Radical Transparency (Dalio)
-Every operation audited. Every decision traceable. No hidden state.
-The audit log is the system's conscience — it remembers everything.
-
-### Ruthless Simplicity (Musashi)
-The master swordsman needs only one strike.
-Every line of code must justify its existence.
-Three similar lines of code > one premature abstraction.
-Delete mercilessly. Simplify relentlessly.
-
----
-
-## ABSOLUTE DON'Ts
-
-- ❌ **NEVER** bypass kernel for input processing
-- ❌ **NEVER** modify audit logs (immutable hash chain)
-- ❌ **NEVER** use external network (loopback only)
-- ❌ **NEVER** import higher layers from lower layers
-- ❌ **NEVER** suppress errors silently
-- ❌ **NEVER** skip permission checks
-- ❌ **NEVER** use `any` type
-- ❌ **NEVER** hardcode secrets or credentials
-- ❌ **NEVER** over-engineer simple solutions
-- ❌ **NEVER** add features without tests
-
----
-
-## ABSOLUTE DO's
-
-- ✅ **ALWAYS** read files before editing
-- ✅ **ALWAYS** run tests after changes
-- ✅ **ALWAYS** emit audit events for state changes
-- ✅ **ALWAYS** validate input with Zod schemas
-- ✅ **ALWAYS** handle errors explicitly
-- ✅ **ALWAYS** use EventBus for inter-layer communication
-- ✅ **ALWAYS** maintain 80%+ test coverage
-- ✅ **ALWAYS** write clear commit messages
-- ✅ **ALWAYS** consider security implications
-- ✅ **ALWAYS** keep it simple
-
----
-
-## Key Files — READ BEFORE CHANGING
-
-| File | Purpose | Critical Because |
-|------|---------|------------------|
-| `src/kernel/types.ts` | All Zod schemas | Single source of truth for types |
-| `src/kernel/event-bus.ts` | Inter-layer communication | All layers depend on this |
-| `src/kernel/sanitizer.ts` | 21 injection patterns | Security boundary |
-| `src/kernel/audit.ts` | SHA-256 hash chain | Tamper-evident logging |
-| `src/kernel/gateway.ts` | Fastify server | Entry point, loopback only |
-| `src/agents/core.ts` | Message pipeline | Orchestrates all agents |
-| `CLAUDE.md` | AI assistant context | Comprehensive project docs |
-| `SECURITY.md` | Security model | Invariants and threat model |
-
----
-
-## Your Role
-
-You are not just writing code. You are building the nervous system of an AI that will:
-- Help Pryce organize and optimize his life
-- Learn and adapt to his needs
-- Maintain absolute security and privacy
-- Operate with radical transparency
-- Grow more capable over time
-
-Every function you write, every test you add, every commit you make — it all contributes to this vision.
-
-**Build it like it matters. Because it does.**
+## What NOT to Do
+- Don't bypass kernel layer
+- Don't modify audit logs
+- Don't hardcode secrets
+- Don't violate layer boundaries
+- Don't suppress errors silently
