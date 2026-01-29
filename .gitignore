@@ -12,9 +12,14 @@ dashboard/dist/
 
 # Credentials (NEVER commit)
 pushover.conf
+autonomous.json
+agent-state.json
 *.key
 *.pem
+*.secret
 credentials.*
+**/secrets/
+**/.ari/
 
 # Logs
 *.log
