@@ -14,6 +14,8 @@ import { SystemRouter } from '../../system/router.js';
 import { apiRoutes } from '../../api/routes.js';
 import { WebSocketBroadcaster } from '../../api/ws.js';
 import * as Storage from '../../system/storage.js';
+import { AutonomousAgent } from '../../autonomous/agent.js';
+import { dailyAudit } from '../../autonomous/daily-audit.js';
 
 interface GatewayStartOptions {
   port: string;
@@ -107,10 +109,16 @@ export function registerGatewayCommand(program: Command): void {
       // Vote expiration interval (ADR-006: 1-hour proposal expiration)
       let voteExpirationInterval: ReturnType<typeof setInterval> | null = null;
 
+      // Autonomous agent (for 24/7 operation)
+      const autonomousAgent = new AutonomousAgent(eventBus);
+
       // Graceful shutdown handlers
       const shutdown = async (signal: string) => {
         console.log(`\nReceived ${signal}, shutting down gracefully...`);
         try {
+          // Stop autonomous agent first
+          await autonomousAgent.stop();
+
           // Stop agents and core
           await core.stop('shutdown');
           router.stop();
@@ -169,6 +177,20 @@ export function registerGatewayCommand(program: Command): void {
             console.log(`Expired ${expired} overdue vote(s)`);
           }
         }, 60_000);
+
+        // Initialize daily audit system
+        await dailyAudit.init();
+        console.log('Daily audit system initialized');
+
+        // Start autonomous agent for 24/7 operation
+        try {
+          // Initialize alert system with the autonomous agent's pushover
+          await autonomousAgent.start();
+          console.log('Autonomous agent started');
+        } catch (error) {
+          console.warn('Autonomous agent failed to start:', error);
+          console.warn('ARI will continue without autonomous capabilities');
+        }
 
         console.log('ARI system fully initialized');
         console.log('API endpoints available at http://127.0.0.1:' + port + '/api/*');
