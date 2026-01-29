@@ -10,6 +10,12 @@ dashboard/dist/
 .env.local
 .env.*
 
+# Credentials (NEVER commit)
+pushover.conf
+*.key
+*.pem
+credentials.*
+
 # Logs
 *.log
 logs/
