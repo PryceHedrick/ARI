@@ -156,6 +156,6 @@ One machine. One owner. Full autonomy.
 
 <br>
 
-<sub>[ARI License](LICENSE) · 2024–2026</sub>
+<sub>[ARI License](LICENSE) · 2025–2026</sub>
 
 </div>
