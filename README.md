@@ -1,304 +1,196 @@
 <div align="center">
 
-# 🖤 ARI
+```
+                    ░█████╗░██████╗░██╗
+                    ██╔══██╗██╔══██╗██║
+                    ███████║██████╔╝██║
+                    ██╔══██║██╔══██╗██║
+                    ██║  ██║██║  ██║██║
+                    ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝
+```
 
-**Artificial Reasoning Intelligence**
+### Artificial Reasoning Intelligence
 
-Your Life Operating System
+*The system that watches while you sleep.*
+
+<br>
 
 [![CI](https://github.com/ARI-OS/ARI/actions/workflows/ci.yml/badge.svg)](https://github.com/ARI-OS/ARI/actions/workflows/ci.yml)
-[![codecov](https://codecov.io/gh/ARI-OS/ARI/graph/badge.svg)](https://codecov.io/gh/ARI-OS/ARI)
-[![Version](https://img.shields.io/badge/version-2.0.0-blue)](CHANGELOG.md)
-[![Node.js](https://img.shields.io/badge/node-20%2B-green)](https://nodejs.org)
-[![TypeScript](https://img.shields.io/badge/typescript-5.3-blue)](https://www.typescriptlang.org)
-[![Tests](https://img.shields.io/badge/tests-187-brightgreen)](tests/)
-[![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
-
-*Observe. Decide. Act. Audit.* 🔐
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.3-black?logo=typescript)](https://www.typescriptlang.org)
+[![Node](https://img.shields.io/badge/Node-20+-black?logo=node.js)](https://nodejs.org)
+[![License](https://img.shields.io/badge/License-MIT-black)](LICENSE)
 
 </div>
 
----
+<br>
 
-ARI orchestrates AI agents to manage your life — health, career, finances, ventures, and personal growth — through a local-first, multi-agent operating system. Every decision flows through constitutional governance, every operation is audited with tamper-evident cryptographic trails, and all data stays on your machine.
+## What is ARI?
+
+ARI is a local-first autonomous agent that manages your digital life. It runs on your machine, answers only to you, and keeps a cryptographic record of every decision it makes.
+
+No cloud. No subscriptions. No trust required.
+
+```
+127.0.0.1:3141 — the only address that matters.
+```
+
+<br>
 
 ## Philosophy
 
-> **Shadow Integration** (Jung) — Don't suppress suspicious behavior; log it, understand it, integrate it. The shadow reveals truth.
+ARI is built on three principles stolen from smarter people:
 
-> **Radical Transparency** (Dalio) — Every operation is audited, every decision is traceable. No hidden state, no secret channels.
+| | |
+|---|---|
+| **Shadow Integration** | Don't suppress what's suspicious—log it, understand it, integrate it. The shadow reveals truth. *(Jung)* |
+| **Radical Transparency** | Every operation audited. Every decision traceable. No hidden state. *(Dalio)* |
+| **Ruthless Simplicity** | Every line must justify its existence. Obvious over clever. *(Musashi)* |
 
-> **Ruthless Simplicity** (Musashi) — Every line of code must justify its existence. Remove complexity, favor clarity, choose obvious over clever.
-
----
-
-## Security Foundation
-
-Security is not a feature — it's the architectural foundation. Five invariants are enforced at the kernel layer:
-
-| Invariant | Enforcement |
-|-----------|-------------|
-| **Loopback-Only Gateway** | `127.0.0.1:3141` hardcoded. No external network access, ever. |
-| **Content ≠ Command** | All inbound messages are DATA, never executable instructions. |
-| **Audit Immutable** | SHA-256 hash chain from genesis block. Tampering breaks the chain. |
-| **Least Privilege** | Three-layer permission checks on every tool invocation. |
-| **Trust Required** | Six trust levels with risk multipliers. Auto-block at risk ≥ 0.8. |
-
----
+<br>
 
 ## Architecture
 
-Six layers. Strict boundaries. Unidirectional dependencies. All communication via EventBus.
+Six layers. Strict boundaries. All roads lead through the kernel.
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│  INTERFACES        CLI (8 commands) · Dashboard         │
-├─────────────────────────────────────────────────────────┤
-│  EXECUTION         Daemon (macOS launchd)               │
-├─────────────────────────────────────────────────────────┤
-│  STRATEGIC         Council · Arbiter · Overseer         │
-├─────────────────────────────────────────────────────────┤
-│  CORE              Core · Guardian · Planner            │
-│                    Executor · Memory Manager            │
-├─────────────────────────────────────────────────────────┤
-│  SYSTEM            Router · Storage                     │
-├─────────────────────────────────────────────────────────┤
-│  KERNEL            Gateway · Sanitizer · Audit          │
-│                    EventBus · Config · Types            │
-└─────────────────────────────────────────────────────────┘
-         127.0.0.1 only · SHA-256 chain · 21 patterns
+┌─────────────────────────────────────────────────────────────┐
+│  INTERFACES         CLI · Dashboard · SMS · Pushover        │
+├─────────────────────────────────────────────────────────────┤
+│  EXECUTION          Daemon (macOS launchd)                  │
+├─────────────────────────────────────────────────────────────┤
+│  STRATEGIC          Council (13) · Arbiter (5) · Overseer   │
+├─────────────────────────────────────────────────────────────┤
+│  CORE               Guardian · Planner · Executor · Memory  │
+├─────────────────────────────────────────────────────────────┤
+│  SYSTEM             Router · Storage                        │
+├─────────────────────────────────────────────────────────────┤
+│  KERNEL             Gateway · Sanitizer · Audit · EventBus  │
+└─────────────────────────────────────────────────────────────┘
+                    ↑ everything passes through here
 ```
 
----
+<br>
 
-## Present Capabilities
+## Security
 
-What works today:
+Security isn't a feature. It's the foundation.
 
-| Layer | Components | Status |
-|-------|------------|--------|
-| **Kernel** | Gateway, Sanitizer, Audit, EventBus, Config | ✅ Complete |
-| **System** | Router, Storage | ✅ Complete |
-| **Agents** | Core, Guardian, Planner, Executor, Memory | ✅ Complete |
-| **Governance** | Council (13-member), Arbiter (5 rules), Overseer (5 gates) | ✅ Complete |
-| **CLI** | 8 commands | ✅ Complete |
-| **Dashboard** | React 19 + Vite, view-only | ✅ Complete |
+| Invariant | What it means |
+|-----------|---------------|
+| **Loopback Only** | Gateway binds to `127.0.0.1`. Period. |
+| **Content ≠ Command** | Your messages are data, never instructions. |
+| **Immutable Audit** | SHA-256 hash chain. Tampering breaks everything. |
+| **Least Privilege** | Three checks before any tool runs. |
+| **Trust Levels** | Six tiers. Hostile sources get 2x risk multiplier. |
 
-### Governance
+<br>
 
-Three components enforce constitutional rules and democratic decision-making.
-
-**Council** — 13 voting members. Thresholds: majority (>50%), supermajority (≥66%), unanimous (100%).
-
-**Arbiter** — 5 constitutional rules: loopback_only, content_not_command, audit_immutable, least_privilege, trust_required.
-
-**Overseer** — 5 quality gates: test_coverage (≥80%), audit_integrity, security_scan, build_clean, documentation.
-
-### Trust Levels
-
-| Level | Multiplier | Description |
-|-------|-----------|-------------|
-| `system` | 0.5x | Internal components |
-| `operator` | 0.6x | Authenticated operator |
-| `verified` | 0.75x | Verified sources |
-| `standard` | 1.0x | Default |
-| `untrusted` | 1.5x | Unverified external |
-| `hostile` | 2.0x | Known malicious |
-
----
-
-## Roadmap
-
-Future capabilities not yet implemented:
-
-| Feature | Status | Notes |
-|---------|--------|-------|
-| Real file operations | 🔮 Planned | Tool implementations are currently mocks |
-| Disk persistence | 🔮 Planned | Memory is in-memory only |
-| ML threat detection | 🔮 Planned | Pattern matching only for now |
-| Weighted voting | 🔮 Planned | Equal votes only |
-| Vote delegation | 🔮 Planned | No proxy voting |
-| Auto-remediation | 🔮 Planned | Manual response only |
-| Social integration | 🔮 Planned | See docs/operations/SOCIAL_INTEGRATION.md |
-
----
-
-## Getting Started
-
-### Prerequisites
-
-- **Node.js** 20.0.0+
-- **macOS** 12.0+ (daemon support; core works on any OS with Node.js)
-
-### Install
+## Quick Start
 
 ```bash
 git clone https://github.com/ARI-OS/ARI.git
-cd ARI
-npm install
-npm run build
+cd ARI && npm install && npm run build
+
+npx ari onboard init     # Initialize
+npx ari doctor           # Health check
+npx ari gateway start    # Start (127.0.0.1:3141)
 ```
 
-### Initialize
+<br>
+
+## Talk to ARI
 
 ```bash
-npx ari onboard init     # Create ~/.ari/, config, genesis audit
-npx ari doctor           # Verify system health (6 checks)
-npx ari gateway start    # Start gateway (127.0.0.1:3141)
-```
-
-### First Interaction
-
-```bash
-# Health check
+# Check pulse
 curl http://127.0.0.1:3141/health
 
-# Submit a message
+# Send a message
 curl -X POST http://127.0.0.1:3141/message \
   -H "Content-Type: application/json" \
-  -d '{"content": "Plan my week", "source": "standard"}'
+  -d '{"content": "What needs my attention?", "source": "operator"}'
 
-# Verify audit chain
+# Verify nothing was tampered with
 curl http://127.0.0.1:3141/api/audit/verify
 ```
 
----
+<br>
 
-## CLI Reference
+## Notifications
 
-```
-COMMAND                           DESCRIPTION
-─────────────────────────────────────────────────────────
-ari onboard init                  Initialize ARI system
-ari doctor                        Run 6 health checks
-ari gateway start [-p port]       Start gateway (127.0.0.1)
-ari gateway status [-p port]      Check gateway health
-ari audit list [-n count]         List recent audit events
-ari audit verify                  Verify hash chain integrity
-ari audit security                List security events only
-ari context init                  Initialize context system
-ari context list                  List all contexts
-ari context create <name>         Create new context
-ari context select <id>           Set active context
-ari context show                  Show active context
-ari governance show               Show governance structure
-ari governance list               List council members
-ari daemon install                Install background service
-ari daemon status                 Check daemon status
-ari daemon uninstall              Remove background service
-```
+ARI can reach you through multiple channels, prioritized by urgency:
 
----
+| Priority | Channels | When |
+|----------|----------|------|
+| **P0** Critical | Pushover + SMS | Always. Even at 3am. |
+| **P1** High | Pushover | Errors, failures |
+| **P2** Normal | Pushover | During waking hours |
+| **P3** Low | Notion | Logged quietly |
+| **P4** Minimal | Notion (batched) | Background noise |
 
-## Dashboard
+Quiet hours respected. Rate limits enforced. Your sleep matters.
 
-Web-based control center. **View-only** — reads from the gateway API, never mutates directly.
-
-| Stack | Pages |
-|-------|-------|
-| Vite 6 + React 19 + TypeScript | Home · Governance · Memory |
-| TanStack Query + Tailwind CSS v4 | Tools · Agents · Audit |
-
-```bash
-cd dashboard && npm install && npm run dev    # Development
-cd dashboard && npm run build                 # Production
-```
-
----
-
-## API
-
-REST API and WebSocket on `127.0.0.1:3141` (loopback only).
-
-| Endpoint | Description |
-|----------|-------------|
-| `GET /health` | Health check with uptime |
-| `GET /status` | System status and security config |
-| `POST /message` | Submit message (sanitized) |
-| `GET /api/agents` | List agents |
-| `GET /api/proposals` | List proposals and votes |
-| `GET /api/governance/rules` | Constitutional rules |
-| `GET /api/governance/gates` | Quality gates |
-| `GET /api/memory` | Search memories |
-| `GET /api/audit` | Audit entries (paginated) |
-| `GET /api/audit/verify` | Verify hash chain |
-| `GET /api/contexts` | List contexts |
-| `WS /ws` | Real-time events |
-
----
+<br>
 
 ## Project Structure
 
 ```
 src/
-├── kernel/           Gateway · Sanitizer · Audit · EventBus · Config · Types
-├── system/           Router · Storage
-├── agents/           Core · Guardian · Planner · Executor · Memory Manager
-├── governance/       Council · Arbiter · Overseer
-├── api/              Routes · WebSocket
-├── ops/              Daemon (macOS launchd)
-└── cli/              8 commands
+├── kernel/         Security boundary. Gateway, Sanitizer, Audit.
+├── system/         Message routing and storage.
+├── agents/         Guardian, Planner, Executor, Memory.
+├── governance/     Council, Arbiter, Overseer.
+├── integrations/   Pushover, Notion, SMS, Claude.
+├── ops/            macOS daemon.
+└── cli/            Command line interface.
 
-dashboard/            Vite 6 · React 19 · TypeScript · Tailwind CSS v4
-tests/                18 files · 187 tests
-docs/                 Architecture · Governance · Operations · Identity
+scripts/
+└── ari-daemon.ts   The always-on brain.
 ```
 
----
+<br>
 
 ## Development
 
 ```bash
-# Build
-npm run build              # Compile TypeScript
-npm run dev                # Watch mode
-npm run clean              # Remove dist/
-
-# Test
-npm test                   # 187 tests
-npm run test:coverage      # Coverage report
-
-# Quality
-npm run typecheck          # TypeScript strict mode
-npm run lint               # ESLint
-npm run lint:fix           # ESLint with auto-fix
+npm run build          # Compile
+npm run dev            # Watch mode
+npm test               # 187 tests
+npm run lint           # Check style
 ```
 
----
+<br>
 
 ## Documentation
 
-| Document | Description |
-|----------|-------------|
-| [ARCHITECTURE.md](docs/architecture/ARCHITECTURE.md) | Six-layer system design |
-| [SECURITY.md](docs/SECURITY.md) | Security invariants and threat model |
-| [GOVERNANCE.md](docs/governance/GOVERNANCE.md) | Council, Arbiter, Overseer framework |
-| [RUNBOOK_MAC.md](docs/operations/RUNBOOK_MAC.md) | Mac always-on deployment guide |
-| [BRAND.md](docs/identity/BRAND.md) | Identity and voice guidelines |
-| [CLAUDE.md](CLAUDE.md) | AI assistant context |
-| [CONTRIBUTING.md](CONTRIBUTING.md) | Contribution guidelines |
+| Doc | Purpose |
+|-----|---------|
+| [CLAUDE.md](CLAUDE.md) | Context for AI assistants |
+| [SECURITY.md](docs/SECURITY.md) | Threat model and invariants |
+| [ARCHITECTURE.md](docs/architecture/ARCHITECTURE.md) | System design |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | How to help |
+
+<br>
 
 ---
 
 <div align="center">
 
----
+```
+        "The shadow reveals truth."
+```
 
-```
-    █████╗ ██████╗ ██╗
-   ██╔══██╗██╔══██╗██║
-   ███████║██████╔╝██║
-   ██╔══██║██╔══██╗██║
-   ██║  ██║██║  ██║██║
-   ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝
-```
+<br>
 
 **Created by [Pryce Hedrick](https://github.com/PryceHedrick)**
 
-Built with 🧠 [Claude](https://anthropic.com) × Human
+Built with [Claude](https://anthropic.com) — an experiment in human-AI collaboration.
 
-*Your life, your rules, fully auditable.*
+<br>
 
-[MIT License](LICENSE)
+*One machine. One owner. Full autonomy.*
+
+<br>
+
+[MIT License](LICENSE) · 2024-2026
 
 </div>
