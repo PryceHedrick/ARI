@@ -293,26 +293,12 @@ npm run lint:fix           # ESLint with auto-fix
    ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝
 ```
 
-🖤 **ARI v2.0.0** · Aurora Protocol 🖤
-
-*Life Operating System*
-
-```
-The shadow reveals truth. Every decision audited. No hidden state.
-```
-
----
-
 **Created by [Pryce Hedrick](https://github.com/PryceHedrick)**
 
-Built with 🧠 by [Claude](https://anthropic.com) × Human collaboration
-
----
-
-MIT License · [ARI-OS](https://github.com/ARI-OS)
+Built with 🧠 [Claude](https://anthropic.com) × Human
 
 *Your life, your rules, fully auditable.*
 
-`127.0.0.1:3141` — The only address that matters.
+[MIT License](LICENSE)
 
 </div>
