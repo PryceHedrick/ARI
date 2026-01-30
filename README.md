@@ -4,14 +4,14 @@
 
 <br>
 
-```
+<pre>
  █████╗ ██████╗ ██╗
 ██╔══██╗██╔══██╗██║
 ███████║██████╔╝██║
 ██╔══██║██╔══██╗██║
 ██║  ██║██║  ██║██║
 ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝
-```
+</pre>
 
 **Artificial Reasoning Intelligence**
 
@@ -366,5 +366,7 @@ It logs them, learns from them, and moves forward.
 <br>
 
 **[Pryce Hedrick](https://github.com/PryceHedrick)** — Creator
+
+**[Claude](https://claude.ai)** — Architect
 
 </div>
