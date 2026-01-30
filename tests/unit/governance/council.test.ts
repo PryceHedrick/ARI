@@ -216,4 +216,79 @@ describe('Council', () => {
     expect(emittedPayload.voteId).toBe(vote.vote_id);
     expect(emittedPayload.status).toBe('PASSED');
   });
+
+  describe('getAllVotes', () => {
+    it('should return empty array when no votes exist', () => {
+      const votes = council.getAllVotes();
+      expect(votes).toEqual([]);
+    });
+
+    it('should return all created votes', () => {
+      const vote1 = council.createVote({
+        topic: 'Proposal 1',
+        description: 'First proposal',
+        threshold: 'MAJORITY',
+        initiated_by: 'router' as AgentId,
+      });
+
+      const vote2 = council.createVote({
+        topic: 'Proposal 2',
+        description: 'Second proposal',
+        threshold: 'SUPERMAJORITY',
+        initiated_by: 'planner' as AgentId,
+      });
+
+      const votes = council.getAllVotes();
+      expect(votes).toHaveLength(2);
+      expect(votes.map(v => v.vote_id)).toContain(vote1.vote_id);
+      expect(votes.map(v => v.vote_id)).toContain(vote2.vote_id);
+    });
+  });
+
+  describe('expireOverdueVotes', () => {
+    it('should return 0 when no votes are overdue', () => {
+      council.createVote({
+        topic: 'Test Proposal',
+        description: 'A test proposal',
+        threshold: 'MAJORITY',
+        deadline_minutes: 60,
+        initiated_by: 'router' as AgentId,
+      });
+
+      const expired = council.expireOverdueVotes();
+      expect(expired).toBe(0);
+    });
+
+    it('should expire overdue open votes', () => {
+      // Create a vote with a very short deadline (already expired)
+      const vote = council.createVote({
+        topic: 'Test Proposal',
+        description: 'A test proposal',
+        threshold: 'MAJORITY',
+        deadline_minutes: -1, // Already in the past
+        initiated_by: 'router' as AgentId,
+      });
+
+      const expired = council.expireOverdueVotes();
+      expect(expired).toBe(1);
+
+      const updatedVote = council.getVote(vote.vote_id);
+      expect(updatedVote?.status).toBe('EXPIRED');
+    });
+
+    it('should not expire already closed votes', () => {
+      const vote = council.createVote({
+        topic: 'Test Proposal',
+        description: 'A test proposal',
+        threshold: 'MAJORITY',
+        deadline_minutes: -1,
+        initiated_by: 'router' as AgentId,
+      });
+
+      council.closeVote(vote.vote_id, 'PASSED');
+
+      const expired = council.expireOverdueVotes();
+      expect(expired).toBe(0);
+    });
+  });
 });

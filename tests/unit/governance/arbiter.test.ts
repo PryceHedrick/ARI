@@ -141,4 +141,43 @@ describe('Arbiter', () => {
     expect(dispute.reasoning).toBeDefined();
     expect(dispute.binding).toBe(true);
   });
+
+  describe('stop', () => {
+    it('should stop the arbiter and unsubscribe from events', () => {
+      arbiter.start();
+      arbiter.stop();
+      // Should not throw and can be called again safely
+      arbiter.stop();
+    });
+
+    it('should do nothing if not started', () => {
+      // Should not throw when stopping without starting
+      arbiter.stop();
+    });
+  });
+
+  describe('getRules', () => {
+    it('should return all constitutional rules', () => {
+      const rules = arbiter.getRules();
+
+      expect(rules).toHaveLength(5);
+      expect(rules.map(r => r.id)).toContain('loopback_only');
+      expect(rules.map(r => r.id)).toContain('content_not_command');
+      expect(rules.map(r => r.id)).toContain('audit_immutable');
+      expect(rules.map(r => r.id)).toContain('least_privilege');
+      expect(rules.map(r => r.id)).toContain('trust_required');
+    });
+
+    it('should return rules with id, name, and description', () => {
+      const rules = arbiter.getRules();
+
+      for (const rule of rules) {
+        expect(rule.id).toBeDefined();
+        expect(rule.name).toBeDefined();
+        expect(rule.description).toBeDefined();
+        // Should not have the check function
+        expect((rule as Record<string, unknown>).check).toBeUndefined();
+      }
+    });
+  });
 });

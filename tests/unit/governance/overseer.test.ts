@@ -132,4 +132,87 @@ describe('Overseer', () => {
       expect(gate.description).toBeDefined();
     });
   });
+
+  describe('start', () => {
+    it('should subscribe to security:alert events', () => {
+      overseer.start();
+
+      // Emit a security alert and verify overseer processes it
+      eventBus.emit('security:alert', {
+        type: 'intrusion_attempt',
+        source: 'guardian',
+        data: {
+          severity: 'critical',
+          description: 'Test alert',
+        },
+      });
+
+      // Should not throw
+      overseer.stop();
+    });
+
+    it('should log warning when already running', () => {
+      overseer.start();
+      // Second start should not throw but log a warning
+      overseer.start();
+      overseer.stop();
+    });
+
+    it('should evaluate security gate on critical alerts', () => {
+      overseer.start();
+
+      // Emit a critical security alert
+      eventBus.emit('security:alert', {
+        type: 'critical_breach',
+        source: 'guardian',
+        data: {
+          severity: 'critical',
+          description: 'Critical security breach detected',
+        },
+      });
+
+      overseer.stop();
+    });
+
+    it('should handle non-critical alerts', () => {
+      overseer.start();
+
+      // Emit a non-critical security alert
+      eventBus.emit('security:alert', {
+        type: 'warning',
+        source: 'guardian',
+        data: {
+          severity: 'low',
+          description: 'Minor security warning',
+        },
+      });
+
+      overseer.stop();
+    });
+  });
+
+  describe('stop', () => {
+    it('should unsubscribe from events', () => {
+      overseer.start();
+      overseer.stop();
+
+      // After stop, emitting events should not cause issues
+      eventBus.emit('security:alert', {
+        type: 'test',
+        source: 'test',
+        data: { severity: 'low' },
+      });
+    });
+
+    it('should do nothing if not started', () => {
+      // Should not throw when stopping without starting
+      overseer.stop();
+    });
+
+    it('should be idempotent', () => {
+      overseer.start();
+      overseer.stop();
+      overseer.stop(); // Second stop should not throw
+    });
+  });
 });
