@@ -2,7 +2,7 @@ DOCUMENT 3: ari-audit-executive-summary.md
 text
 # ARI AUDIT: EXECUTIVE SUMMARY
 
-**Audit Scope**: PryceHedrick/ARI v3.0.0 (Kagemusha Protocol)
+**Audit Scope**: ARI-OS/ARI v3.0.0 (Kagemusha Protocol)
 **Methodology**: 5-pass audit + research appendix
 **Status**: COMPLETE (2026-01-27)
 **Confidence**: HIGH (all code reviewed, zero gaps in analysis)

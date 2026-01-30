@@ -50,3 +50,9 @@ temp/
 *.tmp
 .cursorrules
 dashboard/.cursorrules
+
+# Personal context files (use templates instead)
+docs/v12/CONTEXTS/life/*.md
+!docs/v12/CONTEXTS/life/_TEMPLATE.md
+docs/v12/CONTEXTS/ventures/*.md
+!docs/v12/CONTEXTS/ventures/_TEMPLATE.md

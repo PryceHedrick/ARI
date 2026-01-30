@@ -26,7 +26,7 @@ Each decision follows this format:
 **Status:** ACCEPTED
 
 ### Context
-V11.1 CORE.md contained hardcoded business content (Pryceless Solutions, pricing, sales rules). This violated the "Universal Life OS" requirement and limited reusability.
+V11.1 CORE.md contained hardcoded business content (venture details, pricing, sales rules). This violated the "Universal Life OS" requirement and limited reusability.
 
 ### Decision
 Remove ALL business-specific content from kernel. Create modular context packs loaded dynamically based on operator intent.
@@ -323,7 +323,7 @@ Primary deployment target is operator's Mac Mini. Scripts and setup instructions
 Repository lives at github.com/ARI-OS/ARI. All version control via Git.
 
 ## ASM-004: Operator is Technical
-Operator (Pryce) has technical background (CS degree, IT Specialist). Documentation assumes technical literacy.
+Operator has technical background (CS degree, IT experience). Documentation assumes technical literacy.
 
 ## ASM-005: English Primary Language
 All prompts, documentation, and interfaces are in English. No i18n in V12.0.

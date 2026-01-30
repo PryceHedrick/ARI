@@ -7,12 +7,12 @@
 # 2. Generate morning briefing
 # 3. Send SMS ping + create Notion page
 #
-# Cron: 0 7 * * * /Users/prycehedrick/Work/ARI/scripts/morning-briefing.sh
+# Cron: 0 7 * * * ${HOME}/Work/ARI/scripts/morning-briefing.sh
 #
 
 set -e
 
-ARI_DIR="/Users/prycehedrick/Work/ARI"
+ARI_DIR="${HOME}/Work/ARI"
 LOG_FILE="${HOME}/.ari/logs/morning-briefing.log"
 ENV_FILE="${HOME}/.ari/notification.env"
 

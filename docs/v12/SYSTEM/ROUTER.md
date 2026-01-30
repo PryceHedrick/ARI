@@ -98,7 +98,7 @@ If no specific context is needed, operate with CORE.md only.
 ### Rule 2: Ventures Require Explicit Mention
 ```
 VENTURE CONTEXT TRIGGERS:
-- Operator says venture name: "Pryceless Solutions", "my web dev business"
+- Operator says venture name: "[venture name]", "my web dev business"
 - Operator references client work: "client project", "web client"
 - Operator requests business operations: "send quote", "follow up with lead"
 

@@ -12,7 +12,7 @@ text
 
 ## REPO STRUCTURE MAP
 
-PryceHedrick/ARI (v3.0.0 - Kagemusha Protocol)
+ARI-OS/ARI (v3.0.0 - Kagemusha Protocol)
 ├── src/
 │ ├── gateway/
 │ │ ├── server.ts ← WebSocket gateway (main entry)
@@ -417,7 +417,7 @@ Next: Pass 2 (Execution Flows + Trust Boundaries)
 
 Evidence Citations:
 
-All file paths: PryceHedrick/ARI repository (branch: main, commit: 60aa8d4)
+All file paths: ARI-OS/ARI repository (branch: main, commit: 60aa8d4)
 
 Line ranges: Approximate (TypeScript files may shift with updates)
 

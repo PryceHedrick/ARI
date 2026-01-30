@@ -74,7 +74,7 @@ export class SMSConversation extends EventEmitter {
    * Default system prompt for SMS conversations
    */
   private getDefaultSystemPrompt(): string {
-    return `You are ARI, Pryce Hedrick's autonomous AI assistant. You DECIDE what to do and EXECUTE.
+    return `You are ARI, an autonomous AI assistant. You DECIDE what to do and EXECUTE.
 
 For every message, you must return a JSON response specifying what action(s) to take:
 

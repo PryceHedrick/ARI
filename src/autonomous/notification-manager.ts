@@ -13,7 +13,7 @@
  * | P2       | Notion only         | Queue                |
  * | P3-P4    | Notion (batched)    | Queue                |
  *
- * Philosophy: Notify only when it adds value to Pryce's life.
+ * Philosophy: Notify only when it adds value to the operator's life.
  */
 
 import { GmailSMS, type SMSResult } from '../integrations/sms/gmail-sms.js';

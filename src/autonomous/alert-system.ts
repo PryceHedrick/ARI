@@ -1,7 +1,7 @@
 /**
  * ARI Alert System
  *
- * Intelligent notification system that decides when to alert Pryce.
+ * Intelligent notification system that decides when to alert the operator.
  * Uses council voting to prevent spam while ensuring important alerts get through.
  *
  * Flow:

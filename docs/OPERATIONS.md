@@ -120,7 +120,7 @@ killall node
 
 **Not yet implemented.** Phase 4 feature.
 
-Planned file: `~/Library/LaunchAgents/com.pryceless.ari.plist`
+Planned file: `~/Library/LaunchAgents/com.ari.daemon.plist`
 
 ```xml
 <!-- Future launchd plist -->
@@ -129,7 +129,7 @@ Planned file: `~/Library/LaunchAgents/com.pryceless.ari.plist`
 <plist version="1.0">
 <dict>
     <key>Label</key>
-    <string>com.pryceless.ari</string>
+    <string>com.ari.daemon</string>
     <key>ProgramArguments</key>
     <array>
         <string>/usr/local/bin/node</string>
@@ -152,10 +152,10 @@ Planned file: `~/Library/LaunchAgents/com.pryceless.ari.plist`
 Planned commands:
 ```bash
 # Load daemon (start on boot)
-launchctl load ~/Library/LaunchAgents/com.pryceless.ari.plist
+launchctl load ~/Library/LaunchAgents/com.ari.daemon.plist
 
 # Unload daemon
-launchctl unload ~/Library/LaunchAgents/com.pryceless.ari.plist
+launchctl unload ~/Library/LaunchAgents/com.ari.daemon.plist
 
 # Check status
 launchctl list | grep ari

@@ -7,12 +7,12 @@
 # 2. Generate weekly metrics and trends
 # 3. Create Notion weekly review page
 #
-# Cron: 0 18 * * 0 /Users/prycehedrick/Work/ARI/scripts/weekly-review.sh
+# Cron: 0 18 * * 0 ${HOME}/Work/ARI/scripts/weekly-review.sh
 #
 
 set -e
 
-ARI_DIR="/Users/prycehedrick/Work/ARI"
+ARI_DIR="${HOME}/Work/ARI"
 LOG_FILE="${HOME}/.ari/logs/weekly-review.log"
 ENV_FILE="${HOME}/.ari/notification.env"
 

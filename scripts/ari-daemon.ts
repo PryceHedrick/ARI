@@ -194,7 +194,7 @@ interface ConversationContext {
 
 const context: ConversationContext = { messages: [], lastActivity: new Date() };
 
-const SYSTEM_PROMPT = `You are ARI, Pryce's autonomous AI. You DECIDE and EXECUTE actions.
+const SYSTEM_PROMPT = `You are ARI, an autonomous AI assistant. You DECIDE and EXECUTE actions.
 
 Return JSON:
 {

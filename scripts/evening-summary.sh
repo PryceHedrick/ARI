@@ -7,12 +7,12 @@
 # 2. Create/update Notion daily log
 # 3. No SMS (approaching quiet hours)
 #
-# Cron: 0 21 * * * /Users/prycehedrick/Work/ARI/scripts/evening-summary.sh
+# Cron: 0 21 * * * ${HOME}/Work/ARI/scripts/evening-summary.sh
 #
 
 set -e
 
-ARI_DIR="/Users/prycehedrick/Work/ARI"
+ARI_DIR="${HOME}/Work/ARI"
 LOG_FILE="${HOME}/.ari/logs/evening-summary.log"
 ENV_FILE="${HOME}/.ari/notification.env"
 

@@ -75,7 +75,7 @@ ls -la
 
 3. **Add Context Packs (as needed)**
    ```
-   CONTEXTS/ventures/pryceless_solutions.md  (If working on that venture)
+   CONTEXTS/ventures/_TEMPLATE.md  (If working on that venture)
    CONTEXTS/life/career.md                   (For career discussions)
    CONTEXTS/life/finance.md                  (For financial discussions)
    # etc.
@@ -113,7 +113,7 @@ ari-v12/
 │
 ├── CONTEXTS/                 # Dynamic context packs
 │   ├── ventures/             # Business contexts
-│   │   └── pryceless_solutions.md
+│   │   └── _TEMPLATE.md
 │   ├── life/                 # Life domain contexts
 │   │   ├── career.md
 │   │   ├── finance.md
@@ -154,7 +154,7 @@ Just talk to ARI naturally:
 You: Help me plan my week
 ARI: [Loads admin context, creates plan]
 
-You: Let's work on Pryceless Solutions
+You: Let's work on your venture
 ARI: [Loads venture context, switches to business mode]
 
 You: What's the status of my certification study?
@@ -167,7 +167,7 @@ ARI automatically loads relevant contexts based on your intent:
 
 | You mention... | Context loaded |
 |----------------|----------------|
-| "Pryceless Solutions", "web client" | `ventures/pryceless_solutions.md` |
+| "your venture", "web client" | `ventures/_TEMPLATE.md` |
 | "budget", "expenses", "savings" | `life/finance.md` |
 | "study", "certification", "Security+" | `life/learning.md` + `life/career.md` |
 | "schedule", "tasks", "appointment" | `life/admin.md` |

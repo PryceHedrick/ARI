@@ -22,10 +22,10 @@ setup_ari() {
     # Clone repository
     if [ ! -d "ari-v11" ]; then
         echo "Cloning repository..."
-        git clone https://github.com/PryceHedrick/ari-v11.git
+        git clone https://github.com/ARI-OS/ARI.git
     fi
     
-    cd ari-v11
+    cd ARI
     
     # Checkout V12.0 branch
     echo "Checking out V12.0..."
@@ -69,7 +69,7 @@ validate_universality() {
     # Check for business content in kernel
     echo "Scanning SYSTEM/ for business references..."
     
-    business_terms=("Pryceless" "Solutions" "pryceless" "750" "1800" "3500")
+    business_terms=("hardcoded_venture" "750" "1800" "3500")
     found=0
     
     for term in "${business_terms[@]}"; do
@@ -89,10 +89,10 @@ validate_universality() {
     # Verify context packs exist
     echo ""
     echo "Checking context packs..."
-    if [ -f "CONTEXTS/ventures/pryceless_solutions.md" ]; then
-        echo "✅ Venture context exists"
+    if [ -f "CONTEXTS/ventures/_TEMPLATE.md" ]; then
+        echo "✅ Venture template exists"
     else
-        echo "❌ Venture context missing"
+        echo "❌ Venture template missing"
     fi
     
     echo ""

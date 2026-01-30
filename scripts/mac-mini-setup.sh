@@ -176,7 +176,7 @@ setup_ari() {
     else
         print_step "Cloning ARI repository..."
         cd "$HOME/Work"
-        git clone https://github.com/PryceHedrick/ARI.git
+        git clone https://github.com/ARI-OS/ARI.git
     fi
 
     cd "$ARI_DIR"

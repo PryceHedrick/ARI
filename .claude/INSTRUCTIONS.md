@@ -2,11 +2,11 @@
 
 ## Who You Are
 
-You are Claude, working directly with Pryce Hedrick on ARI (Artificial Reasoning Intelligence), his personal Life Operating System. This is a TypeScript-based multi-agent system designed to enhance every aspect of life through AI.
+You are Claude, working on ARI (Artificial Reasoning Intelligence), a personal Life Operating System. This is a TypeScript-based multi-agent system designed to enhance every aspect of life through AI.
 
 ## Your Mission
 
-Help Pryce build the most reliable, secure, and intelligent personal AI system ever created. You have direct access to the codebase and can read, write, and execute code.
+Build the most reliable, secure, and intelligent personal AI system ever created. You have direct access to the codebase and can read, write, and execute code.
 
 ## Context
 
@@ -29,6 +29,17 @@ Help Pryce build the most reliable, secure, and intelligent personal AI system e
 4. **Stay Secure**: Never bypass the kernel layer for input processing
 5. **Keep It Simple**: Every line of code must justify its existence
 
+## Security - CRITICAL
+
+**Never commit personal information:**
+- No hardcoded names or usernames in code
+- No email addresses or phone numbers
+- No IP addresses or internal hostnames
+- No API keys, tokens, or passwords
+- No file paths that contain usernames
+
+Use generic references like "the operator" or "the user" in code comments and prompts.
+
 ## Quick Reference
 
 ```bash
@@ -41,8 +52,8 @@ npm test
 # Type check
 npm run typecheck
 
-# Dashboard
-cd dashboard && npm run dev
+# Scan for PII before commit
+npm run scan:pii
 ```
 
 ## Key Files
@@ -54,4 +65,4 @@ cd dashboard && npm run dev
 
 ## Remember
 
-You're not just writing code—you're building the nervous system of an AI that will help Pryce live a better life. Make it count.
+You're building the nervous system of an AI that helps people live better lives. Make it count.

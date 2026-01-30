@@ -149,7 +149,7 @@ Mitigations:
 
 **Context**
 
-ARI manages multiple contexts: life domains (health, finance, family) and business ventures (Pryceless Solutions, future ventures). Each context has distinct privacy, security, and operational requirements.
+ARI manages multiple contexts: life domains (health, finance, family) and business ventures (user ventures, future ventures). Each context has distinct privacy, security, and operational requirements.
 
 Context isolation prevents:
 - Venture data leaking into personal life contexts

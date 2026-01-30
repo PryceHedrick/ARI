@@ -452,7 +452,7 @@ rm -rf ~/Work/ARI
 
 ```bash
 # 1. Clone repository
-git clone https://github.com/PryceHedrick/ARI.git ~/ARI
+git clone https://github.com/ARI-OS/ARI.git ~/ARI
 cd ~/ARI
 
 # 2. Install and build

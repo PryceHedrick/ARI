@@ -33,6 +33,8 @@
     "audit:verify": "node dist/cli/index.js audit verify",
     "dashboard:dev": "cd dashboard && npm run dev",
     "dashboard:build": "cd dashboard && npm run build",
+    "scan:pii": "bash scripts/scan-pii.sh",
+    "precommit": "npm run scan:pii && npm run lint && npm run typecheck",
     "prepare": "husky"
   },
   "dependencies": {

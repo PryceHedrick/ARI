@@ -34,7 +34,7 @@ The ARI kernel (CORE.md) is **universal and business-agnostic**. All domain-spec
 ```
 CONTEXTS/
 ├── ventures/                    # Business/entrepreneurial contexts
-│   ├── pryceless_solutions.md   # Web development venture
+│   ├── _TEMPLATE.md   # Web development venture
 │   └── [future_venture].md      # Add more as needed
 │
 ├── life/                        # Personal life domain contexts
@@ -58,7 +58,7 @@ If no context is explicitly needed, ARI operates with kernel (CORE.md) only.
 
 ### Rule 2: Ventures Require Explicit Mention
 Venture contexts load ONLY when operator explicitly mentions the venture by name.
-- ✅ "Let's work on Pryceless Solutions" → Load venture context
+- ✅ "Let's work on your venture" → Load venture context
 - ✅ "I need to follow up with a web dev client" → Load venture context
 - ❌ "What's the weather?" → No venture context
 

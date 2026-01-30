@@ -171,7 +171,7 @@ const healthMemories = await memoryManager.search({
 Each venture has isolated memory partition:
 
 ```typescript
-const ventureMemory = await memoryManager.getPartition('pryceless-solutions');
+const ventureMemory = await memoryManager.getPartition('my-venture');
 
 // Operations within partition
 await ventureMemory.store('client_list', clients);

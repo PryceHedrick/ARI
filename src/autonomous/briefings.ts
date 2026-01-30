@@ -2,7 +2,7 @@
  * ARI Briefings Module
  *
  * Generates intelligent morning briefings and evening summaries
- * that respect Pryce's time while keeping him informed.
+ * that respect the operator's time while keeping him informed.
  *
  * Morning Briefing (7 AM): SMS ping + Notion page
  * - Queued notifications from overnight

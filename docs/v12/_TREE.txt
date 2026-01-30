@@ -1,16 +1,9 @@
 docs/v12/_TREE.txt
 docs/v12/CHANGELOG.md
 docs/v12/CONFIG/tool_registry.json
-docs/v12/CONTEXTS/life/admin.md
-docs/v12/CONTEXTS/life/career.md
-docs/v12/CONTEXTS/life/family.md
-docs/v12/CONTEXTS/life/finance.md
-docs/v12/CONTEXTS/life/health.md
-docs/v12/CONTEXTS/life/learning.md
-docs/v12/CONTEXTS/life/systems.md
+docs/v12/CONTEXTS/life/_TEMPLATE.md
 docs/v12/CONTEXTS/README.md
 docs/v12/CONTEXTS/ventures/_TEMPLATE.md
-docs/v12/CONTEXTS/ventures/pryceless_solutions.md
 docs/v12/DECISIONS.md
 docs/v12/GOVERNANCE/ARBITER_SIGNOFF_V12.md
 docs/v12/GOVERNANCE/ARBITER.md

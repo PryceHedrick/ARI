@@ -2,8 +2,8 @@
  * ARI Pushover Client
  *
  * Two-way Pushover communication:
- * - Send notifications to Pryce
- * - Receive commands from Pryce via Open Client API
+ * - Send notifications to the operator
+ * - Receive commands from the operator via Open Client API
  *
  * Security:
  * - Never sends sensitive data in notifications
@@ -41,7 +41,7 @@ export class PushoverClient {
   }
 
   /**
-   * Send a notification to Pryce
+   * Send a notification to the operator
    * Security: Sanitizes message content
    */
   async send(

@@ -428,24 +428,8 @@ curl http://localhost:3142/health
 
 <div align="center">
 
-```
-    █████╗ ██████╗ ██╗
-   ██╔══██╗██╔══██╗██║
-   ███████║██████╔╝██║
-   ██╔══██║██╔══██╗██║
-   ██║  ██║██║  ██║██║
-   ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝
-```
+🖤
 
-**Artificial Reasoning Intelligence**
-
-*Your Life Operating System*
-
----
-
-Created by **[Pryce Hedrick](https://github.com/PryceHedrick)**
+**[Pryce Hedrick](https://github.com/PryceHedrick)** — Creator
 
 </div>
-
-**Last Updated**: 2026-01-30
-**Version**: 2.0.0
