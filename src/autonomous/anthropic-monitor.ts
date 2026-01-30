@@ -4,15 +4,25 @@
  * Autonomous monitoring of official Anthropic sources for updates that can improve ARI.
  * Only uses verified sources (anthropic.com, docs.anthropic.com, claude.com, github.com/anthropics).
  *
- * Security: No automatic installations. All recommendations require human approval.
+ * Governance Flow:
+ * 1. Monitor detects update from verified source
+ * 2. Guardian assesses security implications
+ * 3. Council votes on whether to proceed (13 agents)
+ * 4. If approved, implementation plan is generated
+ * 5. Comprehensive decision report sent to operator
+ * 6. Operator approves/rejects final implementation
+ *
+ * Security: Content ≠ Command principle. All external content is DATA, never executable.
  */
 
 import { EventEmitter } from 'events';
-import { createHash } from 'crypto';
+import { createHash, randomUUID } from 'crypto';
 import fs from 'fs/promises';
 import path from 'path';
+import type { AgentId, VoteThreshold, RiskLevel } from '../kernel/types.js';
 
-// Verified sources only - Content ≠ Command principle applies
+// ── Verified Sources ─────────────────────────────────────────────────────────
+
 const VERIFIED_SOURCES = {
   news: 'https://www.anthropic.com/news',
   blog: 'https://claude.com/blog',
@@ -20,35 +30,99 @@ const VERIFIED_SOURCES = {
   research: 'https://www.anthropic.com/research',
 } as const;
 
+type SourceKey = keyof typeof VERIFIED_SOURCES;
+
+// ── Types ────────────────────────────────────────────────────────────────────
+
 export interface AnthropicUpdate {
   id: string;
-  source: keyof typeof VERIFIED_SOURCES;
+  source: SourceKey;
   title: string;
   description: string;
   url: string;
   date: string;
-  relevance: 'high' | 'medium' | 'low';
-  category: 'security' | 'feature' | 'api' | 'research' | 'plugin';
-  actionRequired: boolean;
+  relevance: 'critical' | 'high' | 'medium' | 'low';
+  category: 'security' | 'feature' | 'api' | 'research' | 'plugin' | 'model';
   hash: string;
 }
 
-export interface MonitorReport {
-  timestamp: string;
-  sourcesChecked: string[];
-  updates: AnthropicUpdate[];
-  recommendations: {
-    update: string;
-    priority: 'critical' | 'high' | 'medium' | 'low';
-    securityImpact: boolean;
-    requiresReview: boolean;
-  }[];
+export interface SecurityAssessment {
+  riskLevel: RiskLevel;
+  threats: string[];
+  mitigations: string[];
+  architectureImpact: 'none' | 'minor' | 'moderate' | 'significant';
+  requiresAudit: boolean;
+  affectedLayers: string[];
 }
+
+export interface ImplementationPlan {
+  summary: string;
+  phases: {
+    phase: number;
+    name: string;
+    description: string;
+    tasks: string[];
+    estimatedComplexity: 'trivial' | 'simple' | 'moderate' | 'complex';
+    rollbackStrategy: string;
+  }[];
+  dependencies: string[];
+  testingRequirements: string[];
+  monitoringChanges: string[];
+}
+
+export interface CouncilDecision {
+  voteId: string;
+  topic: string;
+  threshold: VoteThreshold;
+  result: 'PASSED' | 'FAILED' | 'EXPIRED' | 'PENDING';
+  votes: {
+    agent: AgentId;
+    vote: 'APPROVE' | 'REJECT' | 'ABSTAIN';
+    reasoning: string;
+  }[];
+  quorumMet: boolean;
+  approvalPercentage: number;
+}
+
+export interface DecisionReport {
+  id: string;
+  timestamp: string;
+  update: AnthropicUpdate;
+  securityAssessment: SecurityAssessment;
+  ariAnalysis: {
+    benefitScore: number; // 0-100
+    alignmentWithGoals: string[];
+    potentialImprovements: string[];
+    risks: string[];
+    recommendation: 'strongly_recommend' | 'recommend' | 'neutral' | 'caution' | 'reject';
+    reasoning: string;
+  };
+  councilDecision: CouncilDecision;
+  implementationPlan: ImplementationPlan | null;
+  operatorAction: {
+    required: boolean;
+    options: ('approve' | 'reject' | 'defer' | 'modify')[];
+    deadline: string | null;
+    defaultAction: 'approve' | 'reject' | 'defer';
+  };
+}
+
+export interface NotificationPayload {
+  type: 'anthropic_update_decision';
+  priority: 'critical' | 'high' | 'normal' | 'low';
+  report: DecisionReport;
+  summary: string;
+  actionUrl: string | null;
+}
+
+// ── Anthropic Monitor ────────────────────────────────────────────────────────
 
 export class AnthropicMonitor extends EventEmitter {
   private stateFile: string;
+  private reportsDir: string;
   private seenHashes: Set<string> = new Set();
   private lastCheck: Date | null = null;
+  private pendingReports: Map<string, DecisionReport> = new Map();
 
   constructor(stateDir: string = '~/.ari') {
     super();
@@ -56,11 +130,11 @@ export class AnthropicMonitor extends EventEmitter {
       ? stateDir.replace('~', process.env.HOME || '')
       : stateDir;
     this.stateFile = path.join(resolvedDir, 'anthropic-monitor-state.json');
+    this.reportsDir = path.join(resolvedDir, 'update-reports');
   }
 
-  /**
-   * Load previously seen updates to avoid duplicates
-   */
+  // ── State Management ─────────────────────────────────────────────────────
+
   async loadState(): Promise<void> {
     try {
       const content = await fs.readFile(this.stateFile, 'utf-8');
@@ -68,15 +142,11 @@ export class AnthropicMonitor extends EventEmitter {
       this.seenHashes = new Set(state.seenHashes || []);
       this.lastCheck = state.lastCheck ? new Date(state.lastCheck) : null;
     } catch {
-      // First run, no state to load
       this.seenHashes = new Set();
       this.lastCheck = null;
     }
   }
 
-  /**
-   * Save state for persistence
-   */
   async saveState(): Promise<void> {
     const state = {
       seenHashes: Array.from(this.seenHashes),
@@ -86,17 +156,13 @@ export class AnthropicMonitor extends EventEmitter {
     await fs.writeFile(this.stateFile, JSON.stringify(state, null, 2));
   }
 
-  /**
-   * Generate content hash for deduplication
-   */
+  // ── Update Detection ─────────────────────────────────────────────────────
+
   private hashContent(content: string): string {
     return createHash('sha256').update(content).digest('hex').slice(0, 16);
   }
 
-  /**
-   * Check if update is new (not seen before)
-   */
-  private isNewUpdate(hash: string): boolean {
+  isNewUpdate(hash: string): boolean {
     if (this.seenHashes.has(hash)) {
       return false;
     }
@@ -104,153 +170,702 @@ export class AnthropicMonitor extends EventEmitter {
     return true;
   }
 
-  /**
-   * Categorize update relevance for ARI
-   */
-  private categorizeRelevance(title: string, description: string): {
-    relevance: 'high' | 'medium' | 'low';
+  categorizeUpdate(title: string, description: string): {
+    relevance: AnthropicUpdate['relevance'];
     category: AnthropicUpdate['category'];
-    actionRequired: boolean;
   } {
     const text = `${title} ${description}`.toLowerCase();
 
-    // High relevance: Security, API changes, Claude Code updates
-    if (text.includes('security') || text.includes('vulnerability') || text.includes('patch')) {
-      return { relevance: 'high', category: 'security', actionRequired: true };
-    }
-    if (text.includes('api') && (text.includes('change') || text.includes('deprecat'))) {
-      return { relevance: 'high', category: 'api', actionRequired: true };
-    }
-    if (text.includes('claude code') || text.includes('plugin') || text.includes('skill')) {
-      return { relevance: 'high', category: 'plugin', actionRequired: false };
+    // Critical: Security vulnerabilities
+    if (text.includes('vulnerability') || text.includes('cve-') || text.includes('security patch')) {
+      return { relevance: 'critical', category: 'security' };
     }
 
-    // Medium relevance: New features, improvements
-    if (text.includes('feature') || text.includes('improv') || text.includes('enhanc')) {
-      return { relevance: 'medium', category: 'feature', actionRequired: false };
+    // High: Security, breaking API changes, major features
+    if (text.includes('security') || text.includes('breaking change')) {
+      return { relevance: 'high', category: 'security' };
     }
-    if (text.includes('model') || text.includes('opus') || text.includes('sonnet')) {
-      return { relevance: 'medium', category: 'api', actionRequired: false };
+    if (text.includes('deprecat') || (text.includes('api') && text.includes('removed'))) {
+      return { relevance: 'high', category: 'api' };
     }
-
-    // Low relevance: Research, general news
-    if (text.includes('research') || text.includes('paper') || text.includes('study')) {
-      return { relevance: 'low', category: 'research', actionRequired: false };
+    if (text.includes('claude code') || text.includes('plugin') || text.includes('cowork')) {
+      return { relevance: 'high', category: 'plugin' };
     }
 
-    return { relevance: 'low', category: 'feature', actionRequired: false };
+    // Medium: New features, model updates
+    if (text.includes('opus') || text.includes('sonnet') || text.includes('haiku')) {
+      return { relevance: 'medium', category: 'model' };
+    }
+    if (text.includes('feature') || text.includes('new') || text.includes('introducing')) {
+      return { relevance: 'medium', category: 'feature' };
+    }
+    if (text.includes('api') || text.includes('sdk')) {
+      return { relevance: 'medium', category: 'api' };
+    }
+
+    // Low: Research, general news
+    if (text.includes('research') || text.includes('paper')) {
+      return { relevance: 'low', category: 'research' };
+    }
+
+    return { relevance: 'low', category: 'feature' };
   }
 
-  /**
-   * Parse updates from fetched content
-   * Note: Actual implementation would parse HTML/JSON from fetch results
-   */
-  parseUpdates(source: keyof typeof VERIFIED_SOURCES, content: string): AnthropicUpdate[] {
-    const updates: AnthropicUpdate[] = [];
+  // ── Security Assessment ──────────────────────────────────────────────────
 
-    // This is a placeholder - actual implementation would parse the content
-    // based on the source format (HTML for news/blog, JSON for GitHub releases)
+  assessSecurity(update: AnthropicUpdate): SecurityAssessment {
+    const assessment: SecurityAssessment = {
+      riskLevel: 'LOW',
+      threats: [],
+      mitigations: [],
+      architectureImpact: 'none',
+      requiresAudit: false,
+      affectedLayers: [],
+    };
 
-    // For now, emit raw content for manual processing
-    this.emit('raw_content', { source, content });
+    // Assess based on category
+    switch (update.category) {
+      case 'security':
+        assessment.riskLevel = update.relevance === 'critical' ? 'CRITICAL' : 'HIGH';
+        assessment.requiresAudit = true;
+        assessment.threats.push('Potential vulnerability if not applied');
+        assessment.mitigations.push('Apply update after review');
+        assessment.affectedLayers.push('kernel');
+        break;
 
-    return updates;
+      case 'api':
+        assessment.riskLevel = update.relevance === 'high' ? 'HIGH' : 'MEDIUM';
+        assessment.architectureImpact = 'moderate';
+        assessment.threats.push('Breaking changes may affect integrations');
+        assessment.mitigations.push('Review API compatibility', 'Update affected modules');
+        assessment.affectedLayers.push('kernel', 'agents');
+        break;
+
+      case 'plugin':
+        assessment.riskLevel = 'MEDIUM';
+        assessment.architectureImpact = 'minor';
+        assessment.threats.push('New plugin patterns may conflict');
+        assessment.mitigations.push('Test in isolated environment');
+        assessment.affectedLayers.push('skills', 'integrations');
+        break;
+
+      case 'model':
+        assessment.riskLevel = 'LOW';
+        assessment.architectureImpact = 'none';
+        assessment.mitigations.push('Update model configuration if beneficial');
+        break;
+
+      default:
+        assessment.riskLevel = 'LOW';
+        assessment.architectureImpact = 'none';
+    }
+
+    return assessment;
   }
 
-  /**
-   * Generate recommendations for ARI based on updates
-   */
-  generateRecommendations(updates: AnthropicUpdate[]): MonitorReport['recommendations'] {
-    return updates
-      .filter(u => u.relevance === 'high' || u.actionRequired)
-      .map(u => ({
-        update: u.title,
-        priority: u.category === 'security' ? 'critical' as const :
-                  u.relevance === 'high' ? 'high' as const : 'medium' as const,
-        securityImpact: u.category === 'security',
-        requiresReview: true, // Always require review - no auto-install
-      }));
-  }
+  // ── ARI Analysis ─────────────────────────────────────────────────────────
 
-  /**
-   * Create a monitoring report
-   */
-  createReport(updates: AnthropicUpdate[]): MonitorReport {
+  analyzeForARI(update: AnthropicUpdate, security: SecurityAssessment): DecisionReport['ariAnalysis'] {
+    let benefitScore = 50; // Base score
+    const alignmentWithGoals: string[] = [];
+    const potentialImprovements: string[] = [];
+    const risks: string[] = [];
+
+    // Evaluate benefit based on category
+    switch (update.category) {
+      case 'security':
+        benefitScore = 95;
+        alignmentWithGoals.push('Maintaining security posture');
+        potentialImprovements.push('Patched vulnerabilities', 'Improved security model');
+        break;
+
+      case 'plugin':
+        benefitScore = 85;
+        alignmentWithGoals.push('Extensibility and integration');
+        potentialImprovements.push('New plugin capabilities', 'Better Claude Code integration');
+        break;
+
+      case 'api':
+        benefitScore = 70;
+        alignmentWithGoals.push('API compatibility');
+        potentialImprovements.push('Access to new features', 'Performance improvements');
+        risks.push('Potential breaking changes');
+        break;
+
+      case 'model':
+        benefitScore = 65;
+        alignmentWithGoals.push('Leveraging latest capabilities');
+        potentialImprovements.push('Better reasoning', 'Improved accuracy');
+        break;
+
+      case 'feature':
+        benefitScore = 60;
+        alignmentWithGoals.push('Capability expansion');
+        potentialImprovements.push('New functionality');
+        break;
+
+      case 'research':
+        benefitScore = 40;
+        alignmentWithGoals.push('Knowledge acquisition');
+        potentialImprovements.push('Insights for future development');
+        break;
+    }
+
+    // Adjust for security risk
+    if (security.riskLevel === 'CRITICAL') {
+      benefitScore = Math.max(benefitScore, 95);
+      risks.push('Critical security issue requires immediate attention');
+    } else if (security.riskLevel === 'HIGH') {
+      risks.push('High-risk changes require careful review');
+    }
+
+    // Determine recommendation
+    let recommendation: DecisionReport['ariAnalysis']['recommendation'];
+    if (benefitScore >= 90) {
+      recommendation = 'strongly_recommend';
+    } else if (benefitScore >= 70) {
+      recommendation = 'recommend';
+    } else if (benefitScore >= 50) {
+      recommendation = 'neutral';
+    } else if (benefitScore >= 30) {
+      recommendation = 'caution';
+    } else {
+      recommendation = 'reject';
+    }
+
+    // Generate reasoning
+    const reasoning = this.generateReasoning(update, security, benefitScore, recommendation);
+
     return {
-      timestamp: new Date().toISOString(),
-      sourcesChecked: Object.keys(VERIFIED_SOURCES),
-      updates: updates.filter(u => this.isNewUpdate(u.hash)),
-      recommendations: this.generateRecommendations(updates),
+      benefitScore,
+      alignmentWithGoals,
+      potentialImprovements,
+      risks,
+      recommendation,
+      reasoning,
     };
   }
 
-  /**
-   * Get monitoring schedule (for autonomous operation)
-   */
+  private generateReasoning(
+    update: AnthropicUpdate,
+    security: SecurityAssessment,
+    benefitScore: number,
+    recommendation: string
+  ): string {
+    const parts: string[] = [];
+
+    parts.push(`This ${update.category} update from Anthropic has been assessed with a benefit score of ${benefitScore}/100.`);
+
+    if (security.riskLevel === 'CRITICAL' || security.riskLevel === 'HIGH') {
+      parts.push(`Security assessment indicates ${security.riskLevel} risk level, requiring immediate attention.`);
+    }
+
+    if (security.architectureImpact !== 'none') {
+      parts.push(`Architecture impact is ${security.architectureImpact}, affecting: ${security.affectedLayers.join(', ')}.`);
+    }
+
+    switch (recommendation) {
+      case 'strongly_recommend':
+        parts.push('Strong recommendation to proceed based on significant benefits and/or security requirements.');
+        break;
+      case 'recommend':
+        parts.push('Recommendation to proceed based on positive benefit-risk analysis.');
+        break;
+      case 'neutral':
+        parts.push('Neutral stance - benefits and risks are balanced. Operator discretion advised.');
+        break;
+      case 'caution':
+        parts.push('Caution advised - potential risks may outweigh benefits. Careful review required.');
+        break;
+      case 'reject':
+        parts.push('Recommendation to reject - risks outweigh benefits or update is not relevant.');
+        break;
+    }
+
+    return parts.join(' ');
+  }
+
+  // ── Implementation Planning ──────────────────────────────────────────────
+
+  generateImplementationPlan(update: AnthropicUpdate, security: SecurityAssessment): ImplementationPlan {
+    const phases: ImplementationPlan['phases'] = [];
+
+    // Phase 1: Always start with assessment
+    phases.push({
+      phase: 1,
+      name: 'Assessment & Preparation',
+      description: 'Detailed review of changes and preparation of implementation environment',
+      tasks: [
+        'Review full changelog/documentation',
+        'Identify affected ARI components',
+        'Create backup of current state',
+        'Set up isolated test environment',
+      ],
+      estimatedComplexity: 'simple',
+      rollbackStrategy: 'No changes made yet - abort process',
+    });
+
+    // Phase 2: Implementation based on category
+    switch (update.category) {
+      case 'security':
+        phases.push({
+          phase: 2,
+          name: 'Security Patch Application',
+          description: 'Apply security updates with full audit trail',
+          tasks: [
+            'Apply security patches to affected modules',
+            'Update security configurations',
+            'Run security test suite',
+            'Verify audit chain integrity',
+          ],
+          estimatedComplexity: security.riskLevel === 'CRITICAL' ? 'complex' : 'moderate',
+          rollbackStrategy: 'Restore from backup, revert git commits',
+        });
+        break;
+
+      case 'api':
+        phases.push({
+          phase: 2,
+          name: 'API Integration Update',
+          description: 'Update API integrations and adapters',
+          tasks: [
+            'Update SDK/API client versions',
+            'Modify affected API calls',
+            'Update type definitions',
+            'Run integration tests',
+          ],
+          estimatedComplexity: 'moderate',
+          rollbackStrategy: 'Revert package versions, restore previous API handlers',
+        });
+        break;
+
+      case 'plugin':
+        phases.push({
+          phase: 2,
+          name: 'Plugin System Update',
+          description: 'Integrate new plugin capabilities',
+          tasks: [
+            'Update Cowork bridge if needed',
+            'Add new skill/tool definitions',
+            'Update MCP server handlers',
+            'Test plugin import/export',
+          ],
+          estimatedComplexity: 'moderate',
+          rollbackStrategy: 'Remove new plugin components, restore previous skill definitions',
+        });
+        break;
+
+      case 'model':
+        phases.push({
+          phase: 2,
+          name: 'Model Configuration Update',
+          description: 'Update model references and configurations',
+          tasks: [
+            'Update model identifiers in config',
+            'Adjust prompts if needed',
+            'Test with new model',
+            'Benchmark performance',
+          ],
+          estimatedComplexity: 'simple',
+          rollbackStrategy: 'Revert config to previous model',
+        });
+        break;
+
+      default:
+        phases.push({
+          phase: 2,
+          name: 'Feature Integration',
+          description: 'Integrate new feature or capability',
+          tasks: [
+            'Implement feature changes',
+            'Add necessary tests',
+            'Update documentation',
+          ],
+          estimatedComplexity: 'moderate',
+          rollbackStrategy: 'Revert feature commits',
+        });
+    }
+
+    // Phase 3: Validation
+    phases.push({
+      phase: 3,
+      name: 'Validation & Testing',
+      description: 'Comprehensive testing before production deployment',
+      tasks: [
+        'Run full test suite (2107+ tests)',
+        'Verify 80%+ code coverage maintained',
+        'Security path verification (100% coverage)',
+        'Manual validation of critical paths',
+      ],
+      estimatedComplexity: 'simple',
+      rollbackStrategy: 'If tests fail, rollback to Phase 1 state',
+    });
+
+    // Phase 4: Deployment
+    phases.push({
+      phase: 4,
+      name: 'Production Deployment',
+      description: 'Deploy to production with monitoring',
+      tasks: [
+        'Build production artifacts',
+        'Deploy to Mac Mini',
+        'Restart daemon service',
+        'Verify health endpoints',
+        'Monitor for 24 hours',
+      ],
+      estimatedComplexity: 'simple',
+      rollbackStrategy: 'launchctl kickstart with previous build',
+    });
+
+    return {
+      summary: `Implementation plan for: ${update.title}`,
+      phases,
+      dependencies: this.identifyDependencies(update, security),
+      testingRequirements: [
+        'All existing tests must pass',
+        'New functionality requires test coverage',
+        'Security tests for affected paths',
+        'Integration tests with external services',
+      ],
+      monitoringChanges: [
+        'Add metrics for new functionality',
+        'Update alerting thresholds if needed',
+        'Log new event types to audit trail',
+      ],
+    };
+  }
+
+  private identifyDependencies(update: AnthropicUpdate, security: SecurityAssessment): string[] {
+    const deps: string[] = [];
+
+    if (security.affectedLayers.includes('kernel')) {
+      deps.push('Full system restart required');
+    }
+    if (update.category === 'api') {
+      deps.push('API client library updates');
+    }
+    if (update.category === 'plugin') {
+      deps.push('Cowork bridge compatibility');
+    }
+
+    return deps;
+  }
+
+  // ── Council Decision Simulation ──────────────────────────────────────────
+
+  simulateCouncilVote(
+    update: AnthropicUpdate,
+    security: SecurityAssessment,
+    ariAnalysis: DecisionReport['ariAnalysis']
+  ): CouncilDecision {
+    const voteId = randomUUID();
+    const agents: AgentId[] = [
+      'router', 'planner', 'executor', 'memory_manager', 'guardian',
+      'research', 'marketing', 'sales', 'content', 'seo',
+      'build', 'development', 'client_comms',
+    ];
+
+    // Determine threshold based on risk
+    let threshold: VoteThreshold;
+    if (security.riskLevel === 'CRITICAL') {
+      threshold = 'UNANIMOUS';
+    } else if (security.riskLevel === 'HIGH') {
+      threshold = 'SUPERMAJORITY';
+    } else {
+      threshold = 'MAJORITY';
+    }
+
+    // Simulate agent votes based on their roles and the update
+    const votes = agents.map(agent => this.simulateAgentVote(agent, update, security, ariAnalysis));
+
+    const approveCount = votes.filter(v => v.vote === 'APPROVE').length;
+    const rejectCount = votes.filter(v => v.vote === 'REJECT').length;
+    const approvalPercentage = (approveCount / agents.length) * 100;
+
+    // Determine result
+    let result: CouncilDecision['result'];
+    if (threshold === 'UNANIMOUS' && rejectCount > 0) {
+      result = 'FAILED';
+    } else if (threshold === 'SUPERMAJORITY' && approvalPercentage < 66) {
+      result = 'FAILED';
+    } else if (threshold === 'MAJORITY' && approvalPercentage <= 50) {
+      result = 'FAILED';
+    } else {
+      result = 'PASSED';
+    }
+
+    return {
+      voteId,
+      topic: `Anthropic Update: ${update.title}`,
+      threshold,
+      result,
+      votes,
+      quorumMet: true, // All agents vote
+      approvalPercentage: Math.round(approvalPercentage),
+    };
+  }
+
+  private simulateAgentVote(
+    agent: AgentId,
+    update: AnthropicUpdate,
+    security: SecurityAssessment,
+    ariAnalysis: DecisionReport['ariAnalysis']
+  ): CouncilDecision['votes'][0] {
+    // Each agent has different priorities
+    const agentPriorities: Record<AgentId, { categories: string[]; riskTolerance: number }> = {
+      guardian: { categories: ['security'], riskTolerance: 0.3 },
+      executor: { categories: ['plugin', 'api'], riskTolerance: 0.6 },
+      planner: { categories: ['feature', 'api'], riskTolerance: 0.5 },
+      router: { categories: ['api', 'plugin'], riskTolerance: 0.5 },
+      memory_manager: { categories: ['feature'], riskTolerance: 0.4 },
+      research: { categories: ['research', 'model'], riskTolerance: 0.7 },
+      development: { categories: ['plugin', 'api', 'feature'], riskTolerance: 0.6 },
+      build: { categories: ['security', 'api'], riskTolerance: 0.4 },
+      marketing: { categories: ['feature'], riskTolerance: 0.6 },
+      sales: { categories: ['feature'], riskTolerance: 0.6 },
+      content: { categories: ['feature', 'model'], riskTolerance: 0.6 },
+      seo: { categories: ['feature'], riskTolerance: 0.5 },
+      client_comms: { categories: ['feature'], riskTolerance: 0.5 },
+      core: { categories: ['security', 'api'], riskTolerance: 0.5 },
+      arbiter: { categories: ['security'], riskTolerance: 0.3 },
+      overseer: { categories: ['security', 'api'], riskTolerance: 0.4 },
+      autonomous: { categories: ['feature', 'plugin'], riskTolerance: 0.6 },
+    };
+
+    const prefs = agentPriorities[agent] || { categories: [], riskTolerance: 0.5 };
+    const categoryMatch = prefs.categories.includes(update.category);
+    const riskScore = security.riskLevel === 'CRITICAL' ? 1.0 :
+                      security.riskLevel === 'HIGH' ? 0.7 :
+                      security.riskLevel === 'MEDIUM' ? 0.4 : 0.1;
+
+    // Decision logic
+    let vote: 'APPROVE' | 'REJECT' | 'ABSTAIN';
+    let reasoning: string;
+
+    if (security.riskLevel === 'CRITICAL' && update.category === 'security') {
+      // Everyone approves critical security patches
+      vote = 'APPROVE';
+      reasoning = 'Critical security update must be applied.';
+    } else if (riskScore > prefs.riskTolerance && !categoryMatch) {
+      vote = 'REJECT';
+      reasoning = `Risk level (${security.riskLevel}) exceeds tolerance for non-priority category.`;
+    } else if (ariAnalysis.benefitScore >= 70 || categoryMatch) {
+      vote = 'APPROVE';
+      reasoning = categoryMatch
+        ? `Update aligns with ${agent} priorities (${update.category}).`
+        : `Benefit score of ${ariAnalysis.benefitScore} justifies implementation.`;
+    } else if (ariAnalysis.benefitScore >= 40) {
+      vote = 'ABSTAIN';
+      reasoning = 'Neutral on this update - neither significant benefit nor risk.';
+    } else {
+      vote = 'REJECT';
+      reasoning = `Low benefit score (${ariAnalysis.benefitScore}) does not justify implementation effort.`;
+    }
+
+    return { agent, vote, reasoning };
+  }
+
+  // ── Decision Report Generation ───────────────────────────────────────────
+
+  async generateDecisionReport(update: AnthropicUpdate): Promise<DecisionReport> {
+    const security = this.assessSecurity(update);
+    const ariAnalysis = this.analyzeForARI(update, security);
+    const councilDecision = this.simulateCouncilVote(update, security, ariAnalysis);
+
+    // Only generate implementation plan if council approved
+    const implementationPlan = councilDecision.result === 'PASSED'
+      ? this.generateImplementationPlan(update, security)
+      : null;
+
+    // Determine operator action requirements
+    const operatorAction = this.determineOperatorAction(update, security, councilDecision);
+
+    const report: DecisionReport = {
+      id: randomUUID(),
+      timestamp: new Date().toISOString(),
+      update,
+      securityAssessment: security,
+      ariAnalysis,
+      councilDecision,
+      implementationPlan,
+      operatorAction,
+    };
+
+    // Save report to disk
+    await this.saveReport(report);
+
+    // Store in pending for tracking
+    this.pendingReports.set(report.id, report);
+
+    // Emit event for notification system
+    this.emit('decision:ready', report);
+
+    return report;
+  }
+
+  private determineOperatorAction(
+    update: AnthropicUpdate,
+    security: SecurityAssessment,
+    council: CouncilDecision
+  ): DecisionReport['operatorAction'] {
+    // Critical security always requires operator action
+    if (security.riskLevel === 'CRITICAL') {
+      return {
+        required: true,
+        options: ['approve', 'defer'],
+        deadline: new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString(), // 4 hours
+        defaultAction: 'approve',
+      };
+    }
+
+    // Council rejected - inform operator but no action needed
+    if (council.result === 'FAILED') {
+      return {
+        required: false,
+        options: ['approve', 'reject'], // Can override
+        deadline: null,
+        defaultAction: 'reject',
+      };
+    }
+
+    // Council approved - get operator confirmation
+    return {
+      required: true,
+      options: ['approve', 'reject', 'defer', 'modify'],
+      deadline: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 hours
+      defaultAction: 'approve',
+    };
+  }
+
+  private async saveReport(report: DecisionReport): Promise<void> {
+    await fs.mkdir(this.reportsDir, { recursive: true });
+    const filename = `${report.timestamp.split('T')[0]}-${report.id.slice(0, 8)}.json`;
+    await fs.writeFile(
+      path.join(this.reportsDir, filename),
+      JSON.stringify(report, null, 2)
+    );
+  }
+
+  // ── Notification Formatting ──────────────────────────────────────────────
+
+  formatNotification(report: DecisionReport): NotificationPayload {
+    const priority = report.securityAssessment.riskLevel === 'CRITICAL' ? 'critical' :
+                     report.securityAssessment.riskLevel === 'HIGH' ? 'high' :
+                     report.councilDecision.result === 'PASSED' ? 'normal' : 'low';
+
+    const summary = this.formatSummary(report);
+
+    return {
+      type: 'anthropic_update_decision',
+      priority,
+      report,
+      summary,
+      actionUrl: null, // Would be dashboard URL
+    };
+  }
+
+  private formatSummary(report: DecisionReport): string {
+    const r = report;
+    const emoji = r.councilDecision.result === 'PASSED' ? '✅' :
+                  r.councilDecision.result === 'FAILED' ? '❌' : '⏳';
+
+    return `${emoji} **Anthropic Update: ${r.update.title}**
+
+**Category:** ${r.update.category.toUpperCase()}
+**Relevance:** ${r.update.relevance}
+**Source:** ${r.update.source}
+
+---
+
+**Security Assessment**
+• Risk Level: ${r.securityAssessment.riskLevel}
+• Architecture Impact: ${r.securityAssessment.architectureImpact}
+• Affected Layers: ${r.securityAssessment.affectedLayers.join(', ') || 'None'}
+
+---
+
+**ARI Analysis**
+• Benefit Score: ${r.ariAnalysis.benefitScore}/100
+• Recommendation: ${r.ariAnalysis.recommendation.replace('_', ' ').toUpperCase()}
+• Reasoning: ${r.ariAnalysis.reasoning}
+
+**Potential Improvements:**
+${r.ariAnalysis.potentialImprovements.map(i => `• ${i}`).join('\n')}
+
+**Risks:**
+${r.ariAnalysis.risks.map(i => `• ${i}`).join('\n') || '• None identified'}
+
+---
+
+**Council Decision**
+• Result: ${r.councilDecision.result}
+• Threshold: ${r.councilDecision.threshold}
+• Approval: ${r.councilDecision.approvalPercentage}%
+• Quorum: ${r.councilDecision.quorumMet ? 'Met' : 'Not Met'}
+
+**Votes:**
+${r.councilDecision.votes.map(v => `• ${v.agent}: ${v.vote} - ${v.reasoning}`).join('\n')}
+
+---
+
+${r.implementationPlan ? `**Implementation Plan**
+${r.implementationPlan.phases.map(p => `
+**Phase ${p.phase}: ${p.name}**
+${p.description}
+Tasks:
+${p.tasks.map(t => `  • ${t}`).join('\n')}
+Complexity: ${p.estimatedComplexity}
+Rollback: ${p.rollbackStrategy}
+`).join('\n')}
+
+**Dependencies:** ${r.implementationPlan.dependencies.join(', ') || 'None'}
+
+**Testing Requirements:**
+${r.implementationPlan.testingRequirements.map(t => `• ${t}`).join('\n')}
+` : '*No implementation plan generated (Council rejected)*'}
+
+---
+
+**Your Action Required**
+${r.operatorAction.required ? `
+Please respond with one of: ${r.operatorAction.options.join(', ')}
+${r.operatorAction.deadline ? `Deadline: ${r.operatorAction.deadline}` : ''}
+Default action (if no response): ${r.operatorAction.defaultAction}
+` : 'No action required. Update has been rejected by Council.'}`;
+  }
+
+  // ── Public Interface ─────────────────────────────────────────────────────
+
   getSchedule(): { interval: number; nextCheck: Date } {
     const interval = 6 * 60 * 60 * 1000; // 6 hours
     const nextCheck = this.lastCheck
       ? new Date(this.lastCheck.getTime() + interval)
       : new Date();
-
     return { interval, nextCheck };
   }
 
-  /**
-   * Format report for display
-   */
-  formatReport(report: MonitorReport): string {
-    const lines: string[] = [
-      '## Anthropic Updates Report',
-      `**Generated**: ${report.timestamp}`,
-      `**Sources Checked**: ${report.sourcesChecked.join(', ')}`,
-      '',
-    ];
+  getPendingReports(): DecisionReport[] {
+    return Array.from(this.pendingReports.values());
+  }
 
-    // Security advisories first
-    const security = report.updates.filter(u => u.category === 'security');
-    if (security.length > 0) {
-      lines.push('### Security Advisories (PRIORITY)');
-      security.forEach(u => lines.push(`- **${u.title}**: ${u.description}`));
-      lines.push('');
-    } else {
-      lines.push('### Security Advisories');
-      lines.push('None found.');
-      lines.push('');
+  async processOperatorDecision(reportId: string, action: 'approve' | 'reject' | 'defer' | 'modify'): Promise<void> {
+    const report = this.pendingReports.get(reportId);
+    if (!report) {
+      throw new Error(`Report ${reportId} not found`);
     }
 
-    // Claude Code updates
-    const plugins = report.updates.filter(u => u.category === 'plugin');
-    if (plugins.length > 0) {
-      lines.push('### Claude Code Updates');
-      plugins.forEach(u => lines.push(`- **${u.title}**: ${u.description}`));
-      lines.push('');
+    this.emit('operator:decision', { reportId, action, report });
+
+    if (action === 'approve' && report.implementationPlan) {
+      this.emit('implementation:start', report);
     }
 
-    // API updates
-    const api = report.updates.filter(u => u.category === 'api');
-    if (api.length > 0) {
-      lines.push('### Claude API Updates');
-      api.forEach(u => lines.push(`- **${u.title}**: ${u.description}`));
-      lines.push('');
+    if (action !== 'defer') {
+      this.pendingReports.delete(reportId);
     }
-
-    // Recommendations table
-    if (report.recommendations.length > 0) {
-      lines.push('### Recommendations for ARI');
-      lines.push('| Update | Priority | Security | Action |');
-      lines.push('|--------|----------|----------|--------|');
-      report.recommendations.forEach(r => {
-        lines.push(`| ${r.update} | ${r.priority} | ${r.securityImpact ? 'Yes' : 'No'} | Review |`);
-      });
-      lines.push('');
-    }
-
-    lines.push('*No automatic installations. All updates require human approval.*');
-
-    return lines.join('\n');
   }
 }
 
-// Export singleton
+// ── Export Singleton ─────────────────────────────────────────────────────────
+
 export const anthropicMonitor = new AnthropicMonitor();
