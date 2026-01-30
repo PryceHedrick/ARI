@@ -14,7 +14,7 @@
 
 **Business Name:** Pryceless Solutions  
 **Domain:** Web Development & Digital Services  
-**Operator:** Pryce Hedrick  
+**Operator:** the operator  
 **Location:** Southern Indiana  
 **Status:** Pre-LLC (Q1 2026 formation target)  
 **Website:** pryceless.solutions (when live)

@@ -108,7 +108,7 @@ Each layer only imports from layers below it. See [ARCHITECTURE.md](architecture
 
 ## Getting Help
 
-- **GitHub Issues**: [github.com/PryceHedrick/ARI/issues](https://github.com/PryceHedrick/ARI/issues)
+- **GitHub Issues**: [github.com/ARI-OS/ARI/issues](https://github.com/ARI-OS/ARI/issues)
 - **Security Issues**: See [SECURITY.md](../SECURITY.md) for responsible disclosure
 
 ---

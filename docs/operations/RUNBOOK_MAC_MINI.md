@@ -34,7 +34,7 @@ df -h ~
 
 ```bash
 cd ~
-git clone https://github.com/PryceHedrick/ari.git
+git clone https://github.com/ARI-OS/ARI.git
 cd ari
 ```
 

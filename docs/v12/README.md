@@ -42,7 +42,7 @@ ARI (Artificial Reasoning Intelligence) is a **constitutional multi-agent operat
 
 ```bash
 # Clone the repository
-git clone https://github.com/PryceHedrick/ari.git
+git clone https://github.com/ARI-OS/ARI.git
 cd ari
 
 # Checkout V12.0
@@ -362,8 +362,8 @@ Private repository. All rights reserved.
 
 ## Contact
 
-**Operator:** Pryce Hedrick  
-**Repository:** github.com/PryceHedrick/ari
+**Operator:** the operator  
+**Repository:** github.com/ARI-OS/ARI
 
 ---
 

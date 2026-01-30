@@ -264,7 +264,7 @@ npm --version   # 10.0.0+
 ### Setup
 
 ```bash
-git clone https://github.com/PryceHedrick/ARI.git
+git clone https://github.com/ARI-OS/ARI.git
 cd ARI
 npm install
 npm run build

@@ -34,7 +34,7 @@ Thank you for your interest in contributing to ARI — Artificial Reasoning Inte
 
 3. Add upstream remote:
    ```bash
-   git remote add upstream https://github.com/PryceHedrick/ari.git
+   git remote add upstream https://github.com/ARI-OS/ARI.git
    ```
 
 4. Install dependencies:
@@ -420,7 +420,7 @@ async processMessage(msg: Message): Promise<void> {
 ## Questions or Issues?
 
 - Open an issue for bugs or feature requests
-- Tag `@PryceHedrick` for urgent security issues
+- Tag `@ARI-OS/maintainers` for urgent security issues
 - Review existing issues before creating duplicates
 
 ## License

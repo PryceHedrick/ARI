@@ -151,7 +151,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Links
 
-[Unreleased]: https://github.com/PryceHedrick/ARI/compare/v2.0.0...HEAD
-[2.0.0]: https://github.com/PryceHedrick/ARI/compare/v1.0.0...v2.0.0
-[1.0.0]: https://github.com/PryceHedrick/ARI/compare/v0.1.0...v1.0.0
-[0.1.0]: https://github.com/PryceHedrick/ARI/releases/tag/v0.1.0
+[Unreleased]: https://github.com/ARI-OS/ARI/compare/v2.0.0...HEAD
+[2.0.0]: https://github.com/ARI-OS/ARI/compare/v1.0.0...v2.0.0
+[1.0.0]: https://github.com/ARI-OS/ARI/compare/v0.1.0...v1.0.0
+[0.1.0]: https://github.com/ARI-OS/ARI/releases/tag/v0.1.0

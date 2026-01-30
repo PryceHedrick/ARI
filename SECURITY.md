@@ -197,7 +197,7 @@ Security updates will be released as patch versions (12.0.x). Critical vulnerabi
 For security-related questions or concerns:
 
 - **GitHub**: Use private security advisory feature
-- **Maintainer**: @PryceHedrick
+- **Maintainer**: @ARI-OS/maintainers
 
 ---
 

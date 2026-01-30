@@ -76,7 +76,7 @@ brew install node@20
 ### Step 1: Clone Repository
 
 ```bash
-git clone https://github.com/PryceHedrick/ARI.git ~/Work/ARI
+git clone https://github.com/ARI-OS/ARI.git ~/Work/ARI
 cd ~/Work/ARI
 ```
 

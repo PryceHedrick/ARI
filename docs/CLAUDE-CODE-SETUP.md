@@ -52,7 +52,7 @@ Plugins and marketplaces are installed globally in `~/.claude/` and need to be s
 
 1. Clone the ARI repository:
    ```bash
-   git clone https://github.com/PryceHedrick/ARI.git
+   git clone https://github.com/ARI-OS/ARI.git
    cd ARI
    ```
 
