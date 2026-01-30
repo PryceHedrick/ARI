@@ -1,21 +1,16 @@
 <div align="center">
 
-```
-    ░█████╗░██████╗░██╗
-    ██╔══██╗██╔══██╗██║
-    ███████║██████╔╝██║
-    ██╔══██║██╔══██╗██║
-    ██║░░██║██║░░██║██║
-    ╚═╝░░╚═╝╚═╝░░╚═╝╚═╝
-```
+<pre>
+     ▄▀▄ █▀▄ █
+     █▀█ █▀▄ █
+     ▀ ▀ ▀ ▀ ▀
+</pre>
 
-**Artificial Reasoning Intelligence**
+### Artificial Reasoning Intelligence
 
 *A mind that runs on your machine, answers only to you, and forgets nothing.*
 
 [![CI](https://github.com/ARI-OS/ARI/actions/workflows/ci.yml/badge.svg)](https://github.com/ARI-OS/ARI/actions/workflows/ci.yml)
-
-🖤
 
 </div>
 
@@ -331,26 +326,25 @@ ARI is built on three principles:
 
 <br>
 
-I wanted to build something that thinks, remembers, and acts — but answers only to its owner.
-
-Something that doesn't phone home. Doesn't sell your data. Doesn't exist to serve someone else's interests.
-
-ARI is that.
-
-It's not finished. It might never be. But it works, and it's real, and it's yours if you want it.
-
-<br>
-
----
-
-<br>
-
-**Pryce** — *Creator*
+```
+┌────────────────────────────────────────────────────────────┐
+│                                                            │
+│   "The shadow reveals truth."                              │
+│                                                            │
+│   What you suppress controls you.                          │
+│   What you observe, you can understand.                    │
+│   What you understand, you can master.                     │
+│                                                            │
+│   ARI doesn't hide its failures.                           │
+│   It logs them, learns from them, and moves forward.       │
+│                                                            │
+└────────────────────────────────────────────────────────────┘
+```
 
 <br>
 
 🖤
 
-<sub>The shadow reveals truth.</sub>
+**[Pryce Hedrick](https://github.com/PryceHedrick)** — Creator
 
 </div>
