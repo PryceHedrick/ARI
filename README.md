@@ -15,11 +15,13 @@
 
 [![CI](https://github.com/ARI-OS/ARI/actions/workflows/ci.yml/badge.svg)](https://github.com/ARI-OS/ARI/actions/workflows/ci.yml)
 
+🖤
+
 </div>
 
 ---
 
-## Overview
+## What is this?
 
 ARI is a multi-agent system that runs entirely on your machine. It processes requests through a pipeline of specialized agents, enforces decisions through constitutional governance, and maintains a cryptographic audit trail of every action.
 
@@ -345,6 +347,8 @@ It's not finished. It might never be. But it works, and it's real, and it's your
 **Pryce** — *Creator*
 
 <br>
+
+🖤
 
 <sub>The shadow reveals truth.</sub>
 
