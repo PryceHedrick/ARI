@@ -13,6 +13,7 @@ dashboard/dist/
 # Credentials (NEVER commit)
 pushover.conf
 autonomous.json
+config/autonomous.json
 agent-state.json
 *.key
 *.pem
