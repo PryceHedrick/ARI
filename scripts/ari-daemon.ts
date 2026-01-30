@@ -250,9 +250,15 @@ async function main(): Promise<void> {
   }
 
   // Parse quiet hours from config (default: 10 PM - 7 AM)
-  const parseHour = (s?: string) => s ? parseInt(s.split(':')[0]) : null;
-  const quietStart = parseHour(config.quietHours?.start) ?? 22;
-  const quietEnd = parseHour(config.quietHours?.end) ?? 7;
+  // Support both formats: string "22:00" or number 22
+  const parseHour = (val?: string | number): number | null => {
+    if (val === undefined || val === null) return null;
+    if (typeof val === 'number') return val;
+    if (typeof val === 'string') return parseInt(val.split(':')[0]);
+    return null;
+  };
+  const quietStart = parseHour(config.quietHours?.start ?? config.sms?.quietHoursStart) ?? 22;
+  const quietEnd = parseHour(config.quietHours?.end ?? config.sms?.quietHoursEnd) ?? 7;
 
   // Initialize notification router
   const notifications = new NotificationRouter(pushover, notion, {
