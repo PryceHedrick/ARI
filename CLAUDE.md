@@ -386,15 +386,18 @@ Before making changes, read these files:
 ARI runs on a Mac Mini accessible via Tailscale.
 
 ### Connection Details
-- **Host**: `100.81.73.34` (Tailscale IP)
+- **Host**: Get IP via `tailscale status` (look for ARIs-Mac-mini)
 - **Username**: `ari` (NOT `pryce`)
-- **SSH**: `ssh ari@100.81.73.34`
-- **Dashboard**: `http://100.81.73.34:3142`
+- **SSH**: `ssh ari@<TAILSCALE_IP>`
+- **Dashboard**: `http://<TAILSCALE_IP>:3142`
 
 ### Deployment Commands
 ```bash
-# SSH into Mac Mini
-SSH_AUTH_SOCK= ssh -o IdentitiesOnly=yes -i ~/.ssh/id_ed25519 ari@100.81.73.34
+# Get the Mac Mini's Tailscale IP
+tailscale status | grep -i ari
+
+# SSH into Mac Mini (replace IP)
+ssh ari@<TAILSCALE_IP>
 
 # Pull, build, restart
 cd ~/Work/ARI && git pull && npm run build
@@ -422,6 +425,29 @@ curl http://localhost:3142/health
 - **Code style**: Run `npm run lint` for automatic checks
 
 ---
+
+<div align="center">
+
+```
+    █████╗ ██████╗ ██╗
+   ██╔══██╗██╔══██╗██║
+   ███████║██████╔╝██║
+   ██╔══██║██╔══██╗██║
+   ██║  ██║██║  ██║██║
+   ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝
+```
+
+**Artificial Reasoning Intelligence**
+
+*Your Life Operating System*
+
+---
+
+Created by **Pryce Hedrick**
+
+Built with 🧠 by [Claude](https://anthropic.com) | Powered by curiosity and late nights
+
+</div>
 
 **Last Updated**: 2026-01-30
 **Version**: 2.0.0
