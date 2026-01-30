@@ -320,7 +320,7 @@ ARI is built on three principles:
 
 ## License
 
-[ARI License](LICENSE) — Use it. Learn from it. Make it yours.
+[ARI License](LICENSE)
 
 ---
 
@@ -328,27 +328,24 @@ ARI is built on three principles:
 
 <br>
 
-```
-┌────────────────────────────────────────┐
-│                                        │
-│   "What you build reflects who you     │
-│    are. Build something worth being."  │
-│                                        │
-└────────────────────────────────────────┘
-```
+I wanted to build something that thinks, remembers, and acts — but answers only to its owner.
 
-<br>
+Something that doesn't phone home. Doesn't sell your data. Doesn't exist to serve someone else's interests.
 
-**Pryce** — *Creator*
+ARI is that.
 
-The one who saw what this could be and made it real.
+It's not finished. It might never be. But it works, and it's real, and it's yours if you want it.
 
 <br>
 
 ---
 
-<sub>ARI exists because someone decided to build instead of wait.</sub>
+<br>
 
-<sub>The shadow reveals truth. · 2025</sub>
+**Pryce** — *Creator*
+
+<br>
+
+<sub>The shadow reveals truth.</sub>
 
 </div>
