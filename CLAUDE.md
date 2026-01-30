@@ -443,9 +443,7 @@ curl http://localhost:3142/health
 
 ---
 
-Created by **Pryce Hedrick**
-
-Built with 🧠 by [Claude](https://anthropic.com) | Powered by curiosity and late nights
+Created by **[Pryce Hedrick](https://github.com/PryceHedrick)**
 
 </div>
 

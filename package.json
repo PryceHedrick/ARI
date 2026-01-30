@@ -2,6 +2,15 @@
   "name": "ari",
   "version": "2.0.0",
   "description": "ARI - Artificial Reasoning Intelligence: Secure Multi-Agent Personal OS",
+  "author": {
+    "name": "Pryce Hedrick",
+    "url": "https://github.com/PryceHedrick"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ARI-OS/ARI.git"
+  },
+  "homepage": "https://github.com/ARI-OS/ARI",
   "type": "module",
   "main": "dist/index.js",
   "bin": {
