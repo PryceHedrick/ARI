@@ -146,9 +146,9 @@ npm run lint       # style
 
 <br>
 
-**[Pryce Hedrick](https://github.com/PryceHedrick)** — Creator
+**[Pryce Hedrick](https://github.com/PryceHedrick)**
 
-**[Claude](https://anthropic.com)** — Collaborator
+*The one who brought ARI online.*
 
 <br>
 
