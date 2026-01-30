@@ -3,7 +3,7 @@
 > **Status: SPECIFICATION (Pre-Implementation Design)**
 >
 > This directory contains the original v12 architecture specifications written before the production overhaul.
-> For the current implementation status, see the root [README.md](../../README.md) and [OVERHAUL_LOG.md](../OVERHAUL_LOG.md).
+> For the current implementation status, see the root [README.md](../../README.md) and [OVERHAUL_LOG.md](../archive/OVERHAUL_LOG.md).
 > The implemented system has 187 tests (exceeding the 70 specified here) and covers all layers documented below.
 
 > **Aurora Protocol Release**

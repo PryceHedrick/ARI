@@ -314,8 +314,9 @@ ARI is built on three principles:
 | Document | Description |
 |----------|-------------|
 | [CLAUDE.md](CLAUDE.md) | Context for AI assistants |
-| [SECURITY.md](docs/SECURITY.md) | Security model and threat analysis |
-| [ARCHITECTURE.md](docs/architecture/ARCHITECTURE.md) | Detailed system design |
+| [docs/](docs/README.md) | Full documentation index |
+| [docs/architecture/](docs/architecture/ARCHITECTURE.md) | System design and security model |
+| [docs/guides/](docs/guides/README.md) | Setup and operations guides |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Contribution guidelines |
 
 ---

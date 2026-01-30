@@ -1,0 +1,153 @@
+# 🖤 ARI Documentation
+
+> Your Life Operating System — Built to multiply human capability within strict boundaries.
+
+---
+
+## Find What You Need
+
+| You want to... | Start here |
+|----------------|------------|
+| **Get running quickly** | [Quick Start](guides/setup.md#quick-start) |
+| **Understand the architecture** | [Architecture Overview](architecture/ARCHITECTURE.md) |
+| **Set up development** | [Full Setup Guide](guides/setup.md) |
+| **Deploy to Mac Mini** | [Mac Mini Runbook](operations/RUNBOOK_MAC_MINI.md) |
+| **Work with Claude Code** | [Claude Code Setup](guides/CLAUDE-CODE-SETUP.md) |
+| **Report a security issue** | [Security Policy](../SECURITY.md) |
+
+---
+
+## Documentation Structure
+
+```
+docs/
+├── architecture/     # How ARI is built
+│   ├── ARCHITECTURE.md   — 6-layer system design
+│   ├── agents.md         — 8 specialized agents
+│   ├── security.md       — Threat model + defenses
+│   ├── principles.md     — Engineering philosophy
+│   └── DECISIONS.md      — Architectural decisions (ADRs)
+│
+├── guides/           # How to use ARI
+│   ├── setup.md          — Complete installation
+│   ├── OPERATIONS.md     — Day-to-day operations
+│   └── CLAUDE-CODE-SETUP.md — AI assistant setup
+│
+├── operations/       # Deployment runbooks
+│   ├── RUNBOOK_MAC.md       — macOS daemon setup
+│   └── RUNBOOK_MAC_MINI.md  — Mac Mini deployment
+│
+├── governance/       # Constitutional governance
+│   └── GOVERNANCE.md     — Council, Arbiter, Overseer
+│
+├── identity/         # Brand & voice
+│   ├── BRAND.md          — Voice, values, aesthetic
+│   └── X_PROFILE.md      — Social presence
+│
+├── reference/        # Technical reference
+│   └── stack.md          — Technology stack
+│
+├── audit/            # Security audits
+│   └── (audit reports)
+│
+├── archive/          # Historical documents
+│   └── history.md        — Project evolution
+│
+└── v12/              # Original specification
+    └── (pre-implementation design docs)
+```
+
+---
+
+## Core Documents (Root)
+
+These live at the repository root for visibility:
+
+| Document | Purpose |
+|----------|---------|
+| [README.md](../README.md) | Project overview + quickstart |
+| [CLAUDE.md](../CLAUDE.md) | AI assistant context (invariants, patterns, rules) |
+| [CONTRIBUTING.md](../CONTRIBUTING.md) | Development workflow |
+| [SECURITY.md](../SECURITY.md) | Vulnerability reporting |
+| [CHANGELOG.md](../CHANGELOG.md) | Version history |
+
+---
+
+## The 6 Layers
+
+ARI's architecture is strictly layered. Each layer only imports from layers below it:
+
+```
+┌─────────────────────────────────────────┐
+│  6. Interfaces   CLI, Dashboard         │
+├─────────────────────────────────────────┤
+│  5. Execution    Daemon, Ops            │
+├─────────────────────────────────────────┤
+│  4. Strategic    Council, Arbiter       │
+├─────────────────────────────────────────┤
+│  3. Core         Agents (5 types)       │
+├─────────────────────────────────────────┤
+│  2. System       Router, Storage        │
+├─────────────────────────────────────────┤
+│  1. Kernel       Gateway, Sanitizer,    │
+│                  Audit, EventBus        │
+└─────────────────────────────────────────┘
+```
+
+→ [Full architecture details](architecture/ARCHITECTURE.md)
+
+---
+
+## The 8 Agents
+
+| Agent | Layer | Responsibility |
+|-------|-------|----------------|
+| **Core** | 3 | Orchestrate message pipeline |
+| **Guardian** | 3 | Detect threats |
+| **Planner** | 3 | Decompose tasks |
+| **Executor** | 3 | Run tools |
+| **Memory Manager** | 3 | Store knowledge |
+| **Council** | 4 | Vote on decisions |
+| **Arbiter** | 4 | Enforce rules |
+| **Overseer** | 4 | Check quality gates |
+
+→ [Agent design details](architecture/agents.md)
+
+---
+
+## Security Model
+
+**Core Principle: Content ≠ Command**
+
+All inbound content is DATA, never instructions.
+
+- 21 injection patterns detected across 6 categories
+- SHA-256 hash-chained audit trail
+- 6 trust levels with risk multipliers
+- Loopback-only gateway (127.0.0.1)
+
+→ [Security model details](architecture/security.md)
+
+---
+
+## Philosophy
+
+ARI is built on three principles:
+
+| Principle | Source | Implementation |
+|-----------|--------|----------------|
+| **Shadow Integration** | Jung | Observe anomalies, don't suppress them |
+| **Ruthless Simplicity** | Musashi | Every component has one job |
+| **Radical Transparency** | Dalio | All actions audited with full provenance |
+
+→ [Engineering principles](architecture/principles.md)
+
+---
+
+<div align="center">
+
+🖤
+
+**ARI v2.0.0** — Aurora Protocol
+
+</div>

@@ -190,7 +190,7 @@ ARI is designed for single-user, local operation. The following are known limita
 
 ## Security Updates
 
-Security updates will be released as patch versions (12.0.x). Critical vulnerabilities will be addressed within 7 days of confirmation.
+Security updates will be released as patch versions (2.0.x). Critical vulnerabilities will be addressed within 7 days of confirmation.
 
 ## Contact
 
