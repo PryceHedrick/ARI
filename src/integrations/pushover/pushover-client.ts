@@ -46,6 +46,14 @@ export interface IncomingMessage {
   acked: number;
 }
 
+// Pushover API response types
+interface PushoverApiResponse {
+  status: number;
+  request?: string;
+  errors?: string[];
+  messages?: IncomingMessage[];
+}
+
 export class PushoverClient extends EventEmitter {
   private config: PushoverConfig;
   private pollTimer: NodeJS.Timeout | null = null;
@@ -91,7 +99,7 @@ export class PushoverClient extends EventEmitter {
         res.on('data', (chunk) => (body += chunk));
         res.on('end', () => {
           try {
-            const parsed = JSON.parse(body);
+            const parsed = JSON.parse(body) as PushoverApiResponse;
             if (parsed.status === 1) {
               resolve({ success: true, requestId: parsed.request });
             } else {
@@ -153,7 +161,7 @@ export class PushoverClient extends EventEmitter {
         res.on('data', (chunk) => (body += chunk));
         res.on('end', () => {
           try {
-            const parsed = JSON.parse(body);
+            const parsed = JSON.parse(body) as PushoverApiResponse;
             resolve({
               success: parsed.status === 1,
               requestId: parsed.request,
@@ -230,9 +238,9 @@ export class PushoverClient extends EventEmitter {
         res.on('data', (chunk) => (body += chunk));
         res.on('end', () => {
           try {
-            const parsed = JSON.parse(body);
+            const parsed = JSON.parse(body) as PushoverApiResponse;
             if (parsed.status === 1 && parsed.messages) {
-              for (const msg of parsed.messages as IncomingMessage[]) {
+              for (const msg of parsed.messages) {
                 if (msg.id > this.lastMessageId) {
                   this.lastMessageId = msg.id;
                   this.emit('message', msg);
@@ -283,7 +291,7 @@ export class PushoverClient extends EventEmitter {
         res.on('data', (chunk) => (body += chunk));
         res.on('end', () => {
           try {
-            const parsed = JSON.parse(body);
+            const parsed = JSON.parse(body) as PushoverApiResponse;
             resolve(parsed.status === 1);
           } catch {
             resolve(false);
@@ -323,7 +331,7 @@ export class PushoverClient extends EventEmitter {
         res.on('data', (chunk) => (body += chunk));
         res.on('end', () => {
           try {
-            const parsed = JSON.parse(body);
+            const parsed = JSON.parse(body) as PushoverApiResponse;
             resolve(parsed.status === 1);
           } catch {
             resolve(false);

@@ -104,10 +104,10 @@ export class GmailReceiver extends EventEmitter {
   /**
    * Disconnect from Gmail
    */
-  async disconnect(): Promise<void> {
+  disconnect(): void {
     if (this.connection) {
       try {
-        await this.connection.end();
+        this.connection.end();
       } catch {
         // Ignore disconnect errors
       }
@@ -143,7 +143,7 @@ export class GmailReceiver extends EventEmitter {
   /**
    * Stop polling
    */
-  async stop(): Promise<void> {
+  stop(): void {
     if (!this.running) return;
 
     this.running = false;
@@ -153,7 +153,7 @@ export class GmailReceiver extends EventEmitter {
       this.pollTimer = null;
     }
 
-    await this.disconnect();
+    this.disconnect();
     this.emit('stopped');
   }
 
@@ -165,9 +165,6 @@ export class GmailReceiver extends EventEmitter {
 
     try {
       await this.connection.openBox('INBOX');
-
-      // Search for unread messages from the user's phone
-      const senderAddress = this.getSenderAddress();
 
       // Search criteria: unread messages from the carrier gateway
       // Note: Some carriers use different "from" formats
@@ -194,7 +191,7 @@ export class GmailReceiver extends EventEmitter {
         const all = message.parts.find((p) => p.which === '');
         if (!all?.body) continue;
 
-        const parsed = await simpleParser(all.body);
+        const parsed = await simpleParser(all.body as Buffer);
 
         // Check if it's from the user's phone number
         const fromAddress = this.extractFromAddress(parsed.from?.text ?? '');
@@ -314,7 +311,7 @@ export class GmailReceiver extends EventEmitter {
    * Reconnect after error
    */
   private async reconnect(): Promise<void> {
-    await this.disconnect();
+    this.disconnect();
 
     // Wait before reconnecting
     await new Promise((resolve) => setTimeout(resolve, 5000));

@@ -12,7 +12,7 @@
 
 import { GmailReceiver, type IncomingSMS } from './gmail-receiver.js';
 import { GmailSMS } from './gmail-sms.js';
-import { SMSExecutor, smsExecutor } from './sms-executor.js';
+import { smsExecutor } from './sms-executor.js';
 import { ClaudeClient } from '../../autonomous/claude-client.js';
 import { dailyAudit } from '../../autonomous/daily-audit.js';
 import { EventEmitter } from 'node:events';
@@ -120,7 +120,7 @@ Always return valid JSON. The response field is what gets texted to user.`;
   /**
    * Initialize the conversation system
    */
-  async init(): Promise<boolean> {
+  init(): boolean {
     // Initialize sender
     if (!this.sender.init()) {
       this.emit('error', new Error('Failed to initialize SMS sender'));
@@ -165,9 +165,9 @@ Always return valid JSON. The response field is what gets texted to user.`;
   /**
    * Stop the conversation system
    */
-  async stop(): Promise<void> {
+  stop(): void {
     if (this.receiver) {
-      await this.receiver.stop();
+      this.receiver.stop();
     }
     this.emit('stopped');
   }
@@ -349,17 +349,18 @@ Always return valid JSON. The response field is what gets texted to user.`;
       const claudeResponse = await this.claude.chat(messages, decisionPrompt);
 
       // STEP 2: Parse Claude's decision
-      let decision: {
+      type ClaudeDecision = {
         thinking?: string;
         actions?: Array<{ type: string; command?: string; args?: string[] }>;
         response?: string;
       };
+      let decision: ClaudeDecision;
 
       try {
         // Try to parse JSON from response
         const jsonMatch = claudeResponse.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
-          decision = JSON.parse(jsonMatch[0]);
+          decision = JSON.parse(jsonMatch[0]) as ClaudeDecision;
         } else {
           // If no JSON, treat as simple response
           decision = { actions: [{ type: 'respond_only' }], response: claudeResponse };

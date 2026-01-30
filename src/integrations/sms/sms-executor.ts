@@ -47,7 +47,7 @@ const SAFE_COMMANDS = new Set([
 
 // Dangerous patterns that are blocked
 const BLOCKED_PATTERNS = [
-  /rm\s+-rf?\s+[\/~]/i,        // rm -rf with root paths
+  /rm\s+-rf?\s+[/~]/i,         // rm -rf with root paths
   /mkfs/i,                      // Filesystem format
   /dd\s+if=/i,                  // Disk operations
   />\s*\/dev\//i,               // Writing to devices

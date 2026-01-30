@@ -21,6 +21,13 @@
 import { createTransport, type Transporter } from 'nodemailer';
 import type { SMSConfig } from '../../autonomous/types.js';
 
+// Type for nodemailer sendMail result
+interface SendMailResult {
+  messageId?: string;
+  accepted?: string[];
+  rejected?: string[];
+}
+
 export interface SMSResult {
   sent: boolean;
   reason: string;
@@ -164,12 +171,12 @@ export class GmailSMS {
     }
 
     try {
-      const result = await this.transporter.sendMail({
+      const result = (await this.transporter.sendMail({
         from: this.config.gmailUser,
         to: this.getRecipient(),
         subject: options?.subject ?? 'ARI',
         text: finalMessage,
-      });
+      })) as SendMailResult;
 
       // Record in history
       this.sendHistory.push({
