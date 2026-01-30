@@ -1,19 +1,36 @@
 /**
- * ARI Notification Manager
+ * ARI Multi-Channel Notification Manager
  *
- * Intelligent notification system that decides WHEN and HOW to notify Pryce.
- * Uses context, time, importance, and history to avoid noise while ensuring
- * critical information gets through.
+ * Intelligent notification system that routes notifications through
+ * SMS (via Gmail/Verizon gateway) and Notion based on priority,
+ * time of day, and rate limits.
+ *
+ * Channel Decision Matrix:
+ * | Priority | Work Hours (7a-10p) | Quiet Hours (10p-7a) |
+ * |----------|---------------------|----------------------|
+ * | P0       | SMS + Notion        | SMS + Notion         |
+ * | P1       | SMS + Notion        | Queue for 7AM        |
+ * | P2       | Notion only         | Queue                |
+ * | P3-P4    | Notion (batched)    | Queue                |
  *
  * Philosophy: Notify only when it adds value to Pryce's life.
  */
 
-import { PushoverClient } from './pushover-client.js';
+import { GmailSMS, type SMSResult } from '../integrations/sms/gmail-sms.js';
+import { NotionInbox } from '../integrations/notion/inbox.js';
 import { dailyAudit } from './daily-audit.js';
+import type {
+  SMSConfig,
+  NotionConfig,
+  NotificationEntry,
+  NotificationPriority as TypedPriority,
+  QueuedNotification,
+} from './types.js';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-export type NotificationPriority = 'critical' | 'high' | 'normal' | 'low' | 'silent';
+// Internal priority type (distinct from types.ts NotificationPriority which is P0-P4)
+type InternalPriority = 'critical' | 'high' | 'normal' | 'low' | 'silent';
 
 export type NotificationCategory =
   | 'error'           // System errors, failures
@@ -32,10 +49,11 @@ export interface NotificationRequest {
   category: NotificationCategory;
   title: string;
   body: string;
-  priority?: NotificationPriority;
+  priority?: InternalPriority;
   data?: Record<string, unknown>;
   actionUrl?: string;
   expiresAt?: Date;
+  dedupKey?: string; // For deduplication
 }
 
 export interface NotificationResult {
@@ -43,30 +61,44 @@ export interface NotificationResult {
   reason: string;
   notificationId?: string;
   queuedForBatch?: boolean;
+  channels?: {
+    sms?: SMSResult;
+    notion?: { pageId?: string };
+  };
 }
 
 interface NotificationHistory {
   category: NotificationCategory;
   title: string;
   sentAt: number;
-  priority: NotificationPriority;
+  priority: InternalPriority;
+  dedupKey?: string;
 }
 
 interface NotificationConfig {
   quietHours: { start: number; end: number };
-  maxPerHour: number;
+  maxSmsPerHour: number;
   maxPerDay: number;
   batchTime: number; // Hour to send batched notifications
+  escalationThreshold: number; // Number of same errors before escalation
   cooldowns: Record<NotificationCategory, number>; // Minutes between same category
+  timezone: string;
+}
+
+interface ChannelConfig {
+  sms: SMSConfig;
+  notion: NotionConfig;
 }
 
 // ─── Default Configuration ───────────────────────────────────────────────────
 
 const DEFAULT_CONFIG: NotificationConfig = {
-  quietHours: { start: 22, end: 7 }, // 10pm - 7am
-  maxPerHour: 5,
+  quietHours: { start: 22, end: 7 }, // 10pm - 7am Indiana time
+  maxSmsPerHour: 5,
   maxPerDay: 20,
-  batchTime: 8, // 8am
+  batchTime: 7, // 7am - send queued notifications
+  escalationThreshold: 3, // 3 same P1 errors → escalate to P0
+  timezone: 'America/Indiana/Indianapolis',
   cooldowns: {
     error: 5,
     security: 0, // Always send security
@@ -82,9 +114,9 @@ const DEFAULT_CONFIG: NotificationConfig = {
   },
 };
 
-// ─── Priority Rules ──────────────────────────────────────────────────────────
+// ─── Priority Mapping ────────────────────────────────────────────────────────
 
-const CATEGORY_PRIORITIES: Record<NotificationCategory, NotificationPriority> = {
+const CATEGORY_PRIORITIES: Record<NotificationCategory, InternalPriority> = {
   error: 'high',
   security: 'critical',
   opportunity: 'high',
@@ -98,13 +130,25 @@ const CATEGORY_PRIORITIES: Record<NotificationCategory, NotificationPriority> = 
   daily: 'normal',
 };
 
-// ─── Notification Manager ────────────────────────────────────────────────────
+// Map our internal priorities to P0-P4 for routing
+const PRIORITY_TO_P: Record<InternalPriority, TypedPriority> = {
+  critical: 'P0',
+  high: 'P1',
+  normal: 'P2',
+  low: 'P3',
+  silent: 'P4',
+};
+
+// ─── Multi-Channel Notification Manager ──────────────────────────────────────
 
 export class NotificationManager {
-  private pushover: PushoverClient | null = null;
+  private sms: GmailSMS | null = null;
+  private notion: NotionInbox | null = null;
   private config: NotificationConfig;
   private history: NotificationHistory[] = [];
-  private batchQueue: NotificationRequest[] = [];
+  private batchQueue: QueuedNotification[] = [];
+  private legacyBatchQueue: NotificationRequest[] = []; // For backward compat
+  private escalationTracker: Map<string, { count: number; firstSeen: number }> = new Map();
   private initialized = false;
 
   constructor(config: Partial<NotificationConfig> = {}) {
@@ -112,145 +156,387 @@ export class NotificationManager {
   }
 
   /**
-   * Initialize with Pushover client
+   * Legacy init for backward compatibility with Pushover-based systems
+   * @deprecated Use init(channels) instead
    */
-  init(pushover: PushoverClient): void {
-    this.pushover = pushover;
+  initLegacy(): void {
+    // Mark as initialized but with no channels
+    // This allows the notify() method to work in degraded mode
     this.initialized = true;
   }
 
   /**
-   * Main entry point - intelligently handles notification
+   * Initialize with channel configurations
+   */
+  async init(channels: ChannelConfig): Promise<{ sms: boolean; notion: boolean }> {
+    const results = { sms: false, notion: false };
+
+    // Initialize SMS
+    if (channels.sms.enabled) {
+      this.sms = new GmailSMS(channels.sms);
+      results.sms = this.sms.init();
+      if (results.sms) {
+        results.sms = await this.sms.testConnection();
+      }
+    }
+
+    // Initialize Notion
+    if (channels.notion.enabled) {
+      this.notion = new NotionInbox(channels.notion);
+      results.notion = await this.notion.init();
+    }
+
+    this.initialized = results.sms || results.notion;
+    return results;
+  }
+
+  /**
+   * Check if at least one channel is ready
+   */
+  isReady(): boolean {
+    return this.initialized;
+  }
+
+  /**
+   * Main entry point - intelligently routes notification
    */
   async notify(request: NotificationRequest): Promise<NotificationResult> {
-    if (!this.initialized || !this.pushover) {
+    if (!this.initialized) {
       return { sent: false, reason: 'Not initialized' };
     }
 
     const priority = request.priority ?? CATEGORY_PRIORITIES[request.category];
+    const pLevel = PRIORITY_TO_P[priority];
 
-    // Critical always goes through
-    if (priority === 'critical') {
-      return this.sendNow(request, priority);
-    }
-
-    // Silent just logs
-    if (priority === 'silent') {
-      await this.logOnly(request);
-      return { sent: false, reason: 'Silent notification logged' };
-    }
+    // Check for escalation (3 same P1 errors → P0)
+    const escalatedPriority = this.checkEscalation(request, pLevel);
+    const finalPLevel = escalatedPriority ?? pLevel;
 
     // Check if expired
     if (request.expiresAt && new Date() > request.expiresAt) {
       return { sent: false, reason: 'Notification expired' };
     }
 
-    // Check quiet hours (high priority can break through)
-    if (this.isQuietHours() && priority !== 'high') {
-      this.batchQueue.push(request);
-      await this.logOnly(request, 'batched_quiet_hours');
-      return { sent: false, reason: 'Queued for morning (quiet hours)', queuedForBatch: true };
-    }
-
-    // Check rate limits
-    if (this.isRateLimited()) {
-      if (priority === 'high') {
-        return this.sendNow(request, priority);
-      }
-      this.batchQueue.push(request);
-      await this.logOnly(request, 'batched_rate_limit');
-      return { sent: false, reason: 'Queued (rate limited)', queuedForBatch: true };
-    }
-
-    // Check cooldown for this category
-    if (this.isOnCooldown(request.category)) {
-      if (priority === 'high') {
-        return this.sendNow(request, priority);
-      }
-      this.batchQueue.push(request);
-      await this.logOnly(request, 'batched_cooldown');
-      return { sent: false, reason: `Queued (${request.category} cooldown)`, queuedForBatch: true };
-    }
-
-    // Low priority gets batched
-    if (priority === 'low') {
-      this.batchQueue.push(request);
-      await this.logOnly(request, 'batched_low_priority');
-      return { sent: false, reason: 'Queued for batch (low priority)', queuedForBatch: true };
-    }
-
-    // Send it
-    return this.sendNow(request, priority);
+    // Route based on priority and time
+    return this.routeNotification(request, priority, finalPLevel);
   }
 
   /**
-   * Send notification immediately
+   * Route notification to appropriate channels
    */
-  private async sendNow(
+  private async routeNotification(
     request: NotificationRequest,
-    priority: NotificationPriority
+    priority: InternalPriority,
+    pLevel: TypedPriority
   ): Promise<NotificationResult> {
-    if (!this.pushover) {
-      return { sent: false, reason: 'Pushover not configured' };
+    const isQuiet = this.isQuietHours();
+    const channels: NotificationResult['channels'] = {};
+    let sent = false;
+    let reason = '';
+
+    // P0 (critical): Always SMS + Notion
+    if (pLevel === 'P0') {
+      channels.sms = await this.sendSMS(request, true);
+      channels.notion = await this.sendNotion(request, pLevel);
+      sent = (channels.sms?.sent ?? false) || !!channels.notion?.pageId;
+      reason = 'P0: Immediate delivery';
+    }
+    // P1 during work hours: SMS + Notion
+    else if (pLevel === 'P1' && !isQuiet) {
+      channels.sms = await this.sendSMS(request, false);
+      channels.notion = await this.sendNotion(request, pLevel);
+      sent = (channels.sms?.sent ?? false) || !!channels.notion?.pageId;
+      reason = 'P1: Work hours delivery';
+    }
+    // P1 during quiet hours: Queue for morning
+    else if (pLevel === 'P1' && isQuiet) {
+      this.queueForMorning(request, pLevel, 'quiet_hours_p1');
+      channels.notion = await this.sendNotion(request, pLevel); // Still log to Notion
+      sent = false;
+      reason = 'P1: Queued for 7 AM (quiet hours)';
+    }
+    // P2 during work hours: Notion only
+    else if (pLevel === 'P2' && !isQuiet) {
+      channels.notion = await this.sendNotion(request, pLevel);
+      sent = !!channels.notion?.pageId;
+      reason = 'P2: Notion only';
+    }
+    // P2+ during quiet hours: Queue
+    else if (isQuiet) {
+      this.queueForMorning(request, pLevel, 'quiet_hours');
+      sent = false;
+      reason = `${pLevel}: Queued for morning`;
+    }
+    // P3/P4 during work hours: Notion batched
+    else {
+      this.queueForBatch(request, pLevel);
+      sent = false;
+      reason = `${pLevel}: Batched for next summary`;
     }
 
-    const message = this.formatMessage(request);
-    const pushoverPriority = this.toPushoverPriority(priority);
-
-    const success = await this.pushover.send(message.body, {
-      title: message.title,
-      priority: pushoverPriority,
-      sound: this.getSound(request.category, priority),
-      url: request.actionUrl,
-    });
-
-    if (success) {
+    // Record in history
+    if (sent) {
       this.recordHistory(request, priority);
-      await dailyAudit.logActivity(
-        'notification_sent',
-        request.title,
-        request.body,
-        {
-          details: { category: request.category, priority },
-          outcome: 'success',
-        }
-      );
     }
 
-    return {
-      sent: success,
-      reason: success ? 'Sent' : 'Failed to send',
-      notificationId: success ? crypto.randomUUID() : undefined,
-    };
-  }
-
-  /**
-   * Log notification without sending
-   */
-  private async logOnly(request: NotificationRequest, reason?: string): Promise<void> {
+    // Log to audit
     await dailyAudit.logActivity(
-      'notification_batched',
+      sent ? 'notification_sent' : 'notification_batched',
       request.title,
       request.body,
       {
-        details: {
-          category: request.category,
-          priority: request.priority ?? CATEGORY_PRIORITIES[request.category],
-          reason,
-        },
+        details: { category: request.category, priority, pLevel, channels },
+        outcome: sent ? 'success' : 'pending',
       }
     );
+
+    return {
+      sent,
+      reason,
+      notificationId: sent ? crypto.randomUUID() : undefined,
+      queuedForBatch: !sent,
+      channels,
+    };
   }
 
   /**
-   * Format the notification message
+   * Send SMS notification
    */
-  private formatMessage(request: NotificationRequest): { title: string; body: string } {
+  private async sendSMS(
+    request: NotificationRequest,
+    force: boolean
+  ): Promise<SMSResult | undefined> {
+    if (!this.sms?.isReady()) {
+      return undefined;
+    }
+
     const icon = this.getCategoryIcon(request.category);
-    return {
-      title: `${icon} ${request.title}`,
+    const message = `${icon} ${request.title}\n${request.body.slice(0, 100)}`;
+
+    return await this.sms.send(message, { forceDelivery: force });
+  }
+
+  /**
+   * Send Notion notification
+   */
+  private async sendNotion(
+    request: NotificationRequest,
+    pLevel: TypedPriority
+  ): Promise<{ pageId?: string }> {
+    if (!this.notion?.isReady()) {
+      return {};
+    }
+
+    const entry: NotificationEntry = {
+      id: crypto.randomUUID(),
+      priority: pLevel,
+      title: request.title,
       body: request.body,
+      category: request.category,
+      channel: 'notion',
+      sentAt: new Date().toISOString(),
+      smsSent: false,
+      notionSent: true,
+      dedupKey: request.dedupKey,
+      escalationCount: 0,
     };
+
+    const pageId = await this.notion.createEntry(entry);
+    return { pageId: pageId ?? undefined };
+  }
+
+  /**
+   * Queue notification for morning delivery
+   */
+  private queueForMorning(
+    request: NotificationRequest,
+    pLevel: TypedPriority,
+    reason: string
+  ): void {
+    // Calculate next 7 AM Indiana time
+    const now = new Date();
+    const indiana = new Date(
+      now.toLocaleString('en-US', { timeZone: this.config.timezone })
+    );
+
+    const nextMorning = new Date(indiana);
+    nextMorning.setHours(this.config.batchTime, 0, 0, 0);
+
+    if (indiana.getHours() >= this.config.batchTime) {
+      nextMorning.setDate(nextMorning.getDate() + 1);
+    }
+
+    const entry: NotificationEntry = {
+      id: crypto.randomUUID(),
+      priority: pLevel,
+      title: request.title,
+      body: request.body,
+      category: request.category,
+      channel: 'both',
+      queuedAt: now.toISOString(),
+      queuedFor: nextMorning.toISOString(),
+      smsSent: false,
+      notionSent: false,
+      dedupKey: request.dedupKey,
+      escalationCount: 0,
+    };
+
+    this.batchQueue.push({
+      entry,
+      scheduledFor: nextMorning.toISOString(),
+      reason,
+    });
+  }
+
+  /**
+   * Queue notification for batched delivery
+   */
+  private queueForBatch(
+    request: NotificationRequest,
+    pLevel: TypedPriority
+  ): void {
+    const entry: NotificationEntry = {
+      id: crypto.randomUUID(),
+      priority: pLevel,
+      title: request.title,
+      body: request.body,
+      category: request.category,
+      channel: 'notion',
+      queuedAt: new Date().toISOString(),
+      smsSent: false,
+      notionSent: false,
+      dedupKey: request.dedupKey,
+      escalationCount: 0,
+    };
+
+    this.batchQueue.push({
+      entry,
+      scheduledFor: new Date().toISOString(),
+      reason: 'low_priority_batch',
+    });
+  }
+
+  /**
+   * Check if repeated errors should escalate to P0
+   */
+  private checkEscalation(
+    request: NotificationRequest,
+    currentP: TypedPriority
+  ): TypedPriority | null {
+    // Only escalate P1 errors
+    if (currentP !== 'P1' || request.category !== 'error') {
+      return null;
+    }
+
+    const key = request.dedupKey ?? `${request.category}:${request.title}`;
+    const now = Date.now();
+    const windowMs = 30 * 60 * 1000; // 30 minute window
+
+    const existing = this.escalationTracker.get(key);
+
+    if (existing && now - existing.firstSeen < windowMs) {
+      existing.count++;
+      if (existing.count >= this.config.escalationThreshold) {
+        this.escalationTracker.delete(key);
+        return 'P0'; // Escalate!
+      }
+    } else {
+      this.escalationTracker.set(key, { count: 1, firstSeen: now });
+    }
+
+    // Clean old entries
+    for (const [k, v] of this.escalationTracker.entries()) {
+      if (now - v.firstSeen > windowMs) {
+        this.escalationTracker.delete(k);
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Check if in quiet hours (Indiana time)
+   */
+  private isQuietHours(): boolean {
+    const now = new Date();
+    const indiana = new Date(
+      now.toLocaleString('en-US', { timeZone: this.config.timezone })
+    );
+    const hour = indiana.getHours();
+
+    const { start, end } = this.config.quietHours;
+
+    // Handle wrap-around (22:00 - 07:00)
+    if (start > end) {
+      return hour >= start || hour < end;
+    }
+    return hour >= start && hour < end;
+  }
+
+  /**
+   * Record sent notification in history
+   */
+  private recordHistory(request: NotificationRequest, priority: InternalPriority): void {
+    this.history.push({
+      category: request.category,
+      title: request.title,
+      sentAt: Date.now(),
+      priority,
+      dedupKey: request.dedupKey,
+    });
+
+    // Keep last 24 hours only
+    const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000;
+    this.history = this.history.filter((h) => h.sentAt > oneDayAgo);
+  }
+
+  /**
+   * Process and send queued notifications (called at batch time)
+   */
+  async processQueue(): Promise<{ processed: number; sent: number }> {
+    const now = new Date();
+    const toProcess = this.batchQueue.filter(
+      (q) => new Date(q.scheduledFor) <= now
+    );
+
+    if (toProcess.length === 0) {
+      return { processed: 0, sent: 0 };
+    }
+
+    let sent = 0;
+
+    // Group by priority
+    const p1Items = toProcess.filter((q) => q.entry.priority === 'P1');
+    const otherItems = toProcess.filter((q) => q.entry.priority !== 'P1');
+
+    // Send P1 items individually via SMS
+    for (const item of p1Items) {
+      const smsResult = await this.sms?.send(
+        `${this.getCategoryIcon(item.entry.category as NotificationCategory)} ${item.entry.title}`,
+        { forceDelivery: false }
+      );
+      if (smsResult?.sent) sent++;
+    }
+
+    // Batch other items to Notion
+    if (otherItems.length > 0 && this.notion?.isReady()) {
+      const entries = otherItems.map((q) => q.entry);
+      await this.notion.createBatchSummary(entries);
+      sent += otherItems.length;
+    }
+
+    // Send morning summary SMS if there were items
+    if (toProcess.length > 0 && this.sms?.isReady()) {
+      const summary = `Morning: ${toProcess.length} items (${p1Items.length} important). Check Notion.`;
+      await this.sms.send(summary, { forceDelivery: false, subject: 'ARI Morning' });
+    }
+
+    // Remove processed items
+    this.batchQueue = this.batchQueue.filter(
+      (q) => new Date(q.scheduledFor) > now
+    );
+
+    return { processed: toProcess.length, sent };
   }
 
   /**
@@ -274,138 +560,70 @@ export class NotificationManager {
   }
 
   /**
-   * Get appropriate sound
+   * Get batch queue count
    */
-  private getSound(category: NotificationCategory, priority: NotificationPriority): string {
-    if (priority === 'critical') return 'siren';
-    if (priority === 'high') return 'cosmic';
-
-    const sounds: Record<NotificationCategory, string> = {
-      error: 'falling',
-      security: 'siren',
-      opportunity: 'magic',
-      milestone: 'magic',
-      insight: 'cosmic',
-      question: 'pushover',
-      reminder: 'pushover',
-      finance: 'cashregister',
-      task: 'none',
-      system: 'none',
-      daily: 'cosmic',
-    };
-    return sounds[category];
+  getBatchCount(): number {
+    return this.batchQueue.length + this.legacyBatchQueue.length;
   }
 
   /**
-   * Convert to Pushover priority
-   */
-  private toPushoverPriority(priority: NotificationPriority): -2 | -1 | 0 | 1 {
-    switch (priority) {
-      case 'critical': return 1;
-      case 'high': return 0;
-      case 'normal': return 0;
-      case 'low': return -1;
-      case 'silent': return -2;
-    }
-  }
-
-  /**
-   * Check if in quiet hours
-   */
-  private isQuietHours(): boolean {
-    const hour = new Date().getHours();
-    const { start, end } = this.config.quietHours;
-
-    if (start > end) {
-      return hour >= start || hour < end;
-    }
-    return hour >= start && hour < end;
-  }
-
-  /**
-   * Check rate limits
-   */
-  private isRateLimited(): boolean {
-    const now = Date.now();
-    const oneHourAgo = now - 60 * 60 * 1000;
-    const oneDayAgo = now - 24 * 60 * 60 * 1000;
-
-    // Clean old history
-    this.history = this.history.filter(h => h.sentAt > oneDayAgo);
-
-    const hourlyCount = this.history.filter(h => h.sentAt > oneHourAgo).length;
-    const dailyCount = this.history.length;
-
-    return hourlyCount >= this.config.maxPerHour || dailyCount >= this.config.maxPerDay;
-  }
-
-  /**
-   * Check if category is on cooldown
-   */
-  private isOnCooldown(category: NotificationCategory): boolean {
-    const cooldownMinutes = this.config.cooldowns[category];
-    if (cooldownMinutes === 0) return false;
-
-    const cooldownMs = cooldownMinutes * 60 * 1000;
-    const lastSent = this.history
-      .filter(h => h.category === category)
-      .sort((a, b) => b.sentAt - a.sentAt)[0];
-
-    if (!lastSent) return false;
-
-    return Date.now() - lastSent.sentAt < cooldownMs;
-  }
-
-  /**
-   * Record sent notification in history
-   */
-  private recordHistory(request: NotificationRequest, priority: NotificationPriority): void {
-    this.history.push({
-      category: request.category,
-      title: request.title,
-      sentAt: Date.now(),
-      priority,
-    });
-  }
-
-  /**
-   * Send batched notifications as a summary
+   * Legacy: Send batched notifications as a summary
+   * @deprecated Use processQueue() instead
    */
   async sendBatchSummary(): Promise<void> {
-    if (this.batchQueue.length === 0 || !this.pushover) return;
+    // Process modern queue
+    await this.processQueue();
 
-    const summary = this.formatBatchSummary();
+    // Process legacy queue if any
+    if (this.legacyBatchQueue.length === 0) return;
 
-    await this.pushover.send(summary.body, {
-      title: summary.title,
-      priority: 0,
-      sound: 'cosmic',
-    });
+    const summary = this.formatLegacyBatchSummary();
+
+    // Try to send via SMS if available
+    if (this.sms?.isReady()) {
+      await this.sms.send(summary.body.slice(0, 160), { forceDelivery: false });
+    }
+
+    // Log to Notion if available
+    if (this.notion?.isReady()) {
+      await this.notion.createEntry({
+        id: crypto.randomUUID(),
+        priority: 'P3',
+        title: summary.title,
+        body: summary.body,
+        category: 'batch',
+        channel: 'notion',
+        sentAt: new Date().toISOString(),
+        smsSent: false,
+        notionSent: true,
+        escalationCount: 0,
+      });
+    }
 
     await dailyAudit.logActivity(
       'notification_sent',
       'Batch Summary',
-      `${this.batchQueue.length} notifications batched`,
+      `${this.legacyBatchQueue.length} notifications batched`,
       { outcome: 'success' }
     );
 
-    this.batchQueue = [];
+    this.legacyBatchQueue = [];
   }
 
   /**
-   * Format batch summary
+   * Format legacy batch summary
    */
-  private formatBatchSummary(): { title: string; body: string } {
+  private formatLegacyBatchSummary(): { title: string; body: string } {
     const byCategory = new Map<NotificationCategory, NotificationRequest[]>();
 
-    for (const req of this.batchQueue) {
+    for (const req of this.legacyBatchQueue) {
       const existing = byCategory.get(req.category) || [];
       existing.push(req);
       byCategory.set(req.category, existing);
     }
 
     const lines: string[] = [];
-    lines.push(`${this.batchQueue.length} updates while away:`);
+    lines.push(`${this.legacyBatchQueue.length} updates while away:`);
     lines.push('');
 
     byCategory.forEach((items, category) => {
@@ -426,10 +644,23 @@ export class NotificationManager {
   }
 
   /**
-   * Get batch queue count
+   * Get channel status
    */
-  getBatchCount(): number {
-    return this.batchQueue.length;
+  getStatus(): {
+    sms: { ready: boolean; stats?: ReturnType<GmailSMS['getStats']> };
+    notion: { ready: boolean; stats?: Awaited<ReturnType<NotionInbox['getStats']>> };
+    queueSize: number;
+  } {
+    return {
+      sms: {
+        ready: this.sms?.isReady() ?? false,
+        stats: this.sms?.getStats(),
+      },
+      notion: {
+        ready: this.notion?.isReady() ?? false,
+      },
+      queueSize: this.batchQueue.length,
+    };
   }
 
   // ─── Convenience Methods ─────────────────────────────────────────────────────
@@ -437,12 +668,13 @@ export class NotificationManager {
   /**
    * Notify about an error
    */
-  async error(title: string, details: string): Promise<NotificationResult> {
+  async error(title: string, details: string, dedupKey?: string): Promise<NotificationResult> {
     return this.notify({
       category: 'error',
       title,
       body: details,
       priority: 'high',
+      dedupKey,
     });
   }
 

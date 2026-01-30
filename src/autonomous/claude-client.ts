@@ -200,6 +200,31 @@ Respond concisely (max 500 chars). If this requires system execution, describe w
   }
 
   /**
+   * Multi-turn chat with custom system prompt
+   * Used for SMS conversations with context
+   */
+  async chat(
+    messages: Array<{ role: 'user' | 'assistant'; content: string }>,
+    systemPrompt?: string
+  ): Promise<string> {
+    try {
+      const response = await this.client.messages.create({
+        model: this.model,
+        max_tokens: this.maxTokens,
+        system: systemPrompt ?? SYSTEM_PROMPT,
+        messages: messages.map((m) => ({
+          role: m.role,
+          content: m.content,
+        })),
+      });
+
+      return response.content[0].type === 'text' ? response.content[0].text : '';
+    } catch (error) {
+      return `Error: ${error instanceof Error ? error.message : 'Unknown error'}`;
+    }
+  }
+
+  /**
    * Test API connection
    */
   async testConnection(): Promise<boolean> {

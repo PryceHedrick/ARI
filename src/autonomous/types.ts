@@ -114,3 +114,61 @@ export interface AgentResponse {
   taskId?: string;
   duration?: number;
 }
+
+// ── Notification Channel Types ─────────────────────────────────────────────
+
+export const NotificationPrioritySchema = z.enum(['P0', 'P1', 'P2', 'P3', 'P4']);
+export type NotificationPriority = z.infer<typeof NotificationPrioritySchema>;
+
+export const NotificationChannelSchema = z.enum(['sms', 'notion', 'both']);
+export type NotificationChannel = z.infer<typeof NotificationChannelSchema>;
+
+export const SMSConfigSchema = z.object({
+  enabled: z.boolean().default(false),
+  gmailUser: z.string().email().optional(),
+  gmailAppPassword: z.string().optional(),
+  carrierGateway: z.string().default('vtext.com'), // Verizon gateway
+  phoneNumber: z.string().optional(), // 10-digit, no country code
+  quietHoursStart: z.number().min(0).max(23).default(22), // 10 PM
+  quietHoursEnd: z.number().min(0).max(23).default(7), // 7 AM
+  maxPerHour: z.number().default(5), // Rate limit (except P0)
+  timezone: z.string().default('America/Indiana/Indianapolis'),
+});
+
+export type SMSConfig = z.infer<typeof SMSConfigSchema>;
+
+export const NotionConfigSchema = z.object({
+  enabled: z.boolean().default(false),
+  apiKey: z.string().optional(),
+  inboxDatabaseId: z.string().optional(),
+  dailyLogParentId: z.string().optional(), // Parent page for daily logs
+});
+
+export type NotionConfig = z.infer<typeof NotionConfigSchema>;
+
+export const NotificationEntrySchema = z.object({
+  id: z.string().uuid(),
+  priority: NotificationPrioritySchema,
+  title: z.string().max(100),
+  body: z.string().max(2000),
+  category: z.string(),
+  channel: NotificationChannelSchema,
+  sentAt: z.string().datetime().optional(),
+  queuedAt: z.string().datetime().optional(),
+  queuedFor: z.string().datetime().optional(), // Scheduled delivery time
+  notionPageId: z.string().optional(),
+  smsSent: z.boolean().default(false),
+  notionSent: z.boolean().default(false),
+  dedupKey: z.string().optional(), // For deduplication
+  escalationCount: z.number().default(0), // Track repeated issues
+});
+
+export type NotificationEntry = z.infer<typeof NotificationEntrySchema>;
+
+export const QueuedNotificationSchema = z.object({
+  entry: NotificationEntrySchema,
+  scheduledFor: z.string().datetime(),
+  reason: z.string(), // Why it was queued (quiet hours, rate limit, etc.)
+});
+
+export type QueuedNotification = z.infer<typeof QueuedNotificationSchema>

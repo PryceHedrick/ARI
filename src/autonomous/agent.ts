@@ -94,8 +94,8 @@ export class AutonomousAgent {
         secret: this.config.pushover.secret,
       });
 
-      // Initialize notification manager with Pushover
-      notificationManager.init(this.pushover);
+      // Initialize notification manager (legacy mode)
+      notificationManager.initLegacy();
     }
 
     // Initialize Claude if configured
