@@ -25,7 +25,7 @@
 
 ```bash
 # Clone
-git clone https://github.com/ARI-OS/ARI.git
+git clone https://github.com/Ari-OS/ARI.git
 cd ARI
 
 # Install and build
@@ -94,10 +94,10 @@ Download from https://nodejs.org/ (LTS version)
 
 ```bash
 # HTTPS
-git clone https://github.com/ARI-OS/ARI.git
+git clone https://github.com/Ari-OS/ARI.git
 
 # SSH (if configured)
-git clone git@github.com:ARI-OS/ARI.git
+git clone git@github.com:Ari-OS/ARI.git
 
 # Navigate to directory
 cd ARI

@@ -9,6 +9,7 @@ dashboard/dist/
 .env
 .env.local
 .env.*
+!.env.example
 
 # Credentials (NEVER commit)
 pushover.conf

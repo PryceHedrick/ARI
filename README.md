@@ -20,7 +20,7 @@
 <br>
 
 [![CI](https://github.com/ARI-OS/ARI/actions/workflows/ci.yml/badge.svg)](https://github.com/ARI-OS/ARI/actions/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/tests-708%20passing-brightgreen)](https://github.com/ARI-OS/ARI)
+[![Tests](https://img.shields.io/badge/tests-246%20passing-brightgreen)](https://github.com/ARI-OS/ARI)
 [![Coverage](https://img.shields.io/badge/coverage-92%25-brightgreen)](https://github.com/ARI-OS/ARI)
 
 </div>
@@ -35,6 +35,10 @@ ARI is a multi-agent system that runs entirely on your machine. It processes req
 - **Local-first** — All data stays on your machine. No cloud dependencies.
 - **Auditable** — Every decision is logged in a tamper-evident hash chain.
 - **Secure by design** — Loopback-only gateway. No external network access.
+
+> **Note**: This is a framework. The code is open source. Your data is not.
+>
+> Everything in `~/.ari/` stays on your machine — config, audit logs, memory, contexts. The architecture is shareable. The relationship you build with your instance is yours alone.
 
 ---
 
@@ -312,7 +316,7 @@ npm run dev                # Watch mode
 npm run clean              # Remove dist/
 
 # Test
-npm test                   # Run all tests
+npm test                   # Run 246 tests
 npm run test:watch         # Watch mode
 npm run test:coverage      # Coverage report
 
@@ -321,6 +325,22 @@ npm run typecheck          # Type checking
 npm run lint               # ESLint
 npm run lint:fix           # ESLint with auto-fix
 ```
+
+---
+
+## Your Data Stays Private
+
+ARI stores all personal data locally in `~/.ari/`. This directory is **gitignored** and never leaves your machine.
+
+| What's Private | What's Public |
+|----------------|---------------|
+| `~/.ari/config.json` — Your settings | Source code |
+| `~/.ari/audit.json` — Your audit trail | Architecture docs |
+| `~/.ari/contexts/` — Your contexts | Security model |
+| `~/.ari/pushover.conf` — Your API keys | Test suite |
+| `~/.ari/autonomous.json` — Your agent config | CLI tools |
+
+**The code is a framework. Your instance is yours.**
 
 ---
 
@@ -338,7 +358,7 @@ npm run lint:fix           # ESLint with auto-fix
 
 ## License
 
-[ARI License](LICENSE)
+[MIT License](LICENSE)
 
 ---
 
