@@ -1,13 +1,13 @@
 #!/usr/bin/env npx tsx
 /**
- * ARI Main Daemon
+ * ARI Main Daemon v2
  *
- * Two-way communication:
- * - Web interface for commands (Tailscale accessible)
- * - Pushover for notifications
- * - Claude for intelligent action execution
- *
- * Access: https://aris-mac-mini.tail947c7e.ts.net:3142
+ * Priority-based notification system:
+ * - P0: Critical → Pushover emergency (always)
+ * - P1: High → Pushover alert (bypasses quiet hours)
+ * - P2: Normal → Pushover (respects quiet hours)
+ * - P3: Low → Notion only
+ * - P4: Minimal → Notion batched
  */
 
 import Fastify from 'fastify';
@@ -16,17 +16,168 @@ import { PushoverClient } from '../src/integrations/pushover/pushover-client.js'
 import { NotionClient } from '../src/integrations/notion/notion-client.js';
 import { smsExecutor } from '../src/integrations/sms/sms-executor.js';
 import { ClaudeClient } from '../src/autonomous/claude-client.js';
-import { dailyAudit } from '../src/autonomous/daily-audit.js';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
 const PORT = 3142;
 const CONFIG_PATH = path.join(process.env.HOME || '~', '.ari', 'autonomous.json');
 
+// ═══════════════════════════════════════════════════════════════════════════
+// PRIORITY-BASED NOTIFICATION ROUTER
+// ═══════════════════════════════════════════════════════════════════════════
+
+type Priority = 'P0' | 'P1' | 'P2' | 'P3' | 'P4';
+
+interface NotificationConfig {
+  quietHours: { start: number; end: number };  // 24h format
+  timezone: string;
+  rateLimits: { pushover: number; window: number };  // max per window (minutes)
+}
+
+class NotificationRouter {
+  private pushover: PushoverClient;
+  private notion: NotionClient | null;
+  private config: NotificationConfig;
+  private recentNotifications: Map<string, number[]> = new Map();
+  private notionBatch: Array<{ title: string; content: string; priority: Priority }> = [];
+  private batchTimer: NodeJS.Timeout | null = null;
+
+  constructor(pushover: PushoverClient, notion: NotionClient | null, config: NotificationConfig) {
+    this.pushover = pushover;
+    this.notion = notion;
+    this.config = config;
+  }
+
+  private isQuietHours(): boolean {
+    const now = new Date();
+    const hour = now.getHours();
+    const { start, end } = this.config.quietHours;
+
+    if (start > end) {
+      // Overnight quiet hours (e.g., 22:00 - 07:00)
+      return hour >= start || hour < end;
+    }
+    return hour >= start && hour < end;
+  }
+
+  private isRateLimited(): boolean {
+    const now = Date.now();
+    const windowMs = this.config.rateLimits.window * 60 * 1000;
+    const key = 'pushover';
+
+    const timestamps = this.recentNotifications.get(key) || [];
+    const recent = timestamps.filter(t => now - t < windowMs);
+    this.recentNotifications.set(key, recent);
+
+    return recent.length >= this.config.rateLimits.pushover;
+  }
+
+  private recordNotification(): void {
+    const key = 'pushover';
+    const timestamps = this.recentNotifications.get(key) || [];
+    timestamps.push(Date.now());
+    this.recentNotifications.set(key, timestamps);
+  }
+
+  private async logToNotion(title: string, content: string, priority: Priority, category: 'action' | 'error' | 'notification' = 'action'): Promise<void> {
+    if (!this.notion) return;
+
+    try {
+      await this.notion.addLogEntry({ title, content, category, priority });
+    } catch (e) {
+      console.log('⚠ Notion:', e instanceof Error ? e.message : 'failed');
+    }
+  }
+
+  private scheduleBatch(): void {
+    if (this.batchTimer) return;
+
+    this.batchTimer = setTimeout(async () => {
+      if (this.notionBatch.length > 0 && this.notion) {
+        const summary = this.notionBatch.map(n => `• ${n.title}`).join('\n');
+        await this.logToNotion(
+          `Batch: ${this.notionBatch.length} items`,
+          summary,
+          'P4'
+        );
+        this.notionBatch = [];
+      }
+      this.batchTimer = null;
+    }, 30 * 60 * 1000); // 30 min batch
+  }
+
+  async notify(title: string, content: string, priority: Priority): Promise<void> {
+    const quiet = this.isQuietHours();
+    const limited = this.isRateLimited();
+
+    console.log(`📬 [${priority}] ${title} (quiet:${quiet}, limited:${limited})`);
+
+    switch (priority) {
+      case 'P0':
+        // CRITICAL: Always send, bypass everything
+        await this.pushover.emergency(content, title);
+        this.recordNotification();
+        await this.logToNotion(title, content, priority, 'error');
+        break;
+
+      case 'P1':
+        // HIGH: Send unless rate limited (bypasses quiet hours)
+        if (!limited) {
+          await this.pushover.alert(content, title);
+          this.recordNotification();
+        }
+        await this.logToNotion(title, content, priority, 'error');
+        break;
+
+      case 'P2':
+        // NORMAL: Send if not quiet hours and not rate limited
+        if (!quiet && !limited) {
+          await this.pushover.notify(content, title);
+          this.recordNotification();
+        }
+        await this.logToNotion(title, content, priority);
+        break;
+
+      case 'P3':
+        // LOW: Notion only, immediate
+        await this.logToNotion(title, content, priority);
+        break;
+
+      case 'P4':
+        // MINIMAL: Notion batched
+        this.notionBatch.push({ title, content, priority });
+        this.scheduleBatch();
+        break;
+    }
+  }
+
+  // Convenience methods
+  async critical(title: string, content: string): Promise<void> {
+    await this.notify(title, content, 'P0');
+  }
+
+  async error(title: string, content: string): Promise<void> {
+    await this.notify(title, content, 'P1');
+  }
+
+  async info(title: string, content: string): Promise<void> {
+    await this.notify(title, content, 'P3');
+  }
+
+  async log(title: string, content: string): Promise<void> {
+    await this.notify(title, content, 'P4');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// MAIN DAEMON
+// ═══════════════════════════════════════════════════════════════════════════
+
 interface Config {
   pushover?: { userKey?: string; apiToken?: string };
   claude?: { apiKey?: string; model?: string };
   notion?: { apiKey?: string; dailyLogsPageId?: string; tasksDbId?: string };
+  quietHours?: { start?: string; end?: string };
 }
 
 interface ConversationContext {
@@ -57,19 +208,24 @@ async function loadConfig(): Promise<Config> {
 }
 
 async function main(): Promise<void> {
-  console.log('╔════════════════════════════════════════════════════════════════╗');
-  console.log('║                      ARI Main Daemon                           ║');
-  console.log('╚════════════════════════════════════════════════════════════════╝\\n');
+  console.log('╔═══════════════════════════════════════╗');
+  console.log('║         ARI Daemon v2                 ║');
+  console.log('║   Priority-Based Notifications        ║');
+  console.log('╚═══════════════════════════════════════╝\n');
 
   const config = await loadConfig();
 
+  // Validate required config
   if (!config.pushover?.userKey || !config.pushover?.apiToken) {
-    console.error('✗ Pushover not configured'); process.exit(1);
+    console.error('✗ Pushover not configured');
+    process.exit(1);
   }
   if (!config.claude?.apiKey) {
-    console.error('✗ Claude not configured'); process.exit(1);
+    console.error('✗ Claude not configured');
+    process.exit(1);
   }
 
+  // Initialize services
   const pushover = new PushoverClient({
     userKey: config.pushover.userKey,
     apiToken: config.pushover.apiToken,
@@ -81,34 +237,53 @@ async function main(): Promise<void> {
     maxTokens: 1024,
   });
 
-  // Initialize Notion (optional but recommended)
   let notion: NotionClient | null = null;
-  if (config.notion?.apiKey && config.notion.dailyLogsPageId && config.notion.tasksDbId) {
+  if (config.notion?.apiKey && config.notion.dailyLogsPageId) {
     notion = new NotionClient({
       apiKey: config.notion.apiKey,
       dailyLogsPageId: config.notion.dailyLogsPageId,
-      tasksDbId: config.notion.tasksDbId,
+      tasksDbId: config.notion.tasksDbId || config.notion.dailyLogsPageId,
     });
-    console.log('✓ Notion ready');
+    console.log('✓ Notion connected');
   } else {
-    console.log('⚠ Notion not configured');
+    console.log('⚠ Notion not configured (logs will be local only)');
   }
 
-  console.log('✓ Pushover ready');
-  console.log('✓ Claude ready');
+  // Parse quiet hours from config (default: 10 PM - 7 AM)
+  const parseHour = (s?: string) => s ? parseInt(s.split(':')[0]) : null;
+  const quietStart = parseHour(config.quietHours?.start) ?? 22;
+  const quietEnd = parseHour(config.quietHours?.end) ?? 7;
+
+  // Initialize notification router
+  const notifications = new NotificationRouter(pushover, notion, {
+    quietHours: { start: quietStart, end: quietEnd },
+    timezone: 'America/Indiana/Indianapolis',
+    rateLimits: { pushover: 10, window: 60 },  // 10 per hour max
+  });
+
+  console.log('✓ Pushover connected');
+  console.log('✓ Claude connected');
+  console.log(`✓ Quiet hours: ${quietStart}:00 - ${quietEnd}:00`);
+  console.log('✓ Rate limit: 10 notifications/hour\n');
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // WEB SERVER
+  // ─────────────────────────────────────────────────────────────────────────
 
   const app = Fastify({ logger: false });
   await app.register(cors, { origin: true });
 
-  app.get('/health', async () => ({ status: 'ok' }));
+  app.get('/health', async () => ({ status: 'ok', version: '2.0' }));
 
-  // Simple mobile-friendly interface
   app.get('/', async (_, reply) => {
     reply.type('text/html');
     return getHtmlInterface();
   });
 
-  app.get('/api/history', async () => ({ messages: context.messages.slice(-20) }));
+  app.get('/api/history', async () => ({
+    messages: context.messages.slice(-20),
+    contextMessages: context.messages.length
+  }));
 
   app.post('/api/message', async (request) => {
     const { message } = request.body as { message: string };
@@ -118,12 +293,14 @@ async function main(): Promise<void> {
     context.messages.push({ role: 'user', content: message });
     if (context.messages.length > 20) context.messages.shift();
 
-    await dailyAudit.logActivity('api_call', 'Command', message.slice(0, 50), { outcome: 'success' });
-
     try {
       const claudeResponse = await claude.chat(context.messages, SYSTEM_PROMPT);
 
-      let decision: { actions?: Array<{ type: string; command?: string; args?: string[] }>; response?: string };
+      let decision: {
+        actions?: Array<{ type: string; command?: string; args?: string[] }>;
+        response?: string
+      };
+
       try {
         const jsonMatch = claudeResponse.match(/\{[\s\S]*\}/);
         decision = jsonMatch ? JSON.parse(jsonMatch[0]) : { response: claudeResponse };
@@ -131,9 +308,11 @@ async function main(): Promise<void> {
         decision = { response: claudeResponse };
       }
 
+      // Execute actions
       const actionResults: Array<{ type: string; success: boolean; output: string }> = [];
       for (const action of decision.actions ?? []) {
         if (action.type === 'respond_only') continue;
+
         console.log(`⚡ ${action.type}: ${action.command || ''}`);
         const result = await smsExecutor.execute({
           type: action.type as 'shell' | 'status' | 'task' | 'file' | 'query' | 'unknown',
@@ -144,61 +323,71 @@ async function main(): Promise<void> {
         actionResults.push({ type: action.type, ...result });
       }
 
+      // Build response
       let response = decision.response ?? 'Done.';
       const outputs = actionResults.filter(r => r.output).map(r => r.output);
-      if (outputs.length > 0) response += '\\n\\n' + outputs.join('\\n');
+      if (outputs.length > 0) response += '\n\n' + outputs.join('\n');
 
       context.messages.push({ role: 'assistant', content: response });
-      console.log(`📤 ${response.slice(0, 80)}...`);
+      console.log(`📤 ${response.slice(0, 60)}...`);
 
-      // Determine priority based on results
+      // ═══════════════════════════════════════════════════════════════════
+      // PRIORITY-BASED NOTIFICATION ROUTING
+      // ═══════════════════════════════════════════════════════════════════
+
       const hasErrors = actionResults.some(r => !r.success);
       const hasActions = actionResults.length > 0;
 
-      // Only send Pushover for errors or important actions (P1-P2)
-      // Regular conversation goes to Notion only (P3-P4)
       if (hasErrors) {
-        await pushover.alert(response.slice(0, 500), 'ARI Error');
-      }
-      // Don't spam Pushover for every chat - just log to Notion
-
-      // Log everything to Notion
-      if (notion) {
-        try {
-          await notion.addLogEntry({
-            title: `${hasActions ? 'Action' : 'Chat'}: ${message.slice(0, 50)}`,
-            content: response.slice(0, 500),
-            category: hasErrors ? 'error' : 'action',
-            priority: hasErrors ? 'P1' : (hasActions ? 'P3' : 'P4'),
-          });
-        } catch (e) {
-          console.log('⚠ Notion log failed:', e instanceof Error ? e.message : 'unknown');
-        }
+        // P1: Command failed - notify user
+        await notifications.error('Action Failed', response.slice(0, 300));
+      } else if (hasActions) {
+        // P4: Action completed - just log it
+        await notifications.log(`Action: ${message.slice(0, 30)}`, response.slice(0, 200));
+      } else {
+        // P4: Regular chat - log only
+        await notifications.log(`Chat`, message.slice(0, 100));
       }
 
       return { response, actions: actionResults };
     } catch (error) {
-      const errMsg = error instanceof Error ? error.message : 'Error';
+      const errMsg = error instanceof Error ? error.message : 'Unknown error';
+      await notifications.error('Processing Error', errMsg);
       return { response: 'Error: ' + errMsg, actions: [] };
     }
   });
 
   app.get('/api/status', async () => {
-    const result = await smsExecutor.execute({ type: 'status', command: '', args: [], requiresConfirmation: false });
-    return { ari: 'online', system: result.output };
+    const result = await smsExecutor.execute({
+      type: 'status', command: '', args: [], requiresConfirmation: false
+    });
+    return {
+      ari: 'online',
+      version: '2.0',
+      notion: notion ? 'connected' : 'disabled',
+      system: result.output
+    };
   });
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // START SERVER
+  // ─────────────────────────────────────────────────────────────────────────
 
   await app.listen({ port: PORT, host: '0.0.0.0' });
 
-  console.log(`\\n✓ Running on port ${PORT}`);
-  console.log(`  Local: http://localhost:${PORT}`);
-  console.log(`  Tailscale: https://aris-mac-mini.tail947c7e.ts.net:${PORT}\\n`);
+  console.log(`\n✓ Running on port ${PORT}`);
+  console.log(`  Dashboard: http://100.81.73.34:${PORT}\n`);
 
-  await pushover.notify('ARI online: https://aris-mac-mini.tail947c7e.ts.net:3142', 'ARI Started');
+  // P3: Startup notification (Notion only, no Pushover)
+  await notifications.info('ARI Started', `Daemon v2 online at ${new Date().toLocaleTimeString()}`);
 
   process.on('SIGINT', async () => { await app.close(); process.exit(0); });
   process.on('SIGTERM', async () => { await app.close(); process.exit(0); });
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// WEB INTERFACE
+// ═══════════════════════════════════════════════════════════════════════════
 
 function getHtmlInterface(): string {
   return `<!DOCTYPE html>
@@ -208,7 +397,7 @@ function getHtmlInterface(): string {
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#000000">
-<title>ARI Dashboard</title>
+<title>ARI</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;overflow:hidden}
@@ -262,6 +451,7 @@ input::placeholder{color:rgba(255,255,255,0.3)}
 .priority-badge.p1{background:rgba(255,159,10,0.2);color:#ff9f0a}
 .priority-badge.p2{background:rgba(52,199,89,0.2);color:#34c759}
 .priority-badge.p3{background:rgba(102,126,234,0.2);color:#667eea}
+.priority-badge.p4{background:rgba(128,128,128,0.2);color:#888}
 .priority-info{flex:1}
 .priority-name{font-weight:600;font-size:14px}
 .priority-desc{font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px}
@@ -274,10 +464,10 @@ input::placeholder{color:rgba(255,255,255,0.3)}
 <div class="tagline">Your Life Operating System</div>
 </div>
 <div class="tabs">
-<div class="tab active" onclick="showTab('chat')">Chat</div>
-<div class="tab" onclick="showTab('status')">Status</div>
-<div class="tab" onclick="showTab('actions')">Actions</div>
-<div class="tab" onclick="showTab('config')">Config</div>
+<div class="tab active" onclick="showTab('chat')">💬</div>
+<div class="tab" onclick="showTab('status')">📊</div>
+<div class="tab" onclick="showTab('actions')">⚡</div>
+<div class="tab" onclick="showTab('config')">⚙️</div>
 </div>
 <div class="panels">
 <div class="panel active" id="panel-chat">
@@ -285,57 +475,46 @@ input::placeholder{color:rgba(255,255,255,0.3)}
 </div>
 <div class="panel" id="panel-status">
 <div class="card">
-<div class="card-title">System Status</div>
+<div class="card-title">System</div>
 <div class="stat-grid">
 <div class="stat"><div class="stat-value" id="s-uptime">--</div><div class="stat-label">Uptime</div></div>
-<div class="stat"><div class="stat-value" id="s-tasks">--</div><div class="stat-label">Tasks</div></div>
-<div class="stat"><div class="stat-value" id="s-msgs">--</div><div class="stat-label">Messages</div></div>
 <div class="stat"><div class="stat-value" id="s-load">--</div><div class="stat-label">Load</div></div>
 </div>
 </div>
 <div class="card">
 <div class="card-title">Services</div>
-<div class="status-row"><span class="status-label">ARI Daemon</span><span class="status-value ok" id="svc-ari">Online</span></div>
-<div class="status-row"><span class="status-label">Pushover</span><span class="status-value ok" id="svc-push">Connected</span></div>
-<div class="status-row"><span class="status-label">Claude API</span><span class="status-value ok" id="svc-claude">Ready</span></div>
-<div class="status-row"><span class="status-label">Notion</span><span class="status-value ok" id="svc-notion">Connected</span></div>
+<div class="status-row"><span class="status-label">ARI</span><span class="status-value ok" id="svc-ari">v2.0</span></div>
+<div class="status-row"><span class="status-label">Pushover</span><span class="status-value ok">Ready</span></div>
+<div class="status-row"><span class="status-label">Claude</span><span class="status-value ok">Ready</span></div>
+<div class="status-row"><span class="status-label">Notion</span><span class="status-value" id="svc-notion">--</span></div>
 </div>
 </div>
 <div class="panel" id="panel-actions">
 <div class="card">
 <div class="card-title">Quick Actions</div>
 <div class="quick-actions">
-<button class="quick-btn" onclick="q('git status')"><span>📁</span>Git Status</button>
-<button class="quick-btn" onclick="q('npm test')"><span>🧪</span>Run Tests</button>
-<button class="quick-btn" onclick="q('df -h')"><span>💾</span>Disk Space</button>
+<button class="quick-btn" onclick="q('git status')"><span>📁</span>Git</button>
 <button class="quick-btn" onclick="q('uptime')"><span>⏱️</span>Uptime</button>
-<button class="quick-btn" onclick="q('ps aux | head -10')"><span>📊</span>Processes</button>
-<button class="quick-btn" onclick="q('tail -20 ~/.ari/logs/ari-daemon.log')"><span>📜</span>View Logs</button>
-</div>
-</div>
-<div class="card">
-<div class="card-title">ARI Commands</div>
-<div class="quick-actions">
-<button class="quick-btn" onclick="q('add task ')"><span>➕</span>Add Task</button>
-<button class="quick-btn" onclick="q('status')"><span>📡</span>Full Status</button>
+<button class="quick-btn" onclick="q('df -h')"><span>💾</span>Disk</button>
+<button class="quick-btn" onclick="q('status')"><span>📡</span>Status</button>
 </div>
 </div>
 </div>
 <div class="panel" id="panel-config">
 <div class="card">
-<div class="card-title">Priority Levels</div>
+<div class="card-title">Notification Priority</div>
 <div class="priority-list">
-<div class="priority-item"><div class="priority-badge p0">P0</div><div class="priority-info"><div class="priority-name">Critical</div><div class="priority-desc">Security, failures, data loss</div><div class="priority-channels">Pushover + SMS (always)</div></div></div>
-<div class="priority-item"><div class="priority-badge p1">P1</div><div class="priority-info"><div class="priority-name">High</div><div class="priority-desc">Errors, needs attention</div><div class="priority-channels">Pushover + Notion</div></div></div>
-<div class="priority-item"><div class="priority-badge p2">P2</div><div class="priority-info"><div class="priority-name">Normal</div><div class="priority-desc">Tasks, milestones</div><div class="priority-channels">Pushover + Notion</div></div></div>
-<div class="priority-item"><div class="priority-badge p3">P3</div><div class="priority-info"><div class="priority-name">Low</div><div class="priority-desc">Insights, suggestions</div><div class="priority-channels">Notion only (batched)</div></div></div>
+<div class="priority-item"><div class="priority-badge p0">P0</div><div class="priority-info"><div class="priority-name">Critical</div><div class="priority-desc">System down, security</div><div class="priority-channels">🔔 Pushover emergency (always)</div></div></div>
+<div class="priority-item"><div class="priority-badge p1">P1</div><div class="priority-info"><div class="priority-name">Error</div><div class="priority-desc">Command failures</div><div class="priority-channels">🔔 Pushover alert</div></div></div>
+<div class="priority-item"><div class="priority-badge p2">P2</div><div class="priority-info"><div class="priority-name">Important</div><div class="priority-desc">Task completions</div><div class="priority-channels">🔔 Pushover (work hours)</div></div></div>
+<div class="priority-item"><div class="priority-badge p3">P3</div><div class="priority-info"><div class="priority-name">Info</div><div class="priority-desc">General updates</div><div class="priority-channels">📝 Notion only</div></div></div>
+<div class="priority-item"><div class="priority-badge p4">P4</div><div class="priority-info"><div class="priority-name">Log</div><div class="priority-desc">Chat, minor actions</div><div class="priority-channels">📝 Notion (batched)</div></div></div>
 </div>
 </div>
 <div class="card">
 <div class="card-title">Settings</div>
-<div class="status-row"><span class="status-label">Quiet Hours</span><span class="status-value">10 PM - 7 AM</span></div>
-<div class="status-row"><span class="status-label">Timezone</span><span class="status-value">Indiana</span></div>
-<div class="status-row"><span class="status-label">Max SMS/Hour</span><span class="status-value">5</span></div>
+<div class="status-row"><span class="status-label">Quiet Hours</span><span class="status-value">10p - 7a</span></div>
+<div class="status-row"><span class="status-label">Rate Limit</span><span class="status-value">10/hr</span></div>
 </div>
 </div>
 </div>
@@ -353,13 +532,13 @@ function hideTyping(){const el=document.getElementById('typing');if(el)el.remove
 async function send(){const msg=inp.value.trim();if(!msg)return;inp.value='';sendBtn.disabled=true;add(msg,'user');showTyping();showTab('chat');
 try{const r=await fetch('/api/message',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:msg})});const d=await r.json();hideTyping();add(d.response,'assistant')}catch(e){hideTyping();add('Error: '+e.message,'assistant')}
 sendBtn.disabled=false;inp.focus()}
-function q(cmd){inp.value=cmd;if(!cmd.endsWith(' '))send();else{inp.focus();showTab('chat')}}
-async function loadStatus(){try{const r=await fetch('/api/status');const d=await r.json();document.getElementById('s-uptime').textContent=d.system?.match(/up\\s+([^,]+)/)?.[1]||'--';document.getElementById('s-load').textContent=d.system?.match(/load.*?([\\d.]+)/)?.[1]||'--';document.getElementById('s-tasks').textContent=d.system?.match(/Tasks:\\s+(\\d+)/)?.[1]||'0';document.getElementById('s-msgs').textContent=d.contextMessages||'0'}catch(e){}}
+function q(cmd){inp.value=cmd;send()}
+async function loadStatus(){try{const r=await fetch('/api/status');const d=await r.json();document.getElementById('s-uptime').textContent=d.system?.match(/up\\s+([^,]+)/)?.[1]||'--';document.getElementById('s-load').textContent=d.system?.match(/load.*?([\\d.]+)/)?.[1]||'--';document.getElementById('svc-notion').textContent=d.notion||'--';document.getElementById('svc-notion').className='status-value '+(d.notion==='connected'?'ok':'warn')}catch(e){}}
 sendBtn.onclick=send;inp.onkeypress=e=>{if(e.key==='Enter'){e.preventDefault();send()}};
-fetch('/api/history').then(r=>r.json()).then(d=>d.messages.forEach(x=>add(x.content,x.role)));
-loadStatus();setInterval(loadStatus,30000);
+fetch('/api/history').then(r=>r.json()).then(d=>d.messages?.forEach(x=>add(x.content,x.role)));
+loadStatus();setInterval(loadStatus,60000);
 </script>
 </body></html>`;
 }
 
-main().catch(e=>{console.error(e);process.exit(1)});
+main().catch(e => { console.error(e); process.exit(1); });
