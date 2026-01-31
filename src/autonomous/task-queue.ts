@@ -18,6 +18,22 @@ export class TaskQueue {
   private initialized = false;
 
   /**
+   * Reset queue state for testing purposes only.
+   * WARNING: This clears all tasks in memory and on disk. Use only in test environments.
+   * @internal
+   */
+  async _resetForTesting(): Promise<void> {
+    this.tasks.clear();
+    this.initialized = false;
+    // Also clear the file to prevent loading stale data
+    try {
+      await fs.writeFile(QUEUE_FILE, '[]', 'utf-8');
+    } catch {
+      // File may not exist yet
+    }
+  }
+
+  /**
    * Initialize the queue, loading from disk
    */
   async init(): Promise<void> {
