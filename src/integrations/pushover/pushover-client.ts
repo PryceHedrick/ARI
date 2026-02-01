@@ -10,6 +10,13 @@
 import https from 'node:https';
 import { EventEmitter } from 'node:events';
 
+// GLOBAL KILL SWITCH - Disable ALL Pushover API calls
+// This was added to prevent API cost issues
+// Can be overridden in tests via PUSHOVER_ENABLED=true
+function isPushoverIntegrationDisabled(): boolean {
+  return process.env.PUSHOVER_ENABLED !== 'true';
+}
+
 export interface PushoverConfig {
   userKey: string;
   apiToken: string;
@@ -69,6 +76,13 @@ export class PushoverClient extends EventEmitter {
    * Send a notification
    */
   async send(msg: PushoverMessage): Promise<PushoverResponse> {
+    // KILL SWITCH - Pushover is disabled to prevent API cost issues
+    if (isPushoverIntegrationDisabled()) {
+      // eslint-disable-next-line no-console
+      console.log('[PUSHOVER INTEGRATION DISABLED] Would have sent:', msg.title || 'notification');
+      return { success: false, error: 'Pushover disabled' };
+    }
+
     return new Promise((resolve) => {
       const data = JSON.stringify({
         token: this.config.apiToken,

@@ -21,6 +21,14 @@ interface PushoverConfig {
   apiToken: string;
   deviceId?: string;
   secret?: string;
+  enabled?: boolean;  // Set to false to disable all Pushover API calls
+}
+
+// GLOBAL KILL SWITCH - Disable ALL Pushover notifications
+// This was added to prevent API cost issues
+// Can be overridden in tests via PUSHOVER_ENABLED=true
+function isPushoverDisabled(): boolean {
+  return process.env.PUSHOVER_ENABLED !== 'true';
 }
 
 interface NotificationOptions {
@@ -48,6 +56,13 @@ export class PushoverClient {
     message: string,
     options: NotificationOptions = {}
   ): Promise<boolean> {
+    // KILL SWITCH - Pushover is disabled to prevent API cost issues
+    if (isPushoverDisabled() || this.config.enabled === false) {
+      // eslint-disable-next-line no-console
+      console.log('[PUSHOVER DISABLED] Would have sent:', options.title || 'notification');
+      return false;
+    }
+
     // Rate limiting
     const now = Date.now();
     if (now - this.lastNotification < this.minIntervalMs) {
@@ -90,6 +105,11 @@ export class PushoverClient {
    * Returns device secret for message retrieval
    */
   async registerDevice(deviceName: string): Promise<string | null> {
+    // KILL SWITCH - Pushover is disabled
+    if (isPushoverDisabled() || this.config.enabled === false) {
+      return null;
+    }
+
     try {
       const response = await fetch(`${PUSHOVER_API}/devices.json`, {
         method: 'POST',
@@ -119,6 +139,11 @@ export class PushoverClient {
    * Requires device secret from registration
    */
   async fetchMessages(): Promise<PushoverMessage[]> {
+    // KILL SWITCH - Pushover is disabled
+    if (isPushoverDisabled() || this.config.enabled === false) {
+      return [];
+    }
+
     if (!this.config.secret || !this.config.deviceId) {
       return [];
     }
@@ -146,6 +171,11 @@ export class PushoverClient {
    * Delete messages after processing (acknowledge receipt)
    */
   async deleteMessages(messageId: number): Promise<boolean> {
+    // KILL SWITCH - Pushover is disabled
+    if (isPushoverDisabled() || this.config.enabled === false) {
+      return false;
+    }
+
     if (!this.config.secret || !this.config.deviceId) {
       return false;
     }
@@ -176,6 +206,11 @@ export class PushoverClient {
    * Login to get device secret (required for receiving messages)
    */
   async login(email: string, password: string, twoFactor?: string): Promise<{ secret: string; deviceId: string } | null> {
+    // KILL SWITCH - Pushover is disabled
+    if (isPushoverDisabled() || this.config.enabled === false) {
+      return null;
+    }
+
     try {
       const params: Record<string, string> = { email, password };
       if (twoFactor) params.twofa = twoFactor;

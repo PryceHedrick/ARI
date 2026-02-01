@@ -1,4 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+
+// Enable Pushover for tests (overrides the kill switch)
+process.env.PUSHOVER_ENABLED = 'true';
+
 import https from 'node:https';
 import { EventEmitter } from 'node:events';
 import {

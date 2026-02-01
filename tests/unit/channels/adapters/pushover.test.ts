@@ -1,5 +1,9 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { randomUUID } from 'crypto';
+
+// Enable Pushover for tests (overrides the kill switch)
+process.env.PUSHOVER_ENABLED = 'true';
+
 import type { ChannelConfig, OutboundMessage } from '../../../../src/channels/types.js';
 import { PushoverChannel, createPushoverChannel, type PushoverConfig } from '../../../../src/channels/adapters/pushover.js';
 

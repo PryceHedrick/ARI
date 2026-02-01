@@ -6,6 +6,13 @@ import type {
 } from '../types.js';
 import { BaseChannel } from './base.js';
 
+// GLOBAL KILL SWITCH - Disable ALL Pushover API calls
+// This was added to prevent API cost issues
+// Can be overridden in tests via PUSHOVER_ENABLED=true
+function isPushoverChannelDisabled(): boolean {
+  return process.env.PUSHOVER_ENABLED !== 'true';
+}
+
 /**
  * Pushover-specific configuration
  */
@@ -71,6 +78,14 @@ export class PushoverChannel extends BaseChannel {
    * Connect to Pushover
    */
   async connect(): Promise<void> {
+    // KILL SWITCH - Pushover is disabled to prevent API cost issues
+    if (isPushoverChannelDisabled()) {
+      // eslint-disable-next-line no-console
+      console.log('[PUSHOVER CHANNEL DISABLED] Skipping connection');
+      this.setStatus('disconnected');
+      return;
+    }
+
     // Validate configuration
     if (!this.pushoverConfig.appToken) {
       throw new Error('Pushover app token is required');
@@ -123,6 +138,13 @@ export class PushoverChannel extends BaseChannel {
    * Send a message via Pushover
    */
   protected async doSend(message: OutboundMessage): Promise<SendResult> {
+    // KILL SWITCH - Pushover is disabled to prevent API cost issues
+    if (isPushoverChannelDisabled()) {
+      // eslint-disable-next-line no-console
+      console.log('[PUSHOVER CHANNEL DISABLED] Would have sent:', message.content.slice(0, 50));
+      return this.createSendResult(false, undefined, 'Pushover disabled');
+    }
+
     const params: Record<string, string> = {
       token: this.pushoverConfig.appToken,
       user: this.pushoverConfig.userKey,

@@ -1,4 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+
+// Enable Pushover for tests (overrides the kill switch)
+process.env.PUSHOVER_ENABLED = 'true';
+
 import { PushoverClient } from '../../../src/autonomous/pushover-client.js';
 
 // Mock global fetch
