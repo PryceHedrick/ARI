@@ -275,6 +275,7 @@ export class Scheduler {
 
     this.eventBus.emit('scheduler:task_run', {
       taskId,
+      taskName: task.name,
       startedAt: startTime,
     });
 
@@ -297,8 +298,10 @@ export class Scheduler {
 
       this.eventBus.emit('scheduler:task_complete', {
         taskId,
+        taskName: task.name,
         duration,
         success: true,
+        triggeredBy: 'scheduler',
       });
     } catch (error) {
       const duration = Date.now() - startTime.getTime();
@@ -308,8 +311,11 @@ export class Scheduler {
 
       this.eventBus.emit('scheduler:task_complete', {
         taskId,
+        taskName: task.name,
         duration,
         success: false,
+        error: error instanceof Error ? error.message : String(error),
+        triggeredBy: 'scheduler',
       });
 
       // Still update nextRun to prevent infinite retry
