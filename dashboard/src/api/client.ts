@@ -10,10 +10,15 @@ import type {
   ConstitutionalRule,
   QualityGate,
   MemoryEntry,
-  AuditEntry,
+  AuditLogResponse,
   AuditVerification,
   Tool,
   Context,
+  SchedulerStatus,
+  ScheduledTask,
+  Subagent,
+  SubagentStats,
+  SystemMetrics,
 } from '../types/api';
 
 const API_BASE = '/api';
@@ -87,7 +92,7 @@ export const getMemory = (id: string): Promise<MemoryEntry> =>
 export const getAuditLog = (params?: {
   limit?: number;
   offset?: number;
-}): Promise<AuditEntry[]> => {
+}): Promise<AuditLogResponse> => {
   const query = new URLSearchParams();
   if (params?.limit) query.set('limit', params.limit.toString());
   if (params?.offset) query.set('offset', params.offset.toString());
@@ -107,6 +112,59 @@ export const getContexts = (): Promise<Context[]> => fetchAPI('/contexts');
 
 export const getActiveContext = (): Promise<Context> =>
   fetchAPI('/contexts/active');
+
+// Scheduler Endpoints
+export const getSchedulerStatus = (): Promise<SchedulerStatus> =>
+  fetchAPI('/scheduler/status');
+
+export const getSchedulerTasks = (): Promise<ScheduledTask[]> =>
+  fetchAPI('/scheduler/tasks');
+
+export const triggerSchedulerTask = async (taskId: string): Promise<{ success: boolean; message?: string; error?: string }> => {
+  const response = await fetch(`${API_BASE}/scheduler/tasks/${taskId}/trigger`, {
+    method: 'POST',
+  });
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new APIError(response.status, errorData.error || 'Failed to trigger task');
+  }
+  return response.json();
+};
+
+export const toggleSchedulerTask = async (taskId: string): Promise<{ success: boolean; taskId: string; enabled: boolean }> => {
+  const response = await fetch(`${API_BASE}/scheduler/tasks/${taskId}/toggle`, {
+    method: 'POST',
+  });
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new APIError(response.status, errorData.error || 'Failed to toggle task');
+  }
+  return response.json();
+};
+
+// Subagent Endpoints
+export const getSubagents = (): Promise<Subagent[]> => fetchAPI('/subagents');
+
+export const getSubagentStats = (): Promise<SubagentStats> =>
+  fetchAPI('/subagents/stats');
+
+export const getSubagent = (agentId: string): Promise<Subagent> =>
+  fetchAPI(`/subagents/${agentId}`);
+
+export const deleteSubagent = async (agentId: string): Promise<{ success: boolean; message?: string }> => {
+  const response = await fetch(`${API_BASE}/subagents/${agentId}`, {
+    method: 'DELETE',
+  });
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new APIError(response.status, errorData.error || 'Failed to delete subagent');
+  }
+  return response.json();
+};
+
+// System Metrics
+export const getSystemMetrics = (): Promise<SystemMetrics> =>
+  fetchAPI('/system/metrics');
 
 // WebSocket Connection
 export function connectWebSocket(

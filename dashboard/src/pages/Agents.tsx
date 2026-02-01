@@ -4,7 +4,7 @@ import { StatusBadge } from '../components/StatusBadge';
 import { ErrorState } from '../components/ui/ErrorState';
 import { AgentCardSkeleton } from '../components/ui/Skeleton';
 import type { ColorName } from '../utils/colors';
-import { circleIconClasses, textClasses } from '../utils/colors';
+import { circleIconClasses } from '../utils/colors';
 
 // 6-Agent Council Design from audit (Phase 2 design)
 const AGENT_ROLES = {

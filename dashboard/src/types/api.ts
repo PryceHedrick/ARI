@@ -129,6 +129,13 @@ export interface AuditEntry {
   hash: string;
 }
 
+export interface AuditLogResponse {
+  events: AuditEntry[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
 export interface AuditVerification {
   valid: boolean;
   entryCount: number;
@@ -165,4 +172,71 @@ export interface WebSocketEvent {
   type: string;
   timestamp: string;
   data: Record<string, unknown>;
+}
+
+// Scheduler Types
+export interface SchedulerStatus {
+  running: boolean;
+  taskCount: number;
+  enabledCount: number;
+  nextTask: {
+    id: string;
+    name: string;
+    nextRun: string;
+  } | null;
+}
+
+export interface ScheduledTask {
+  id: string;
+  name: string;
+  cron: string;
+  handler: string;
+  enabled: boolean;
+  lastRun: string | null;
+  nextRun: string | null;
+  metadata?: Record<string, unknown>;
+}
+
+// Subagent Types
+export type SubagentStatus = 'spawning' | 'running' | 'completed' | 'failed';
+
+export interface Subagent {
+  id: string;
+  task: string;
+  branch: string;
+  worktreePath: string;
+  status: SubagentStatus;
+  createdAt: string;
+  completedAt: string | null;
+  progress: number | null;
+  lastMessage: string | null;
+  error: string | null;
+  tmuxSession: string | null;
+}
+
+export interface SubagentStats {
+  total: number;
+  running: number;
+  completed: number;
+  failed: number;
+  spawning: number;
+}
+
+// System Metrics
+export interface SystemMetrics {
+  uptime: number;
+  uptimeFormatted: string;
+  memory: {
+    heapUsed: number;
+    heapTotal: number;
+    external: number;
+    rss: number;
+    heapUsedMB: number;
+    heapTotalMB: number;
+    rssMB: number;
+  };
+  nodeVersion: string;
+  platform: string;
+  arch: string;
+  pid: number;
 }

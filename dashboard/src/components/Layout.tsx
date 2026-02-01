@@ -1,19 +1,21 @@
 import { ReactNode } from 'react';
 import { Sidebar } from './Sidebar';
 import { SkipLink } from './ui/SkipLink';
+import type { ConnectionStatus } from '../hooks/useWebSocket';
 
 interface LayoutProps {
   children: ReactNode;
   currentPage: string;
   onNavigate: (page: string) => void;
+  wsStatus?: ConnectionStatus;
 }
 
-export function Layout({ children, currentPage, onNavigate }: LayoutProps) {
+export function Layout({ children, currentPage, onNavigate, wsStatus = 'disconnected' }: LayoutProps) {
   return (
     <>
       <SkipLink />
       <div className="flex h-screen bg-gray-950 text-gray-100">
-        <Sidebar currentPage={currentPage} onNavigate={onNavigate} />
+        <Sidebar currentPage={currentPage} onNavigate={onNavigate} wsStatus={wsStatus} />
         <main id="main-content" className="flex-1 overflow-auto">{children}</main>
       </div>
     </>

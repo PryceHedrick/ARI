@@ -2,7 +2,12 @@ import { useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Layout } from './components/Layout';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { WebSocketProvider, useWebSocketContext } from './contexts/WebSocketContext';
+import { AlertBanner } from './components/alerts/AlertBanner';
+import { CommandPalette } from './components/CommandPalette';
 import { Home } from './pages/Home';
+import { Health } from './pages/Health';
+import { Autonomy } from './pages/Autonomy';
 import { Governance } from './pages/Governance';
 import { Memory } from './pages/Memory';
 import { Tools } from './pages/Tools';
@@ -19,11 +24,16 @@ const queryClient = new QueryClient({
   },
 });
 
-function App() {
+function AppContent() {
   const [currentPage, setCurrentPage] = useState('home');
+  const { status: wsStatus } = useWebSocketContext();
 
   const renderPage = () => {
     switch (currentPage) {
+      case 'health':
+        return <Health />;
+      case 'autonomy':
+        return <Autonomy />;
       case 'governance':
         return <Governance />;
       case 'memory':
@@ -40,12 +50,28 @@ function App() {
   };
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <Layout currentPage={currentPage} onNavigate={setCurrentPage}>
+    <>
+      {/* Critical Alert Banner */}
+      <AlertBanner onNavigateToAlerts={() => setCurrentPage('audit')} />
+
+      {/* Command Palette */}
+      <CommandPalette onNavigate={setCurrentPage} />
+
+      <Layout currentPage={currentPage} onNavigate={setCurrentPage} wsStatus={wsStatus}>
         <ErrorBoundary>
           {renderPage()}
         </ErrorBoundary>
       </Layout>
+    </>
+  );
+}
+
+function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <WebSocketProvider>
+        <AppContent />
+      </WebSocketProvider>
     </QueryClientProvider>
   );
 }

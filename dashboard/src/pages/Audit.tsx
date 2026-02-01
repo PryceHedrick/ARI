@@ -55,13 +55,13 @@ export function Audit() {
   const [offset, setOffset] = useState(0);
   const [actionFilter, setActionFilter] = useState<string>('ALL');
 
-  const { data: entries, isLoading, isError, refetch } = useQuery({
+  const { data: auditResponse, isLoading, isError, refetch } = useQuery({
     queryKey: ['audit', limit, offset],
     queryFn: () => getAuditLog({ limit, offset }),
     refetchInterval: 10000,
   });
 
-  const safeEntries = Array.isArray(entries) ? entries : [];
+  const safeEntries = auditResponse?.events ?? [];
 
   const { data: verification, isLoading: verifyLoading } = useQuery({
     queryKey: ['audit', 'verify'],
