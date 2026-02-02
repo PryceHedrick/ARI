@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/require-await */
 /**
  * Knowledge Module — Curated Learning Sources
  *
@@ -19,7 +20,8 @@ import type {
   CognitiveProfile,
   Pillar,
 } from '../types.js';
-import { KnowledgeSourceError, ValidationError } from '../errors.js';
+// These errors will be used when we implement validation and source fetching
+// import { KnowledgeSourceError, ValidationError } from '../errors.js';
 
 const eventBus = new EventBus();
 
@@ -1888,7 +1890,7 @@ export function getSource(id: string): KnowledgeSource | null {
 export async function validateContent(
   sourceId: string,
   content: string,
-  metadata?: { url?: string; fetchedAt?: Date }
+  _metadata?: { url?: string; fetchedAt?: Date }
 ): Promise<ValidationResult[]> {
   const results: ValidationResult[] = [];
   const source = getSource(sourceId);

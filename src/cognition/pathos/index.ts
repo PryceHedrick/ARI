@@ -1,5 +1,8 @@
+/* eslint-disable @typescript-eslint/require-await */
 /**
  * PATHOS Pillar — The Domain of Growth
+ *
+ * Note: Functions are async for future extensibility (database lookups, API calls).
  *
  * PATHOS provides ARI with therapeutic and self-improvement capabilities:
  *
@@ -422,7 +425,7 @@ function generateDichotomyRecommendation(
  */
 export async function checkVirtueAlignment(
   decision: string,
-  context?: { situation?: string; stakeholders?: string[] }
+  _context?: { situation?: string; stakeholders?: string[] }
 ): Promise<VirtueCheck> {
   type VirtueResult = {
     virtue: 'WISDOM' | 'COURAGE' | 'JUSTICE' | 'TEMPERANCE';
@@ -859,7 +862,8 @@ export async function generatePracticePlan(
 
   const gap = targetLevel - currentLevel;
   const hoursPerWeek = constraints?.hoursPerWeek || 5;
-  const totalWeeks = constraints?.weeks || Math.ceil(gap * 20); // ~20 weeks per 100% improvement
+  // totalWeeks could be used for extended practice plans in the future
+  // const totalWeeks = constraints?.weeks || Math.ceil(gap * 20);
 
   // Estimate hours needed (roughly 100 hours per 0.1 improvement)
   const estimatedHours = Math.ceil(gap * 1000);

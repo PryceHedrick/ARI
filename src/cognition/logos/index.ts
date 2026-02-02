@@ -1,5 +1,8 @@
+/* eslint-disable @typescript-eslint/require-await */
 /**
  * LOGOS Pillar — The Domain of Reason
+ *
+ * Note: Functions are async for future extensibility (database lookups, API calls).
  *
  * LOGOS provides ARI with rigorous analytical frameworks for decision-making:
  *
@@ -19,7 +22,7 @@
 // BAYESIAN REASONING
 // =============================================================================
 
-import { z } from 'zod';
+// Note: z (Zod) available for runtime validation at API boundaries
 import { EventBus } from '../../kernel/event-bus.js';
 import type {
   Belief,

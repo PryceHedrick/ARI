@@ -36,6 +36,7 @@ const PILLAR_ICONS: Record<Pillar, string> = {
   PATHOS: '🌱',
 };
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const PILLAR_COLORS: Record<Pillar, string> = {
   LOGOS: 'blue',
   ETHOS: 'orange',

@@ -1525,7 +1525,8 @@ export const apiRoutes: FastifyPluginAsync<ApiRouteOptions> = async (
       const { queryWisdom } = await import('../cognition/pathos/index.js');
 
       const { query, tradition } = request.query;
-      const result = await queryWisdom(query, tradition as any);
+      // Type assertion for tradition - validated by Zod schema in queryWisdom
+      const result = await queryWisdom(query, tradition as ('STOIC' | 'DALIO' | 'MUNGER' | 'MUSASHI' | 'NAVAL' | 'TALEB' | 'MEADOWS' | 'ERICSSON' | 'BECK' | 'UNIVERSAL')[] | undefined);
 
       await deps.audit.log('cognition:wisdom_queried', 'API', 'operator', {
         query,

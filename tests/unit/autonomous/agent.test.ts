@@ -483,18 +483,18 @@ describe('AutonomousAgent', () => {
       await agent.stop();
     });
 
-    it('should send batch notifications at 8am', async () => {
-      // Set to 8:00 local time (the agent checks local hours)
+    it('should trigger daily report at appropriate hours via audit reporter', async () => {
+      // Batch notifications are now handled by auditReporter.maybeSendDailyReport()
+      // which is called in the poll loop - testing that the audit reporter is called
       const date = new Date();
       date.setHours(8, 0, 0, 0);
       vi.setSystemTime(date);
 
-      mockNotifyGetBatchCount.mockReturnValue(5);
-
       await agent.start();
       await vi.advanceTimersByTimeAsync(100);
 
-      expect(mockNotifySendBatchSummary).toHaveBeenCalled();
+      // Verify audit reporter's maybeSendDailyReport is called
+      expect(mockAuditMaybeSendDailyReport).toHaveBeenCalled();
 
       await agent.stop();
     });

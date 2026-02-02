@@ -1,5 +1,8 @@
+/* eslint-disable @typescript-eslint/require-await */
 /**
  * ETHOS Pillar — The Domain of Character
+ *
+ * Note: Functions are async for future extensibility (database lookups, API calls).
  *
  * ETHOS provides ARI with self-awareness and emotional intelligence:
  *
@@ -216,7 +219,7 @@ export async function assessEmotionalState(input: {
   dominance: number; // 0 (submissive) to 1 (dominant)
   context?: string;
 }): Promise<EmotionalState> {
-  const { valence, arousal, dominance, context } = input;
+  const { valence, arousal, dominance } = input;
 
   // Validate inputs
   if (valence < -1 || valence > 1) {

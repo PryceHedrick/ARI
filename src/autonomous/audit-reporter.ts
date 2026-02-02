@@ -8,6 +8,11 @@
 import { dailyAudit, DailyAudit } from './daily-audit.js';
 import { notificationManager } from './notification-manager.js';
 
+// ─── State Tracking ─────────────────────────────────────────────────────────
+
+// Track last daily report send to prevent spam
+let lastDailyReportSent: string | null = null;
+
 // ─── Report Formatting ───────────────────────────────────────────────────────
 
 /**
@@ -124,20 +129,41 @@ export async function generateExecutiveSummary(): Promise<string> {
 
 /**
  * Check if daily report should be sent
+ * Returns true only once per time slot (8am or 9pm)
  */
 export function shouldSendDailyReport(): boolean {
   const now = new Date();
   const hour = now.getHours();
 
-  // Send at 8am or 9pm
-  return hour === 8 || hour === 21;
+  // Only send at 8am or 9pm
+  if (hour !== 8 && hour !== 21) {
+    return false;
+  }
+
+  // Create a unique key for this time slot (date + hour)
+  const dateStr = now.toISOString().split('T')[0];
+  const timeSlotKey = `${dateStr}-${hour}`;
+
+  // Check if we already sent for this time slot
+  if (lastDailyReportSent === timeSlotKey) {
+    return false; // Already sent, don't spam
+  }
+
+  return true;
 }
 
 /**
  * Send the daily report if conditions are met
+ * Only sends once per time slot (8am or 9pm) to prevent spam
  */
 export async function maybeSendDailyReport(): Promise<boolean> {
   if (!shouldSendDailyReport()) return false;
+
+  // Mark this time slot as sent BEFORE sending to prevent race conditions
+  const now = new Date();
+  const dateStr = now.toISOString().split('T')[0];
+  const timeSlotKey = `${dateStr}-${now.getHours()}`;
+  lastDailyReportSent = timeSlotKey;
 
   const audit = await dailyAudit.getTodayAudit();
   const efficiency = dailyAudit.getEfficiencyMetrics();
@@ -154,6 +180,9 @@ export async function maybeSendDailyReport(): Promise<boolean> {
       trend: historical.trend,
     },
   });
+
+  // eslint-disable-next-line no-console
+  console.log(`[AuditReporter] Sent daily report for time slot: ${timeSlotKey}`);
 
   return true;
 }

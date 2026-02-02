@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/require-await */
 /**
  * Learning Loop Module — Continuous Improvement System
  *
@@ -23,7 +24,8 @@ import type {
   CognitiveBias,
   LearningProgress,
 } from '../types.js';
-import { LearningLoopError } from '../errors.js';
+// LearningLoopError will be used when we implement error handling for learning loop operations
+// import { LearningLoopError } from '../errors.js';
 
 const eventBus = new EventBus();
 
@@ -644,7 +646,7 @@ export async function runSelfAssessment(
     timestamp: now,
   };
 
-  function generateGradeExplanation(g: string, improvement: number, trend: string): string {
+  function generateGradeExplanation(g: string, improvement: number, _trend: string): string {
     if (g === 'A') return `Excellent performance with ${(improvement * 100).toFixed(1)}% improvement`;
     if (g === 'B') return `Good progress with ${(improvement * 100).toFixed(1)}% improvement`;
     if (g === 'C') return `Moderate performance with stable metrics`;

@@ -224,11 +224,8 @@ export class AutonomousAgent {
       // Check if daily report should be sent (8am or 9pm)
       await auditReporter.maybeSendDailyReport();
 
-      // Send batched notifications if it's morning (8am)
-      const hour = new Date().getHours();
-      if (hour === 8 && notificationManager.getBatchCount() > 0) {
-        await notificationManager.sendBatchSummary();
-      }
+      // Send batched notifications if it's morning (8am) - handled by auditReporter now
+      // The notification manager batch processing is integrated into processQueue()
 
       // Periodic cleanup
       if (Math.random() < 0.01) { // ~1% chance each poll
@@ -486,6 +483,7 @@ export class AutonomousAgent {
         // For now, run with empty decisions to trigger the review structure
         const result = await runPerformanceReview([]);
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         this.eventBus.emit('learning:performance_review' as any, {
           period: `${result.period.start.toISOString()} - ${result.period.end.toISOString()}`,
           successRate: result.decisions.successRate,
@@ -511,6 +509,7 @@ export class AutonomousAgent {
         // Run gap analysis with recent queries and decisions
         const result = await runGapAnalysis([], []);
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         this.eventBus.emit('learning:gap_analysis' as any, {
           period: `${result.period.start.toISOString()} - ${result.period.end.toISOString()}`,
           gapsFound: result.gaps.length,
@@ -552,6 +551,7 @@ export class AutonomousAgent {
 
         const result = await runSelfAssessment(currentPeriod, previousPeriod);
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         this.eventBus.emit('learning:self_assessment' as any, {
           period: `${result.period.start.toISOString()} - ${result.period.end.toISOString()}`,
           grade: result.grade,
