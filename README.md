@@ -304,7 +304,7 @@ src/
 │   └── daemon.ts     # macOS launchd integration
 │
 └── cli/              # Layer 6: User interface
-    └── commands/     # 8 CLI commands
+    └── commands/     # 11 CLI commands
 
 tests/
 ├── unit/             # Component tests by layer
@@ -323,7 +323,7 @@ npm run dev                # Watch mode
 npm run clean              # Remove dist/
 
 # Test
-npm test                   # Run 2597 tests
+npm test                   # Run 3194 tests
 npm run test:watch         # Watch mode
 npm run test:coverage      # Coverage report
 

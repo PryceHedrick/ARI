@@ -6,7 +6,7 @@ This file provides essential context for AI assistants (like Claude) working on 
 
 **Name**: ARI — Artificial Reasoning Intelligence
 **Description**: Your Life Operating System
-**Version**: 3.0.0 (PROPOSED - Cognitive Layer)
+**Version**: 2.1.0
 **Technology**: TypeScript 5.3, Node.js 20+
 **Architecture**: Seven-layer multi-agent system with cognitive foundation (LOGOS/ETHOS/PATHOS)
 
@@ -58,8 +58,8 @@ These architectural decisions are final. Do not propose changes:
 **Rationale**: Loose coupling, testability, event-driven architecture
 **Status**: Locked
 
-### ADR-004: Six-Layer Architecture
-**Decision**: Kernel → System → Core → Strategic → Execution → Interfaces
+### ADR-004: Seven-Layer Architecture
+**Decision**: Cognitive → Kernel → System → Core → Strategic → Execution → Interfaces
 **Rationale**: Clear separation of concerns, unidirectional dependencies
 **Status**: Locked
 
@@ -93,7 +93,7 @@ npm run dev          # Watch mode for development
 npm run clean        # Remove dist/ directory
 
 # Quality
-npm test             # Run all tests (187 tests)
+npm test             # Run all tests (3194 tests)
 npm run test:watch   # Watch mode for tests
 npm run test:coverage # Coverage report (target: 80%+)
 npm run typecheck    # TypeScript type checking
@@ -181,7 +181,7 @@ src/
 ├── ops/                 # Layer 5: Infrastructure
 │   └── daemon.ts        # macOS launchd integration
 └── cli/                 # Layer 6: User interface
-    ├── commands/        # 8 CLI commands
+    ├── commands/        # 11 CLI commands
     └── index.ts         # Commander setup
 
 tests/
