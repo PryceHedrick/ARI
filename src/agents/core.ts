@@ -6,12 +6,21 @@ import type { Guardian } from './guardian.js';
 import type { MemoryManager } from './memory-manager.js';
 import type { Executor } from './executor.js';
 import type { Planner } from './planner.js';
+import type { Scratchpad } from './scratchpad.js';
+import type { LearningMachine } from './learning-machine.js';
+import type { SOULManager } from '../governance/soul.js';
+import type { ContextLayerManager } from '../system/context-layers.js';
 
 interface OrchestratorConfig {
   guardian: Guardian;
   memoryManager: MemoryManager;
   executor: Executor;
   planner: Planner;
+  // Optional new components
+  scratchpad?: Scratchpad;
+  learningMachine?: LearningMachine;
+  soulManager?: SOULManager;
+  contextLayerManager?: ContextLayerManager;
 }
 
 interface ComponentHealth {
@@ -47,6 +56,12 @@ export class Core {
   private readonly executor: Executor;
   private readonly planner: Planner;
 
+  // New cognitive components
+  private readonly scratchpad: Scratchpad | null;
+  private readonly learningMachine: LearningMachine | null;
+  private readonly soulManager: SOULManager | null;
+  private readonly contextLayerManager: ContextLayerManager | null;
+
   // Governance components (optional, typed as unknown for forward compatibility)
   private council: unknown = null;
   private arbiter: unknown = null;
@@ -65,6 +80,12 @@ export class Core {
     this.memoryManager = config.memoryManager;
     this.executor = config.executor;
     this.planner = config.planner;
+
+    // Initialize new cognitive components
+    this.scratchpad = config.scratchpad || null;
+    this.learningMachine = config.learningMachine || null;
+    this.soulManager = config.soulManager || null;
+    this.contextLayerManager = config.contextLayerManager || null;
   }
 
   /**
@@ -87,14 +108,34 @@ export class Core {
     // Start all agents
     this.guardian.start();
 
+    // Initialize new cognitive components
+    if (this.scratchpad) {
+      this.scratchpad.startCleanup();
+    }
+
+    if (this.learningMachine) {
+      this.learningMachine.start();
+      await this.learningMachine.loadFromMemory();
+    }
+
+    if (this.soulManager) {
+      await this.soulManager.loadSouls();
+    }
+
     // Emit startup event
     this.eventBus.emit('agent:started', {
       agent: 'core',
       timestamp: new Date(),
     });
 
+    const components = ['guardian', 'memory_manager', 'executor', 'planner'];
+    if (this.scratchpad) components.push('scratchpad');
+    if (this.learningMachine) components.push('learning_machine');
+    if (this.soulManager) components.push('soul_manager');
+    if (this.contextLayerManager) components.push('context_layer_manager');
+
     await this.auditLogger.log('core:start', 'core', 'system', {
-      components: ['guardian', 'memory_manager', 'executor', 'planner'],
+      components,
     });
 
     this.started = true;
@@ -110,6 +151,15 @@ export class Core {
 
     // Stop all agents
     this.guardian.stop();
+
+    // Stop new cognitive components
+    if (this.scratchpad) {
+      this.scratchpad.stopCleanup();
+    }
+
+    if (this.learningMachine) {
+      this.learningMachine.stop();
+    }
 
     // Emit shutdown event
     this.eventBus.emit('agent:stopped', {
@@ -200,6 +250,60 @@ export class Core {
       });
     }
 
+    // Scratchpad status
+    if (this.scratchpad) {
+      try {
+        const stats = this.scratchpad.getStats();
+        components.push({
+          name: 'scratchpad',
+          status: 'healthy',
+          details: { ...stats },
+        });
+      } catch (error) {
+        components.push({
+          name: 'scratchpad',
+          status: 'down',
+          details: { error: error instanceof Error ? error.message : String(error) },
+        });
+      }
+    }
+
+    // Learning machine status
+    if (this.learningMachine) {
+      try {
+        const stats = this.learningMachine.getStats();
+        components.push({
+          name: 'learning_machine',
+          status: stats.totalPatterns > 0 ? 'healthy' : 'degraded',
+          details: { ...stats },
+        });
+      } catch (error) {
+        components.push({
+          name: 'learning_machine',
+          status: 'down',
+          details: { error: error instanceof Error ? error.message : String(error) },
+        });
+      }
+    }
+
+    // SOUL manager status
+    if (this.soulManager) {
+      try {
+        const stats = this.soulManager.getStats();
+        components.push({
+          name: 'soul_manager',
+          status: stats.totalLoaded > 0 ? 'healthy' : 'degraded',
+          details: { ...stats },
+        });
+      } catch (error) {
+        components.push({
+          name: 'soul_manager',
+          status: 'down',
+          details: { error: error instanceof Error ? error.message : String(error) },
+        });
+      }
+    }
+
     // Determine overall status
     const allHealthy = components.every((c) => c.status === 'healthy');
     const anyDown = components.some((c) => c.status === 'down');
@@ -221,24 +325,64 @@ export class Core {
    * Process a message through the full pipeline
    *
    * Pipeline (grounded in v12 SYSTEM/CORE.md):
+   *   0. Context — build layered context from memory, patterns, knowledge
    *   1. Guardian assess — threat detection and risk scoring
-   *   2. Route — emit to EventBus for SystemRouter context classification
-   *   3. Plan — decompose message into actionable tasks
-   *   4. Execute — run plan tasks through Executor with permission gating
-   *   5. Audit — log final processing result
+   *   2. SOUL influence — apply agent identity to decision
+   *   3. Route — emit to EventBus for SystemRouter context classification
+   *   4. Plan — decompose message into actionable tasks
+   *   5. Execute — run plan tasks through Executor with permission gating
+   *   6. Learn — extract patterns for future improvement
+   *   7. Audit — log final processing result
    */
   async processMessage(message: Message): Promise<ProcessResult> {
+    const messageId = message.id;
+
     await this.auditLogger.log('core:process_message', 'core', 'system', {
-      message_id: message.id,
+      message_id: messageId,
       source: message.source,
     });
+
+    // Step 0: Write to scratchpad for working memory
+    if (this.scratchpad) {
+      this.scratchpad.write('core', `message:${messageId}`, message.content, {
+        taskId: messageId,
+        metadata: { source: message.source, timestamp: message.timestamp },
+      });
+    }
 
     // Step 1: Guardian threat assessment
     const assessment = this.guardian.assessThreat(message.content, message.source);
 
+    // Step 2: Apply SOUL influence if available
+    let soulInfluence: { confidence: number; reasoning: string } | undefined;
+    if (this.soulManager && this.soulManager.hasIdentity('core')) {
+      const decision = {
+        action: message.content.substring(0, 100),
+        confidence: 1 - assessment.risk_score,
+        alternatives: ['process', 'block', 'escalate'],
+      };
+      const influenced = this.soulManager.influenceDecision('core', decision);
+      soulInfluence = { confidence: influenced.confidence, reasoning: influenced.reasoning };
+
+      // SOUL might recommend blocking
+      if (influenced.action === 'BLOCK') {
+        await this.auditLogger.log('core:message_blocked_by_soul', 'core', 'system', {
+          message_id: messageId,
+          reasoning: influenced.reasoning,
+        });
+        return {
+          blocked: true,
+          threat_level: 'soul_block',
+          tasks_executed: 0,
+          tasks_succeeded: 0,
+          tasks_failed: 0,
+        };
+      }
+    }
+
     if (assessment.should_block) {
       await this.auditLogger.log('core:message_blocked', 'core', 'system', {
-        message_id: message.id,
+        message_id: messageId,
         threat_level: assessment.threat_level,
         risk_score: assessment.risk_score,
       });
@@ -251,14 +395,14 @@ export class Core {
       };
     }
 
-    // Step 2: Route message — emit to EventBus for SystemRouter
+    // Step 3: Route message — emit to EventBus for SystemRouter
     // SystemRouter subscribes to message:accepted and handles context routing.
     // Core does not import SystemRouter directly (layer boundary).
     this.eventBus.emit('message:accepted', message);
 
-    // Step 3: Create a plan for the message
+    // Step 4: Create a plan for the message
     const planId = await this.planner.createPlan(
-      `Process message ${message.id}`,
+      `Process message ${messageId}`,
       `Handle message: ${message.content.substring(0, 100)}`,
       'core'
     );
@@ -273,17 +417,35 @@ export class Core {
       assigned_to: 'executor',
     });
 
-    // Step 4: Execute available plan tasks through the Executor
+    // Step 5: Execute available plan tasks through the Executor
     const executionResult = await this.executePlanTasks(planId, message.source);
 
-    // Step 5: Audit final result
+    // Step 6: Learn from this interaction
+    if (this.learningMachine) {
+      await this.learningMachine.observe({
+        id: messageId,
+        type: executionResult.succeeded > 0 ? 'task_completed' : 'task_failed',
+        success: executionResult.failed === 0,
+        agent: 'core',
+        taskDescription: message.content.substring(0, 200),
+        steps: [`executed: ${executionResult.executed}`, `succeeded: ${executionResult.succeeded}`],
+      });
+    }
+
+    // Clean up scratchpad for this message
+    if (this.scratchpad) {
+      this.scratchpad.delete('core', `message:${messageId}`);
+    }
+
+    // Step 7: Audit final result
     await this.auditLogger.log('core:message_processed', 'core', 'system', {
-      message_id: message.id,
+      message_id: messageId,
       plan_id: planId,
       threat_level: assessment.threat_level,
       tasks_executed: executionResult.executed,
       tasks_succeeded: executionResult.succeeded,
       tasks_failed: executionResult.failed,
+      soul_influence: soulInfluence,
     });
 
     return {

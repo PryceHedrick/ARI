@@ -17,6 +17,14 @@
 
 export { ToolRegistry } from './tool-registry.js';
 export { ToolExecutor } from './tool-executor.js';
+export { ModelRouter } from './model-router.js';
+export type {
+  ModelProvider,
+  ModelCapability,
+  ModelConfig,
+  TaskClassification,
+  RoutingDecision,
+} from './model-router.js';
 export type {
   ToolHandler,
   ExecutionContext,

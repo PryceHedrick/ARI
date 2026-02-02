@@ -4,6 +4,7 @@ export {
   AgentIdSchema, SourceTypeSchema, PermissionTierSchema,
   MemoryTypeSchema, MemoryPartitionSchema, MemoryEntrySchema,
   VoteOptionSchema, VoteThresholdSchema, VoteSchema, ToolDefinitionSchema,
+  ReasoningStepSchema, ReasoningTraceSchema,
   TRUST_SCORES, PERMISSION_LEVELS, VOTING_AGENTS,
 } from './types.js';
 export type {
@@ -11,9 +12,13 @@ export type {
   AgentId, SourceType, PermissionTier,
   MemoryType, MemoryPartition, MemoryEntry,
   VoteOption, VoteThreshold, Vote, ToolDefinition,
+  ReasoningStep, ReasoningTrace,
 } from './types.js';
-export { sanitize, isSafe, INJECTION_PATTERNS } from './sanitizer.js';
+export { sanitize, sanitizeWithReasoning, isSafe, INJECTION_PATTERNS } from './sanitizer.js';
+export type { SanitizeResultWithReasoning } from './sanitizer.js';
 export { AuditLogger } from './audit.js';
+export { HeartbeatMonitor, createHeartbeatMonitor } from './heartbeat.js';
+export type { HeartbeatConfig, ComponentType, HealthStatus, ComponentHeartbeat, HeartbeatReport } from './heartbeat.js';
 export { EventBus } from './event-bus.js';
 export type { EventMap } from './event-bus.js';
 export { Gateway } from './gateway.js';

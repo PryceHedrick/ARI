@@ -103,7 +103,9 @@ export interface EventMap {
   // ── Audit log event (for logging) ───────────────────────────────────────
   'audit:log': { action: string; agent: string; trustLevel: TrustLevel; details: Record<string, unknown> };
 
-  // ── Cognitive Layer 0: LOGOS events ─────────────────────────────────────
+  // ═══════════════════════════════════════════════════════════════════════
+  // COGNITIVE LAYER 0: LOGOS events (Reason & Logic)
+  // ═══════════════════════════════════════════════════════════════════════
   'cognition:belief_updated': {
     hypothesis: string;
     priorProbability: number;
@@ -127,7 +129,9 @@ export interface EventMap {
     timestamp: string;
   };
 
-  // ── Cognitive Layer 0: ETHOS events ─────────────────────────────────────
+  // ═══════════════════════════════════════════════════════════════════════
+  // COGNITIVE LAYER 0: ETHOS events (Character & Bias)
+  // ═══════════════════════════════════════════════════════════════════════
   'cognition:bias_detected': {
     agent: string;
     biases: Array<{ type: string; severity: number }>;
@@ -150,7 +154,9 @@ export interface EventMap {
     timestamp: string;
   };
 
-  // ── Cognitive Layer 0: PATHOS events ────────────────────────────────────
+  // ═══════════════════════════════════════════════════════════════════════
+  // COGNITIVE LAYER 0: PATHOS events (Growth & Wisdom)
+  // ═══════════════════════════════════════════════════════════════════════
   'cognition:thought_reframed': {
     original: string;
     distortions: string[];
@@ -181,7 +187,18 @@ export interface EventMap {
     timestamp: string;
   };
 
-  // ── Cognitive Layer 0: Learning Loop events ─────────────────────────────
+  // ═══════════════════════════════════════════════════════════════════════
+  // COGNITIVE LAYER 0: General Cognition events
+  // ═══════════════════════════════════════════════════════════════════════
+  'cognition:query': { api: string; pillar: 'LOGOS' | 'ETHOS' | 'PATHOS'; agent: string };
+  'cognition:result': { api: string; pillar: string; confidence: number; latencyMs: number };
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // LEARNING LOOP events (Self-Improvement System)
+  // ═══════════════════════════════════════════════════════════════════════
+  'learning:pattern_stored': { patternId: string; type: string; confidence: number };
+  'learning:pattern_updated': { patternId: string; success: boolean; newConfidence: number };
+  'learning:pattern_retrieved': { patternId: string; context: string; score: number };
   'learning:performance_review': {
     period: string;
     successRate: number;
@@ -214,6 +231,54 @@ export interface EventMap {
     generalizes: boolean;
     timestamp: string;
   };
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // HEARTBEAT events (System Health Monitoring)
+  // ═══════════════════════════════════════════════════════════════════════
+  'system:heartbeat': { componentId: string; status: string; timestamp: Date; metrics: Record<string, unknown>; latencyMs: number };
+  'system:heartbeat_started': { timestamp: Date; componentCount: number };
+  'system:heartbeat_stopped': { timestamp: Date };
+  'system:heartbeat_failure': { componentId: string; consecutiveFailures: number; timestamp: Date; error: string };
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // COST TRACKING events (Budget & Spend)
+  // ═══════════════════════════════════════════════════════════════════════
+  'cost:tracked': { operation: string; cost: number; model: string };
+  'cost:budget_warning': { type: string; current: number; budget: number; percentage: number };
+  'cost:budget_exceeded': { type: string; current: number; budget: number };
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // PLAN REVIEW events (Quality Gates)
+  // ═══════════════════════════════════════════════════════════════════════
+  'plan:review_started': { planId: string; requiredReviews: string[] };
+  'plan:review_approved': { planId: string; approvedAt: Date };
+  'plan:review_rejected': { planId: string; reason: string };
+  'plan:review_needs_revision': { planId: string; concerns: string[]; tips: string[] };
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // SCRATCHPAD events (Temporary Reasoning Space)
+  // ═══════════════════════════════════════════════════════════════════════
+  'scratchpad:written': { agent: string; key: string; size: number };
+  'scratchpad:deleted': { agent: string; key: string };
+  'scratchpad:cleared': { agent: string; count: number };
+  'scratchpad:cleanup': { cleaned: number; remaining: number };
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // SOUL events (Agent Identity & Personality)
+  // ═══════════════════════════════════════════════════════════════════════
+  'soul:loaded': { agent: AgentId; name: string; pillarWeights: { logos: number; ethos: number; pathos: number } };
+  'soul:decision_influenced': { agent: AgentId; action: string; confidence: number; appliedFrameworks: string[] };
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // CONTEXT LAYER events (6-Layer Context Building)
+  // ═══════════════════════════════════════════════════════════════════════
+  'context:layer:loaded': { layer: string; size: number; hitRate?: number };
+  'context:built': { layers: number; totalSize: number; buildTimeMs: number };
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // MODEL ROUTING events (Intelligent Model Selection)
+  // ═══════════════════════════════════════════════════════════════════════
+  'model:routed': { task: string; model: string; reason: string; estimatedCost?: number };
 }
 
 /**

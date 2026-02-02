@@ -2,6 +2,8 @@ export { ContextTypeSchema, ContextSchema, RouteResultSchema, ActiveContextSchem
 export type { ContextType, Context, RouteResult, ActiveContext } from './types.js';
 export { listContexts, getContext, saveContext, getActiveContext, setActiveContext, matchContext, ensureContextsDir, getContextsDir } from './storage.js';
 export { SystemRouter } from './router.js';
+export { ContextLayerManager } from './context-layers.js';
+export type { ContextLayer, LayeredContext, Session as ContextSession } from './context-layers.js';
 
 // Sessions exports
 export {

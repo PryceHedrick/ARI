@@ -10,3 +10,7 @@ export { MemoryManager } from './memory-manager.js';
 export { Executor } from './executor.js';
 export { Planner } from './planner.js';
 export { Core } from './core.js';
+export { LearningMachine } from './learning-machine.js';
+export type { LearnedPattern, PatternType, Interaction, InteractionType } from './learning-machine.js';
+export { Scratchpad } from './scratchpad.js';
+export type { ScratchpadEntry, ScratchpadContext } from './scratchpad.js';
