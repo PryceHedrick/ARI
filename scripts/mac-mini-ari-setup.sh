@@ -114,7 +114,7 @@ setup_git_config() {
     print_step "Setting up Git identity..."
 
     git config --global user.name "ARI"
-    git config --global user.email "194972212+RI-Assistant@users.noreply.github.com"
+    git config --global user.email "258844354+ARI-Assistant@users.noreply.github.com"
 
     # Configure commit signing (optional)
     git config --global commit.gpgsign false
