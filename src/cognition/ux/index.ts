@@ -38,10 +38,12 @@ export {
   renderQuickStatus,
   renderAgentStatus,
   renderEditStatus,
+  isEmojiSupported,
   type ComparisonItem,
   type ChartDecisionNode,
   type RecommendationData,
   type AnalysisData,
+  type RenderOptions,
 } from './charts.js';
 
 export {

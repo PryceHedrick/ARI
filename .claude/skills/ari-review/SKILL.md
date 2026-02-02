@@ -145,6 +145,210 @@ const card = await engine.createCard({
 });
 ```
 
+## Error Handling
+
+### Storage Failures
+
+If the spaced repetition engine cannot load or save card data:
+
+```
+╔════════════════════════════════════════════════════════════════╗
+║  ⚠️ STORAGE ERROR                                              ║
+╠════════════════════════════════════════════════════════════════╣
+║                                                                 ║
+║  Unable to load review cards from ~/.ari/learning/             ║
+║                                                                 ║
+║  Possible causes:                                               ║
+║  • Directory does not exist                                     ║
+║  • Insufficient read/write permissions                          ║
+║  • Corrupted cards.json file                                    ║
+║                                                                 ║
+║  Recovery options:                                              ║
+║  [A] Create directory and start fresh                           ║
+║  [B] Restore from backup (cards.json.backup)                    ║
+║  [C] View detailed error                                        ║
+║                                                                 ║
+╚════════════════════════════════════════════════════════════════╝
+```
+
+**Auto-recovery:**
+
+```typescript
+try {
+  const engine = await getSpacedRepetitionEngine();
+} catch (error) {
+  if (error.code === 'STORAGE_INIT_FAILED') {
+    // Attempt to create directory structure
+    await fs.mkdir(path.join(homeDir, '.ari', 'learning'), { recursive: true });
+    // Initialize empty cards file
+    await fs.writeFile(cardsPath, JSON.stringify({ cards: [] }));
+  }
+}
+```
+
+### Card Scheduling Errors
+
+If SM-2 algorithm encounters invalid state:
+
+```typescript
+// Cards with corrupted scheduling data are auto-repaired
+if (card.interval < 0 || card.easeFactor < 1.3) {
+  // Reset to default values
+  card.interval = 1;
+  card.easeFactor = 2.5;
+  card.consecutiveCorrect = 0;
+}
+```
+
+## Card Management
+
+### Edit Cards
+
+Update existing cards without losing scheduling history:
+
+```typescript
+const updatedCard = await engine.updateCard(cardId, {
+  front: 'New question text',
+  back: 'New answer text',
+  // Scheduling data preserved
+});
+```
+
+**UI Flow:**
+
+```
+╔════════════════════════════════════════════════════════════════╗
+║  ✏️ EDIT CARD                                                   ║
+╠════════════════════════════════════════════════════════════════╣
+║                                                                 ║
+║  Card ID: abc123                                                ║
+║  Concept: Kelly Criterion                                       ║
+║                                                                 ║
+║  Current Front:                                                 ║
+║  "What is the Kelly Criterion formula?"                         ║
+║                                                                 ║
+║  New Front (or press Enter to keep):                            ║
+║  [_____________________________________________]                ║
+║                                                                 ║
+║  Current Back:                                                  ║
+║  "f* = (bp - q) / b"                                            ║
+║                                                                 ║
+║  New Back (or press Enter to keep):                             ║
+║  [_____________________________________________]                ║
+║                                                                 ║
+║  ⚠️ Scheduling data will be preserved                           ║
+║                                                                 ║
+║  [Save] [Cancel]                                                ║
+║                                                                 ║
+╚════════════════════════════════════════════════════════════════╝
+```
+
+### Delete Cards
+
+Remove cards permanently:
+
+```typescript
+await engine.deleteCard(cardId);
+```
+
+**Confirmation:**
+
+```
+╔════════════════════════════════════════════════════════════════╗
+║  🗑️ DELETE CARD?                                                ║
+╠════════════════════════════════════════════════════════════════╣
+║                                                                 ║
+║  Card: "What is the Kelly Criterion formula?"                   ║
+║  Concept: Kelly Criterion                                       ║
+║                                                                 ║
+║  ⚠️ This action cannot be undone                                ║
+║                                                                 ║
+║  [Delete] [Cancel]                                              ║
+║                                                                 ║
+╚════════════════════════════════════════════════════════════════╝
+```
+
+### Archive Cards
+
+Suspend cards without deleting (for concepts no longer relevant):
+
+```typescript
+await engine.archiveCard(cardId);
+```
+
+Archived cards are excluded from review queues but can be restored:
+
+```typescript
+await engine.unarchiveCard(cardId);
+```
+
+## Import/Export
+
+### Export All Cards
+
+Save cards as portable JSON:
+
+```typescript
+const exported = await engine.exportCards();
+await fs.writeFile('my-cards-backup.json', JSON.stringify(exported, null, 2));
+```
+
+**Export Format:**
+
+```json
+{
+  "exportedAt": "2026-02-02T12:00:00.000Z",
+  "version": "1.0",
+  "cards": [
+    {
+      "id": "abc123",
+      "concept": "Kelly Criterion",
+      "front": "What is the Kelly Criterion formula?",
+      "back": "f* = (bp - q) / b",
+      "interval": 7,
+      "easeFactor": 2.5,
+      "nextReview": "2026-02-09T12:00:00.000Z"
+    }
+  ]
+}
+```
+
+### Import Cards
+
+Restore from backup or import shared decks:
+
+```typescript
+const imported = JSON.parse(await fs.readFile('my-cards-backup.json', 'utf-8'));
+const result = await engine.importCards(imported.cards, {
+  mergeStrategy: 'skip' // 'skip' | 'overwrite' | 'merge'
+});
+
+console.log(`Imported ${result.added} new cards, skipped ${result.skipped} duplicates`);
+```
+
+**Import Conflict Resolution:**
+
+```
+╔════════════════════════════════════════════════════════════════╗
+║  📥 IMPORT CONFLICT                                             ║
+╠════════════════════════════════════════════════════════════════╣
+║                                                                 ║
+║  Found 3 cards with matching IDs in your deck:                 ║
+║                                                                 ║
+║  Card 1: "Kelly Criterion"                                      ║
+║  • Your version: Interval 7 days, EF 2.5                        ║
+║  • Import version: Interval 1 day, EF 2.3                       ║
+║                                                                 ║
+║  How should conflicts be resolved?                              ║
+║                                                                 ║
+║  [A] Skip (keep your version)                                   ║
+║  [B] Overwrite (replace with import)                            ║
+║  [C] Merge (keep better scheduling data)                        ║
+║  [D] Ask for each conflict                                      ║
+║                                                                 ║
+╚════════════════════════════════════════════════════════════════╝
+```
+
 ## Core Modules
 
 - `src/cognition/learning/spaced-repetition.ts` - SM-2 engine with persistence
@@ -159,3 +363,39 @@ const card = await engine.createCard({
 3. **Be honest with ratings** - Accurate ratings improve scheduling
 4. **Use retrieval first** - Try to recall before revealing
 5. **Add visual encodings** - Dual coding improves retention
+
+## See Also
+
+**Related Skills:**
+
+- `/ari-practice` - Deliberate practice sessions that auto-generate review cards
+- `/ari-learning-mode` - Comprehension checks that create cards for key concepts
+- `/ari-think` - Deep reasoning that identifies concepts worth memorizing
+
+**Integration:**
+
+When you complete a `/ari-practice` session, cards are automatically generated for concepts where you struggled. These appear in your next review queue.
+
+**Workflow:**
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                                                             │
+│  [/ari-practice] → Practice generates cards for weak areas │
+│         ↓                                                   │
+│  [/ari-review] → Daily reviews reinforce learning          │
+│         ↓                                                   │
+│  Cards mature over time (1d → 7d → 30d → 120d intervals)   │
+│         ↓                                                   │
+│  Long-term retention and mastery                           │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Cross-Domain Learning:**
+
+Review cards span all three cognitive domains:
+
+- **LOGOS**: Formulas, algorithms, quantitative reasoning
+- **ETHOS**: Bias patterns, decision frameworks, emotional regulation
+- **PATHOS**: Wisdom traditions, CBT techniques, philosophical concepts
