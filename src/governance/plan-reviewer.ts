@@ -172,7 +172,8 @@ export class PlanReviewer {
           score: constitutionalReview.score,
           blockers: constitutionalReview.blockers,
         },
-      }, constitutionalReview.reasoning);
+        reasoning: constitutionalReview.reasoning,
+      });
 
       this.eventBus.emit('plan:review_rejected', {
         planId: plan.id,
@@ -194,7 +195,8 @@ export class PlanReviewer {
           planId: plan.id,
           score: qualityReview.score,
           concerns: qualityReview.concerns,
-        }, qualityReview.reasoning);
+          reasoning: qualityReview.reasoning,
+        });
 
         this.eventBus.emit('plan:review_needs_revision', {
           planId: plan.id,
@@ -217,7 +219,8 @@ export class PlanReviewer {
         await this.auditLogger.log('plan:expert_review_failed', expertReview.reviewer, 'system', {
           planId: plan.id,
           concerns: expertReview.concerns,
-        }, expertReview.reasoning);
+          reasoning: expertReview.reasoning,
+        });
 
         return pipeline;
       }

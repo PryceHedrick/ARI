@@ -327,6 +327,34 @@ export const ToolDefinitionSchema = z.object({
 });
 export type ToolDefinition = z.infer<typeof ToolDefinitionSchema>;
 
+// ── Reasoning Types ─────────────────────────────────────────────────────────
+
+/**
+ * A single step in a reasoning chain.
+ * Captures the observation → interpretation → action flow.
+ */
+export const ReasoningStepSchema = z.object({
+  step: z.string(),
+  observation: z.string(),
+  interpretation: z.string(),
+  action: z.string(),
+});
+export type ReasoningStep = z.infer<typeof ReasoningStepSchema>;
+
+/**
+ * A complete reasoning trace for decisions.
+ * Shows the decision-making process including alternatives considered.
+ */
+export const ReasoningTraceSchema = z.object({
+  decision: z.string(),
+  alternatives: z.array(z.string()),
+  chosen: z.string(),
+  rationale: z.string(),
+  confidence: z.number().min(0).max(1),
+  steps: z.array(ReasoningStepSchema),
+});
+export type ReasoningTrace = z.infer<typeof ReasoningTraceSchema>;
+
 // ── Execution Layer Types ────────────────────────────────────────────────────
 
 /**
