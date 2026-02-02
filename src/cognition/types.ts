@@ -669,6 +669,14 @@ export const DisciplineContextSchema = z.object({
   researchDocuments: z.array(z.string()).optional(),
   alternativesConsidered: z.array(z.string()).optional(),
   consultedParties: z.array(z.string()).optional(),
+  emotional: z
+    .object({
+      valence: z.number().min(-1).max(1),
+      arousal: z.number().min(0).max(1),
+      dominance: z.number().min(0).max(1),
+      context: z.string().optional(),
+    })
+    .optional(),
 });
 export type DisciplineContext = z.infer<typeof DisciplineContextSchema>;
 

@@ -73,6 +73,12 @@ export * from './learning/index.js';
 export * from './visualization/index.js';
 
 // =============================================================================
+// UX EXPORTS (Dual-Coding / Interpretability)
+// =============================================================================
+
+export * from './ux/index.js';
+
+// =============================================================================
 // COGNITIVE LAYER FACADE
 // =============================================================================
 
@@ -124,6 +130,7 @@ export class CognitionLayer {
   public knowledge: typeof import('./knowledge/index.js') | null = null;
   public learning: typeof import('./learning/index.js') | null = null;
   public visualization: typeof import('./visualization/index.js') | null = null;
+  public ux: typeof import('./ux/index.js') | null = null;
 
   private constructor() {
     this.eventBus = new EventBus();
@@ -158,6 +165,7 @@ export class CognitionLayer {
       this.knowledge = await import('./knowledge/index.js');
       this.learning = await import('./learning/index.js');
       this.visualization = await import('./visualization/index.js');
+      this.ux = await import('./ux/index.js');
 
       this.initialized = true;
       this.initializationTime = new Date();
@@ -342,6 +350,7 @@ export class CognitionLayer {
     this.knowledge = null;
     this.learning = null;
     this.visualization = null;
+    this.ux = null;
 
     this.initialized = false;
     this.initializationTime = null;

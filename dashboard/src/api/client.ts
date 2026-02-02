@@ -46,6 +46,24 @@ async function fetchAPI<T>(endpoint: string): Promise<T> {
   return response.json();
 }
 
+async function postAPI<T>(endpoint: string, body: unknown): Promise<T> {
+  const response = await fetch(`${API_BASE}${endpoint}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new APIError(
+      response.status,
+      (errorData as { error?: string }).error || `API request failed: ${response.status} ${response.statusText}`,
+    );
+  }
+
+  return response.json();
+}
+
 // Health Endpoints
 export const getHealth = (): Promise<HealthStatus> => fetchAPI('/health');
 
@@ -194,6 +212,42 @@ export interface LearningStatus {
   improvementTrend: 'improving' | 'stable' | 'declining';
 }
 
+export interface LearningAnalytics {
+  period: { start: string; end: string };
+  retentionMetrics: {
+    reviews: number;
+    successfulReviews: number;
+    retentionRate: number;
+    dueNow: number;
+  };
+  practiceQuality: {
+    deliberateHours: number;
+    distractedHours: number;
+    focusRatio: number;
+  };
+  insights: Array<{ pattern: string; recommendation: string; impact: 'HIGH' | 'MEDIUM' | 'LOW' }>;
+}
+
+export interface CalibrationReport {
+  overconfidenceBias: number;
+  underconfidenceBias: number;
+  calibrationCurve: Array<{
+    confidenceBucket: string;
+    statedConfidence: number;
+    actualAccuracy: number;
+    delta: number;
+    count: number;
+  }>;
+  predictions: Array<{
+    id: string;
+    statement: string;
+    confidence: number;
+    outcome: boolean | null;
+    createdAt: string;
+    resolvedAt: string | null;
+  }>;
+}
+
 export interface CognitiveInsight {
   id: string;
   type: 'SUCCESS' | 'MISTAKE' | 'PATTERN' | 'PRINCIPLE' | 'ANTIPATTERN';
@@ -283,6 +337,23 @@ export const getCouncilProfile = (memberId: string): Promise<CouncilProfile> =>
 
 export const getLearningStatus = (): Promise<LearningStatus> =>
   fetchAPI('/cognition/learning/status');
+
+export const getLearningAnalytics = (params?: { days?: number; userId?: string }): Promise<LearningAnalytics> => {
+  const query = new URLSearchParams();
+  if (params?.days) query.set('days', params.days.toString());
+  if (params?.userId) query.set('userId', params.userId);
+  const qs = query.toString();
+  return fetchAPI(`/cognition/learning/analytics${qs ? `?${qs}` : ''}`);
+};
+
+export const getCalibrationReport = (): Promise<CalibrationReport> =>
+  fetchAPI('/cognition/learning/calibration');
+
+export const addCalibrationPrediction = (statement: string, confidence: number): Promise<{ id: string }> =>
+  postAPI('/cognition/learning/calibration/predictions', { statement, confidence });
+
+export const resolveCalibrationPrediction = (id: string, outcome: boolean): Promise<{ success: boolean }> =>
+  postAPI(`/cognition/learning/calibration/predictions/${id}/outcome`, { outcome });
 
 export const getFrameworkUsage = (): Promise<FrameworkUsage[]> =>
   fetchAPI('/cognition/frameworks/usage');

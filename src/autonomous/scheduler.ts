@@ -215,6 +215,17 @@ const DEFAULT_TASKS: Omit<ScheduledTask, 'lastRun' | 'nextRun'>[] = [
       description: 'Monthly comprehensive self-evaluation',
     },
   },
+  {
+    id: 'spaced-repetition-review',
+    name: 'Daily Concept Review',
+    cron: '0 8 * * *', // 8:00 AM daily
+    handler: 'spaced_repetition_review',
+    enabled: true,
+    metadata: {
+      pillar: 'LEARNING',
+      description: 'Daily spaced-repetition review for due concept cards',
+    },
+  },
 
   // ==========================================================================
   // INITIATIVE ENGINE: Proactive autonomy and user deliverables

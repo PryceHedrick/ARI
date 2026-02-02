@@ -571,6 +571,7 @@ export async function reflect(
     originalDecision: string;
     reasoning?: string;
     expectedOutcome?: string;
+    expectedValue?: number;
     actualProcess?: string;
     timeframe?: string;
   }
@@ -656,7 +657,9 @@ export async function reflect(
     : 'Process any negative emotions. Separate the outcome from your self-worth. Focus on learning.';
 
   const actualValue = outcome.value;
-  const expectedValue = context.expectedOutcome ? (isPositive ? actualValue * 0.8 : actualValue * 1.2) : actualValue;
+  const expectedValue = typeof context.expectedValue === 'number'
+    ? context.expectedValue
+    : (context.expectedOutcome ? (isPositive ? actualValue * 0.8 : actualValue * 1.2) : actualValue);
   const delta = actualValue - expectedValue;
   const lessonsLearned = principles.concat(
     insights.map(i => i.description.substring(0, 100))

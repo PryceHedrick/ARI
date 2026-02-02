@@ -25,6 +25,8 @@ import type {
   CognitiveHealth,
   PillarHealth,
 } from '../types.js';
+import { interpretConfidence, interpretExpectedValueScore, interpretSeverity } from '../ux/interpreter.js';
+import { renderTrafficLight } from '../ux/visual-encoder.js';
 
 // =============================================================================
 // CONSTANTS
@@ -103,6 +105,15 @@ export function formatInsightBlock(block: InsightBlock): string {
  * Format Expected Value result as insight block
  */
 export function formatExpectedValueInsight(result: ExpectedValueResult): string {
+  const scaleDenom = Math.max(
+    Math.abs(result.bestCase.value),
+    Math.abs(result.worstCase.value),
+    1
+  );
+  const evScore = (result.expectedValue / scaleDenom) * 10;
+  const evMetric = interpretExpectedValueScore(evScore);
+  const confidenceMetric = interpretConfidence(result.confidence);
+
   return formatInsightBlock({
     pillar: 'LOGOS',
     framework: 'Expected Value Theory',
@@ -121,11 +132,35 @@ export function formatExpectedValueInsight(result: ExpectedValueResult): string 
         highlight: result.expectedValue > 0 ? 'positive' : result.expectedValue < 0 ? 'negative' : 'neutral',
       },
       {
+        heading: 'Interpretation (Scaled)',
+        content: [
+          `${renderTrafficLight(evMetric.trafficLight || 'CAUTION')}  ${evMetric.name}: ${evMetric.display} (${evMetric.label})`,
+          `Visual: ${evMetric.visual}`,
+          `Meaning: ${evMetric.meaning}`,
+          ...(evMetric.comparables?.similar ? [`Similar to: ${evMetric.comparables.similar}`] : []),
+          ...(evMetric.comparables?.betterThan ? [`Better than: ${evMetric.comparables.betterThan}`] : []),
+          ...(evMetric.comparables?.worseThan ? [`Worse than: ${evMetric.comparables.worseThan}`] : []),
+        ],
+        highlight: result.expectedValue > 0 ? 'positive' : result.expectedValue < 0 ? 'negative' : 'neutral',
+      },
+      {
+        heading: 'Confidence',
+        content: [
+          `${renderTrafficLight(confidenceMetric.trafficLight || 'CAUTION')}  ${confidenceMetric.display} (${confidenceMetric.label})`,
+          `Visual: ${confidenceMetric.visual}`,
+          `Meaning: ${confidenceMetric.meaning}`,
+        ],
+        highlight: result.confidence >= 0.8 ? 'positive' : result.confidence >= 0.6 ? 'neutral' : 'warning',
+      },
+      {
         heading: 'Risk Profile',
         content: [
           `Standard Deviation: $${result.standardDeviation.toFixed(2)}`,
           `Best Case: +$${result.bestCase.value.toFixed(2)} (${(result.bestCase.probability * 100).toFixed(0)}%)`,
           `Worst Case: $${result.worstCase.value.toFixed(2)} (${(result.worstCase.probability * 100).toFixed(0)}%)`,
+          ...(result.breakEvenProbability !== undefined
+            ? [`Break-even win-probability (best vs worst): ${(result.breakEvenProbability * 100).toFixed(1)}%`]
+            : []),
         ],
         highlight: 'neutral',
       },
@@ -141,6 +176,7 @@ export function formatExpectedValueInsight(result: ExpectedValueResult): string 
  */
 export function formatBiasInsight(result: BiasAnalysis): string {
   const biasCount = result.biasesDetected.length;
+  const riskMetric = interpretSeverity(result.overallRisk, 'Bias Risk');
 
   return formatInsightBlock({
     pillar: 'ETHOS',
@@ -153,6 +189,15 @@ export function formatBiasInsight(result: BiasAnalysis): string {
           `${b.type.replace(/_/g, ' ')}: Severity ${(b.severity * 100).toFixed(0)}%`
         ),
         highlight: 'warning',
+      },
+      {
+        heading: 'Overall Risk (Interpreted)',
+        content: [
+          `${renderTrafficLight(riskMetric.trafficLight || 'CAUTION')}  ${riskMetric.display} (${riskMetric.label})`,
+          `Visual: ${riskMetric.visual}`,
+          `Meaning: ${riskMetric.meaning}`,
+        ],
+        highlight: result.overallRisk >= 0.6 ? 'negative' : result.overallRisk >= 0.3 ? 'warning' : 'positive',
       },
       {
         heading: 'Evidence',
@@ -229,6 +274,7 @@ export function formatKellyInsight(result: KellyResult): string {
  */
 export function formatEmotionalInsight(result: EmotionalState): string {
   const riskLevel = result.riskToDecisionQuality > 0.6 ? 'HIGH' : result.riskToDecisionQuality > 0.3 ? 'MODERATE' : 'LOW';
+  const riskMetric = interpretSeverity(result.riskToDecisionQuality, 'Emotional Risk');
 
   return formatInsightBlock({
     pillar: 'ETHOS',
@@ -252,6 +298,15 @@ export function formatEmotionalInsight(result: EmotionalState): string {
       {
         heading: 'Risk to Decision Quality',
         content: `${(result.riskToDecisionQuality * 100).toFixed(0)}%`,
+        highlight: result.riskToDecisionQuality > 0.6 ? 'negative' : result.riskToDecisionQuality > 0.3 ? 'warning' : 'positive',
+      },
+      {
+        heading: 'Risk (Interpreted)',
+        content: [
+          `${renderTrafficLight(riskMetric.trafficLight || 'CAUTION')}  ${riskMetric.display} (${riskMetric.label})`,
+          `Visual: ${riskMetric.visual}`,
+          `Meaning: ${riskMetric.meaning}`,
+        ],
         highlight: result.riskToDecisionQuality > 0.6 ? 'negative' : result.riskToDecisionQuality > 0.3 ? 'warning' : 'positive',
       },
     ],

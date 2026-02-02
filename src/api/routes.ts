@@ -1195,6 +1195,78 @@ export const apiRoutes: FastifyPluginAsync<ApiRouteOptions> = async (
     };
   });
 
+  fastify.get<{ Querystring: { days?: string; userId?: string } }>(
+    '/api/cognition/learning/analytics',
+    async (request) => {
+      const days = request.query.days ? parseInt(request.query.days, 10) : 30;
+      const userId = request.query.userId || process.env.USER || 'default';
+
+      const { computeLearningAnalytics } = await import('../cognition/learning/index.js');
+      const analytics = computeLearningAnalytics(userId, { days });
+
+      return {
+        period: {
+          start: analytics.period.start.toISOString(),
+          end: analytics.period.end.toISOString(),
+        },
+        retentionMetrics: analytics.retentionMetrics,
+        practiceQuality: analytics.practiceQuality,
+        insights: analytics.insights,
+      };
+    }
+  );
+
+  fastify.get('/api/cognition/learning/calibration', async () => {
+    const { getCalibrationTracker } = await import('../cognition/learning/index.js');
+    const tracker = await getCalibrationTracker();
+    const report = tracker.report();
+    return {
+      overconfidenceBias: report.overconfidenceBias,
+      underconfidenceBias: report.underconfidenceBias,
+      calibrationCurve: report.calibrationCurve,
+      predictions: report.predictions.map((p: { id: string; statement: string; confidence: number; outcome: boolean | null; createdAt: Date; resolvedAt: Date | null }) => ({
+        id: p.id,
+        statement: p.statement,
+        confidence: p.confidence,
+        outcome: p.outcome,
+        createdAt: p.createdAt.toISOString(),
+        resolvedAt: p.resolvedAt ? p.resolvedAt.toISOString() : null,
+      })),
+    };
+  });
+
+  fastify.post<{
+    Body: { statement: string; confidence: number };
+  }>('/api/cognition/learning/calibration/predictions', async (request, reply) => {
+    const { statement, confidence } = request.body;
+    if (!statement || statement.trim().length === 0) {
+      reply.code(400);
+      return { error: 'statement is required' };
+    }
+
+    const { getCalibrationTracker } = await import('../cognition/learning/index.js');
+    const tracker = await getCalibrationTracker();
+    const prediction = await tracker.addPrediction(statement, confidence);
+    return { id: prediction.id };
+  });
+
+  fastify.post<{
+    Params: { id: string };
+    Body: { outcome: boolean };
+  }>('/api/cognition/learning/calibration/predictions/:id/outcome', async (request, reply) => {
+    const { id } = request.params;
+    const { outcome } = request.body;
+
+    const { getCalibrationTracker } = await import('../cognition/learning/index.js');
+    const tracker = await getCalibrationTracker();
+    const updated = await tracker.resolvePrediction(id, outcome);
+    if (!updated) {
+      reply.code(404);
+      return { error: `prediction ${id} not found` };
+    }
+    return { success: true };
+  });
+
   fastify.get('/api/cognition/frameworks/usage', async () => {
     // Return framework usage statistics
     // In production, this would aggregate actual usage data from events

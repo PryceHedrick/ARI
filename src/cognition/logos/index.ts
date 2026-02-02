@@ -312,6 +312,27 @@ export async function calculateExpectedValue(
   const worstCase = sortedOutcomes[sortedOutcomes.length - 1];
   const mostLikelyCase = [...decision.outcomes].sort((a, b) => b.probability - a.probability)[0];
 
+  // Sensitivity analysis (wire up schema fields)
+  const mostCriticalOutcome = [...decision.outcomes]
+    .map(o => ({ outcome: o, impact: o.probability * Math.abs(o.value - expectedValue) }))
+    .sort((a, b) => b.impact - a.impact)[0]?.outcome;
+
+  let breakEvenProbability: number | undefined;
+  if (bestCase && worstCase && bestCase.value !== worstCase.value) {
+    const denom = bestCase.value - worstCase.value;
+    const pBreakEven = denom !== 0 ? (-worstCase.value / denom) : NaN;
+    if (Number.isFinite(pBreakEven) && pBreakEven >= 0 && pBreakEven <= 1) {
+      breakEvenProbability = pBreakEven;
+    }
+  }
+
+  const sensitivityAnalysis = mostCriticalOutcome
+    ? {
+        mostCriticalOutcome: mostCriticalOutcome.description,
+        breakEvenPoint: breakEvenProbability,
+      }
+    : undefined;
+
   // Generate recommendation
   const { recommendation, reasoning } = generateEVRecommendation(
     expectedValue,
@@ -333,6 +354,8 @@ export async function calculateExpectedValue(
     bestCase,
     worstCase,
     mostLikelyCase,
+    breakEvenProbability,
+    sensitivityAnalysis,
     recommendation,
     reasoning,
     confidence,
@@ -497,13 +520,14 @@ export async function calculateKellyFraction(
 
   const p = winProbability;
   const q = 1 - p;
-  const b = winAmount / lossAmount;  // Odds
+  const profitOdds = winAmount / lossAmount; // net odds / profit multiple (b)
+  const grossOdds = 1 + profitOdds; // includes stake back; useful for log-growth formulas
 
   // Calculate edge
-  const edge = (p * b) - q;
+  const edge = (p * profitOdds) - q;
 
   // Kelly formula
-  const fullKelly = (p * b - q) / b;
+  const fullKelly = (p * profitOdds - q) / profitOdds;
 
   // Clamp to valid range
   const clampedFullKelly = Math.max(0, Math.min(1, fullKelly));
@@ -512,7 +536,7 @@ export async function calculateKellyFraction(
 
   // Expected growth rate (log utility)
   const expectedGrowthRate = clampedFullKelly > 0
-    ? p * Math.log(1 + clampedFullKelly * b) + q * Math.log(1 - clampedFullKelly)
+    ? p * Math.log(1 + clampedFullKelly * (grossOdds - 1)) + q * Math.log(1 - clampedFullKelly)
     : 0;
 
   // Generate warnings
@@ -559,7 +583,7 @@ export async function calculateKellyFraction(
     recommendedFraction,
     recommendedStrategy,
     edge,
-    odds: b,
+    odds: profitOdds,
     expectedGrowthRate,
     warnings,
     dollarAmount: currentCapital ? recommendedFraction * currentCapital : undefined,
@@ -665,12 +689,13 @@ export async function evaluateDecisionTree(
 ): Promise<DecisionTreeResult> {
   const evaluation = evaluateNode(root);
   const optimalPath = findOptimalPath(root, evaluation.decisions);
+  const allPaths = enumerateDecisionTreePaths(root);
 
   const result: DecisionTreeResult = {
     rootNode: root,
     optimalPath,
     optimalValue: evaluation.value,
-    allPaths: [], // TODO: Implement path enumeration
+    allPaths,
     provenance: {
       framework: 'Decision Tree Analysis (Backward Induction)',
       computedAt: new Date(),
@@ -762,6 +787,39 @@ function findOptimalPath(root: DecisionNode, decisions: Map<string, string>): st
   }
 
   return path;
+}
+
+function enumerateDecisionTreePaths(
+  root: DecisionNode
+): Array<{ path: string[]; expectedValue: number; probability: number }> {
+  const paths = enumeratePaths(root, [], 1);
+  // Normalize: keep only valid probabilities (0..1)
+  return paths.map(p => ({
+    path: p.path,
+    expectedValue: p.expectedValue,
+    probability: Math.max(0, Math.min(1, p.probability)),
+  }));
+}
+
+function enumeratePaths(
+  node: DecisionNode,
+  path: string[],
+  probability: number
+): Array<{ path: string[]; expectedValue: number; probability: number }> {
+  const nextPath = [...path, node.id];
+
+  if (node.type === 'terminal' || !node.children || node.children.length === 0) {
+    return [{ path: nextPath, expectedValue: node.value || 0, probability }];
+  }
+
+  if (node.type === 'chance') {
+    return node.children.flatMap(child =>
+      enumeratePaths(child, nextPath, probability * (child.probability ?? 0))
+    );
+  }
+
+  // Decision node: explore all decision branches (probability stays the same)
+  return node.children.flatMap(child => enumeratePaths(child, nextPath, probability));
 }
 
 // =============================================================================

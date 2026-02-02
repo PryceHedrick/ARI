@@ -30,6 +30,38 @@ import type {
 const eventBus = new EventBus();
 
 // =============================================================================
+// TEACHING-ORIENTED LEARNING (Retrieval Practice, Knowledge Tracking)
+// =============================================================================
+
+export * from './user-knowledge.js';
+export * from './retrieval-practice.js';
+export * from './adaptive-explanation.js';
+export * from './spaced-repetition.js';
+export * from './review-session.js';
+export * from './concept-cards.js';
+export * from './practice-tracker.js';
+export * from './weakness-analyzer.js';
+export * from './session-feedback.js';
+export * from './preferences-detector.js';
+export * from './adaptive-teacher.js';
+export * from './prerequisites.js';
+export * from './scaffolding.js';
+export * from './analytics.js';
+export * from './calibration.js';
+export * from './meta-feedback.js';
+export * from './interleaving.js';
+export * from './transfer.js';
+export * from './analogies.js';
+export * from './cognitive-load.js';
+export * from './chunking.js';
+export * from './worked-examples.js';
+
+// New persistence and data pipeline modules
+export * from './storage-adapter.js';
+export * from './decision-collector.js';
+export * from './skill-registry.js';
+
+// =============================================================================
 // LEARNING LOOP STATE
 // =============================================================================
 

@@ -128,7 +128,7 @@ export async function detectCognitiveBias(
 
   // Calculate overall risk
   const overallRisk = biasesDetected.length > 0
-    ? Math.min(1.0, biasesDetected.reduce((sum, b) => sum + b.severity, 0) / biasesDetected.length + (biasesDetected.length * 0.1))
+    ? Math.min(1.0, biasesDetected.reduce((sum, b) => sum + b.severity, 0) / biasesDetected.length)
     : 0;
 
   // Determine risk level
@@ -547,10 +547,12 @@ export async function runDisciplineCheck(
   const physicalScore = calculatePhysicalScore(context, violations, recommendations);
 
   // Emotional checks - use provided emotional state or assess
+  const emotionalInput = context.emotional ?? { valence: 0, arousal: 0.5, dominance: 0.5 };
   const emotionalState = await assessEmotionalState({
-    valence: 0,
-    arousal: 0.5,
-    dominance: 0.5,
+    valence: emotionalInput.valence,
+    arousal: emotionalInput.arousal,
+    dominance: emotionalInput.dominance,
+    context: emotionalInput.context,
   });
   const emotionalScore = 1 - emotionalState.riskToDecisionQuality;
   if (emotionalState.riskLevel === 'HIGH' || emotionalState.riskLevel === 'CRITICAL') {

@@ -79,19 +79,12 @@ export class AutonomousAgent {
     this.agentSpawner = new AgentSpawner(eventBus, process.cwd());
 
     // Initialize initiative engine for proactive autonomy
-    this.initiativeEngine = new InitiativeEngine(
-      {
-        projectPath: process.cwd(),
-        scanIntervalMs: 30 * 60 * 1000, // 30 minutes between automatic scans
-        maxInitiativesPerScan: 10,
-        autoExecute: true, // Execute autonomous initiatives automatically
-      },
-      {
-        eventBus,
-        agentSpawner: this.agentSpawner,
-        knowledgeIndex: this.knowledgeIndex,
-      }
-    );
+    this.initiativeEngine = new InitiativeEngine({
+      projectPath: process.cwd(),
+      scanIntervalMs: 30 * 60 * 1000, // 30 minutes between automatic scans
+      maxInitiativesPerScan: 10,
+      autoExecute: true, // Execute autonomous initiatives automatically
+    });
   }
 
   /**
@@ -264,8 +257,18 @@ export class AutonomousAgent {
           // eslint-disable-next-line no-console
           console.log(`[Initiative] Discovered ${initiatives.length} new initiatives`);
 
-          // NOTE: InitiativeEngine handles auto-execution internally based on config.
-          // We avoid duplicating that logic here to prevent inconsistent thresholds.
+          // Execute high-priority autonomous initiatives immediately
+          const autonomous = initiatives.filter(i => i.autonomous && i.priority >= 70);
+          for (const initiative of autonomous.slice(0, 2)) { // Max 2 per cycle
+            try {
+              // eslint-disable-next-line no-console
+              console.log(`[Initiative] Executing: ${initiative.title}`);
+              await this.initiativeEngine.executeInitiative(initiative.id);
+            } catch (err) {
+              // eslint-disable-next-line no-console
+              console.error(`[Initiative] Failed to execute ${initiative.id}:`, err);
+            }
+          }
 
           // Queue user-facing initiatives as deliverables
           const forUser = initiatives.filter(i => i.forUser && !i.autonomous);
@@ -534,10 +537,32 @@ export class AutonomousAgent {
     this.scheduler.registerHandler('cognitive_performance_review', async () => {
       try {
         const { runPerformanceReview } = await import('../cognition/learning/index.js');
+        const { getDecisionCollector } = await import('../cognition/learning/decision-collector.js');
 
-        // In production, gather actual decisions from the day's audit log
-        // For now, run with empty decisions to trigger the review structure
-        const result = await runPerformanceReview([]);
+        // Collect actual decisions from the day's audit log
+        const collector = getDecisionCollector();
+        const decisions = await collector.getRecentDecisions(24);
+
+        // Transform collected decisions for performance review
+        const reviewDecisions = decisions.map(d => ({
+          id: d.id,
+          description: d.description,
+          outcome: d.outcome,
+          expectedValue: d.expectedValue,
+          actualValue: d.actualValue,
+          biasesDetected: d.biasesDetected,
+          emotionalRisk: d.emotionalRisk,
+        }));
+
+        const result = await runPerformanceReview(reviewDecisions);
+
+        // Save summary for monthly self-assessment
+        await collector.saveCurrentMonthSummary({
+          decisionsCount: result.decisions.total,
+          successRate: result.decisions.successRate,
+          biasCount: result.biasesDetected.total,
+          insightsGenerated: result.insights.length,
+        });
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         this.eventBus.emit('learning:performance_review' as any, {
@@ -561,9 +586,28 @@ export class AutonomousAgent {
     this.scheduler.registerHandler('cognitive_gap_analysis', async () => {
       try {
         const { runGapAnalysis } = await import('../cognition/learning/index.js');
+        const { getDecisionCollector } = await import('../cognition/learning/decision-collector.js');
 
-        // Run gap analysis with recent queries and decisions
-        const result = await runGapAnalysis([], []);
+        // Collect recent queries and failures from storage
+        const collector = getDecisionCollector();
+        const queries = await collector.getRecentQueries(7);
+        const failures = await collector.getRecentFailures(7);
+
+        // Transform for gap analysis
+        const recentQueries = queries.map(q => ({
+          query: q.query,
+          domain: q.domain,
+          answered: q.answered,
+          confidence: q.confidence,
+        }));
+
+        const recentFailures = failures.map(f => ({
+          description: f.description,
+          domain: f.domain,
+          reason: f.reason,
+        }));
+
+        const result = await runGapAnalysis(recentQueries, recentFailures);
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         this.eventBus.emit('learning:gap_analysis' as any, {
@@ -585,24 +629,31 @@ export class AutonomousAgent {
     // Monthly Self-Assessment on 1st at 9 AM
     this.scheduler.registerHandler('cognitive_self_assessment', async () => {
       try {
-        const { runSelfAssessment } = await import('../cognition/learning/index.js');
+        const { runSelfAssessment, getRecentInsights } = await import('../cognition/learning/index.js');
+        const { getDecisionCollector } = await import('../cognition/learning/decision-collector.js');
 
-        // In production, gather data from stored reviews and gap analyses
-        // For now, use placeholder data to establish the assessment structure
+        // Get previous month's data for comparison
+        const collector = getDecisionCollector();
+        const previousPeriod = await collector.getPreviousMonthSummary();
+
+        // Get current month's decisions
+        const now = new Date();
+        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        const decisions = await collector.getDecisionsInRange(monthStart, now);
+
+        // Calculate current period metrics
+        const successCount = decisions.filter(d => d.outcome === 'success').length;
+        const biasCount = decisions.reduce((sum, d) => sum + (d.biasesDetected?.length || 0), 0);
+        const insights = getRecentInsights(100);
+        const monthInsights = insights.filter(i => i.timestamp >= monthStart);
+
         const currentPeriod = {
           reviews: [],
           gapAnalyses: [],
-          decisionsCount: 0,
-          successRate: 0,
-          biasCount: 0,
-          insightsGenerated: 0,
-        };
-
-        const previousPeriod = {
-          decisionsCount: 0,
-          successRate: 0,
-          biasCount: 0,
-          insightsGenerated: 0,
+          decisionsCount: decisions.length,
+          successRate: decisions.length > 0 ? successCount / decisions.length : 0,
+          biasCount,
+          insightsGenerated: monthInsights.length,
         };
 
         const result = await runSelfAssessment(currentPeriod, previousPeriod);
@@ -625,6 +676,41 @@ export class AutonomousAgent {
       }
     });
 
+    // Daily spaced repetition review at 8 AM
+    this.scheduler.registerHandler('spaced_repetition_review', async () => {
+      try {
+        const { getSpacedRepetitionEngine } = await import('../cognition/learning/spaced-repetition.js');
+
+        // Get engine and check for due cards
+        const engine = await getSpacedRepetitionEngine();
+        const now = new Date();
+        const dueCards = engine.getReviewsDue(now);
+        const stats = engine.getStats();
+
+        if (dueCards.length > 0) {
+          await notificationManager.insight(
+            'Daily Review',
+            `${dueCards.length} concept${dueCards.length === 1 ? '' : 's'} ready for review. Use /ari-review to start.`
+          );
+        }
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        this.eventBus.emit('learning:spaced_repetition_due' as any, {
+          due: dueCards.length,
+          totalCards: stats.totalCards,
+          reviewedToday: stats.reviewedToday,
+          averageEaseFactor: stats.averageEaseFactor,
+          timestamp: new Date().toISOString(),
+        });
+
+        // eslint-disable-next-line no-console
+        console.log(`[Cognitive] Spaced repetition: ${dueCards.length} due for review (${stats.totalCards} total cards, ${stats.reviewedToday} reviewed today)`);
+      } catch (error) {
+        // eslint-disable-next-line no-console
+        console.error('[Cognitive] Spaced repetition review failed:', error);
+      }
+    });
+
     // ==========================================================================
     // INITIATIVE ENGINE: Proactive work discovery and execution
     // ==========================================================================
@@ -638,7 +724,7 @@ export class AutonomousAgent {
         const initiatives = await this.initiativeEngine.scan();
 
         // Execute all autonomous high-priority initiatives
-        const autonomous = initiatives.filter(i => i.autonomous && (i.priority * 100) >= 60);
+        const autonomous = initiatives.filter(i => i.autonomous && i.priority >= 60);
         let executed = 0;
         for (const initiative of autonomous.slice(0, 5)) { // Max 5 per day
           try {
@@ -721,7 +807,7 @@ export class AutonomousAgent {
         console.log(`[Initiative] Mid-day status: ${queued.length} queued, ${inProgress.length} in progress, ${completed.length} completed today`);
 
         // Execute any high-priority queued items that haven't been started
-        const urgent = queued.filter(i => i.autonomous && (i.priority * 100) >= 80);
+        const urgent = queued.filter(i => i.autonomous && i.priority >= 80);
         for (const initiative of urgent.slice(0, 2)) {
           try {
             await this.initiativeEngine.executeInitiative(initiative.id);
@@ -751,19 +837,5 @@ export class AutonomousAgent {
       await this.stop();
       await this.start();
     }
-  }
-
-  // ── Public accessors for API integration ─────────────────────────────────
-
-  getScheduler(): Scheduler {
-    return this.scheduler;
-  }
-
-  getAgentSpawner(): AgentSpawner {
-    return this.agentSpawner;
-  }
-
-  getInitiativeEngine(): InitiativeEngine {
-    return this.initiativeEngine;
   }
 }
