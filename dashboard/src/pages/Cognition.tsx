@@ -135,11 +135,13 @@ function TabNav({ activeTab, onTabChange }: { activeTab: TabId; onTabChange: (ta
 // PILLAR HEALTH CARD — Glassmorphism with Pillar Accent
 // =============================================================================
 
-function PillarHealthCard({ pillar }: { pillar: CognitiveHealth['pillars'][0] }) {
+function PillarHealthCard({ pillar, onClick }: { pillar: CognitiveHealth['pillars'][0]; onClick?: () => void }) {
   const config = PILLAR_CONFIG[pillar.pillar];
 
   return (
-    <div className={`group relative overflow-hidden rounded-xl bg-[var(--bg-card)] backdrop-blur-md border transition-all duration-300 hover:scale-[1.02] ${config.borderClass} hover:shadow-xl`}
+    <button
+      onClick={onClick}
+      className={`w-full text-left group relative overflow-hidden rounded-xl bg-[var(--bg-card)] backdrop-blur-md border transition-all duration-300 hover:scale-[1.02] ${config.borderClass} hover:shadow-xl cursor-pointer`}
          style={{
            boxShadow: `0 0 0 0 var(--pillar-${config.cssKey}-glow)`,
            transition: 'all 0.3s ease-out'
@@ -221,6 +223,267 @@ function PillarHealthCard({ pillar }: { pillar: CognitiveHealth['pillars'][0] })
             <span className="text-[var(--text-muted)]">Last activity</span>
             <span className="text-[var(--text-tertiary)]">{formatRelativeTime(pillar.lastActivity)}</span>
           </div>
+        </div>
+
+        {/* Click indicator */}
+        <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+          <span className="text-xs text-[var(--text-muted)]">Click for details →</span>
+        </div>
+      </div>
+    </button>
+  );
+}
+
+// =============================================================================
+// PILLAR DETAIL MODAL — Full Pillar Information
+// =============================================================================
+
+interface PillarDetailModalProps {
+  pillar: CognitiveHealth['pillars'][0];
+  frameworkUsage: FrameworkUsage[];
+  activities: CognitiveActivity[];
+  onClose: () => void;
+}
+
+function PillarDetailModal({ pillar, frameworkUsage, activities, onClose }: PillarDetailModalProps) {
+  const config = PILLAR_CONFIG[pillar.pillar];
+
+  // Filter framework usage and activities for this pillar
+  const pillarFrameworks = frameworkUsage.filter(f => f.pillar === pillar.pillar);
+  const pillarActivities = activities.filter(a => a.pillar === pillar.pillar).slice(0, 10);
+
+  // Define frameworks by pillar
+  const PILLAR_FRAMEWORKS = {
+    LOGOS: [
+      { name: 'Bayesian Reasoning', api: 'updateBelief', desc: 'Probability updates with evidence' },
+      { name: 'Expected Value Theory', api: 'calculateExpectedValue', desc: 'Decision outcome analysis' },
+      { name: 'Kelly Criterion', api: 'calculateKellyFraction', desc: 'Optimal position sizing' },
+      { name: 'Systems Thinking', api: 'analyzeSystem', desc: 'Leverage point identification' },
+      { name: 'Antifragility', api: 'assessAntifragility', desc: 'Stress response analysis' },
+      { name: 'Decision Trees', api: 'evaluateDecisionTree', desc: 'Multi-path evaluation' },
+    ],
+    ETHOS: [
+      { name: 'Cognitive Bias Detection', api: 'detectCognitiveBias', desc: '10 bias patterns' },
+      { name: 'Emotional State (VAD)', api: 'assessEmotionalState', desc: 'Valence-Arousal-Dominance' },
+      { name: 'Fear/Greed Cycle', api: 'detectFearGreedCycle', desc: 'Trading psychology patterns' },
+      { name: 'Discipline Check', api: 'runDisciplineCheck', desc: 'Pre-decision validation' },
+    ],
+    PATHOS: [
+      { name: 'CBT Reframing', api: 'reframeThought', desc: 'Cognitive distortion detection' },
+      { name: 'Dichotomy of Control', api: 'analyzeDichotomy', desc: 'Stoic control analysis' },
+      { name: 'Virtue Ethics', api: 'checkVirtueAlignment', desc: 'Wisdom/courage/justice check' },
+      { name: 'Reflection Engine', api: 'reflect', desc: 'Kolb learning cycle' },
+      { name: 'Wisdom Traditions', api: 'queryWisdom', desc: '7 wisdom traditions' },
+      { name: 'Deliberate Practice', api: 'generatePracticePlan', desc: 'Ericsson skill development' },
+    ],
+  };
+
+  const frameworks = PILLAR_FRAMEWORKS[pillar.pillar];
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md"
+      onClick={onClose}
+    >
+      <div
+        className="relative w-full max-w-3xl max-h-[85vh] overflow-y-auto bg-[var(--bg-secondary)] rounded-2xl border border-[var(--border-muted)] shadow-2xl m-4 animate-fade-in-up"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header with pillar gradient */}
+        <div
+          className="sticky top-0 z-10 p-6 rounded-t-2xl"
+          style={{
+            background: `linear-gradient(135deg, var(--pillar-${config.cssKey}-bright) 0%, var(--pillar-${config.cssKey}) 100%)`
+          }}
+        >
+          <button
+            onClick={onClose}
+            className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-black/30 text-white hover:bg-black/50 transition-colors"
+          >
+            ✕
+          </button>
+          <div className="flex items-center gap-4">
+            <div className="w-16 h-16 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-4xl">
+              {config.icon}
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold text-white">{pillar.pillar}</h2>
+              <p className="text-white/80">{config.name} • {config.description}</p>
+            </div>
+          </div>
+
+          {/* Health stats in header */}
+          <div className="flex gap-4 mt-4">
+            <div className="bg-white/20 backdrop-blur-sm rounded-lg px-4 py-2">
+              <div className="text-white/70 text-xs">Health</div>
+              <div className="text-white text-xl font-bold">{(pillar.health * 100).toFixed(0)}%</div>
+            </div>
+            <div className="bg-white/20 backdrop-blur-sm rounded-lg px-4 py-2">
+              <div className="text-white/70 text-xs">APIs Active</div>
+              <div className="text-white text-xl font-bold">{pillar.apisActive}/{pillar.apisTotal}</div>
+            </div>
+            <div className="bg-white/20 backdrop-blur-sm rounded-lg px-4 py-2">
+              <div className="text-white/70 text-xs">Sources</div>
+              <div className="text-white text-xl font-bold">{pillar.sourcesCount}</div>
+            </div>
+          </div>
+        </div>
+
+        <div className="p-6 space-y-6">
+          {/* Frameworks */}
+          <section>
+            <h3 className="text-sm font-semibold text-[var(--text-tertiary)] uppercase tracking-wider mb-3">
+              Frameworks ({frameworks.length})
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {frameworks.map((fw, i) => {
+                const usage = pillarFrameworks.find(f => f.framework.toLowerCase().includes(fw.name.toLowerCase().split(' ')[0]));
+                return (
+                  <div
+                    key={i}
+                    className="bg-[var(--bg-interactive)]/50 rounded-lg p-4 border border-[var(--border-subtle)] hover:border-[var(--border-muted)] transition-colors"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <div className="font-medium" style={{ color: `var(--pillar-${config.cssKey})` }}>
+                          {fw.name}
+                        </div>
+                        <div className="text-xs text-[var(--text-muted)] mt-0.5">{fw.desc}</div>
+                        <code className="text-[10px] text-[var(--text-tertiary)] mt-1 block font-mono">
+                          {fw.api}()
+                        </code>
+                      </div>
+                      {usage && (
+                        <div className="text-right">
+                          <div className="text-sm font-bold text-[var(--text-secondary)]">{usage.usageCount}</div>
+                          <div className={`text-[10px] ${
+                            usage.successRate >= 0.85 ? 'text-[var(--ari-success)]' :
+                            usage.successRate >= 0.7 ? 'text-[var(--ari-warning)]' :
+                            'text-[var(--ari-error)]'
+                          }`}>
+                            {(usage.successRate * 100).toFixed(0)}% success
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+
+          {/* Usage Statistics */}
+          {pillarFrameworks.length > 0 && (
+            <section>
+              <h3 className="text-sm font-semibold text-[var(--text-tertiary)] uppercase tracking-wider mb-3">
+                Usage Statistics
+              </h3>
+              <div className="bg-[var(--bg-interactive)]/50 rounded-lg p-4 border border-[var(--border-subtle)]">
+                <div className="space-y-3">
+                  {pillarFrameworks.map((item) => {
+                    const maxCount = Math.max(...pillarFrameworks.map(f => f.usageCount), 1);
+                    const widthPercent = (item.usageCount / maxCount) * 100;
+                    return (
+                      <div key={item.framework}>
+                        <div className="flex items-center justify-between mb-1.5">
+                          <span className="text-sm text-[var(--text-secondary)]">{item.framework}</span>
+                          <div className="flex items-center gap-3">
+                            <span className="text-xs text-[var(--text-muted)]">{item.usageCount} uses</span>
+                            <span className={`text-xs font-medium ${
+                              item.successRate >= 0.85 ? 'text-[var(--ari-success)]' :
+                              item.successRate >= 0.7 ? 'text-[var(--ari-warning)]' :
+                              'text-[var(--ari-error)]'
+                            }`}>
+                              {(item.successRate * 100).toFixed(0)}%
+                            </span>
+                          </div>
+                        </div>
+                        <div className="h-1.5 bg-[var(--bg-interactive)] rounded-full overflow-hidden">
+                          <div
+                            className="h-full rounded-full transition-all duration-700"
+                            style={{
+                              width: `${widthPercent}%`,
+                              background: `var(--pillar-${config.cssKey})`
+                            }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </section>
+          )}
+
+          {/* Recent Activity */}
+          <section>
+            <h3 className="text-sm font-semibold text-[var(--text-tertiary)] uppercase tracking-wider mb-3">
+              Recent Activity ({pillarActivities.length})
+            </h3>
+            {pillarActivities.length > 0 ? (
+              <div className="space-y-2 max-h-48 overflow-y-auto custom-scrollbar">
+                {pillarActivities.map((activity) => (
+                  <div
+                    key={activity.id}
+                    className="flex items-center gap-3 p-2.5 bg-[var(--bg-interactive)]/50 rounded-lg"
+                  >
+                    <div
+                      className="flex h-8 w-8 items-center justify-center rounded-lg"
+                      style={{ background: `var(--pillar-${config.cssKey}-muted)` }}
+                    >
+                      <span className="text-sm">{config.icon}</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-sm" style={{ color: `var(--pillar-${config.cssKey})` }}>
+                        {activity.api}
+                      </div>
+                      <div className="text-xs text-[var(--text-muted)]">{activity.agent}</div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-xs font-mono text-[var(--text-tertiary)]">{activity.duration}ms</div>
+                      <div className={`text-[10px] font-medium ${
+                        activity.confidence >= 0.8 ? 'text-[var(--ari-success)]' :
+                        activity.confidence >= 0.6 ? 'text-[var(--ari-warning)]' : 'text-[var(--ari-error)]'
+                      }`}>
+                        {(activity.confidence * 100).toFixed(0)}%
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-6 bg-[var(--bg-interactive)]/50 rounded-lg">
+                <div className="text-2xl mb-2 opacity-50">{config.icon}</div>
+                <p className="text-[var(--text-muted)] text-sm">No recent activity for this pillar</p>
+              </div>
+            )}
+          </section>
+
+          {/* Top Framework Highlight */}
+          <section>
+            <h3 className="text-sm font-semibold text-[var(--text-tertiary)] uppercase tracking-wider mb-3">
+              Top Framework
+            </h3>
+            <div
+              className="p-4 rounded-lg border"
+              style={{
+                background: `var(--pillar-${config.cssKey}-muted)`,
+                borderColor: `var(--pillar-${config.cssKey})`
+              }}
+            >
+              <div className="flex items-center gap-3">
+                <div className="text-3xl">🏆</div>
+                <div>
+                  <div className="font-bold text-lg" style={{ color: `var(--pillar-${config.cssKey})` }}>
+                    {pillar.topFramework}
+                  </div>
+                  <div className="text-sm text-[var(--text-secondary)]">
+                    Most used framework in {config.name}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
         </div>
       </div>
     </div>
@@ -1025,6 +1288,7 @@ export function Cognition() {
   const { status: wsStatus } = useWebSocketContext();
   const [activeTab, setActiveTab] = useState<TabId>('overview');
   const [realtimeActivity, setRealtimeActivity] = useState<CognitiveActivity[]>([]);
+  const [selectedPillar, setSelectedPillar] = useState<CognitiveHealth['pillars'][0] | null>(null);
 
   // Fetch cognitive health
   const healthQuery = useQuery({
@@ -1181,7 +1445,10 @@ export function Cognition() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-5 stagger-children">
               {health.pillars.map((pillar, index) => (
                 <div key={pillar.pillar} style={{ animationDelay: `${index * 0.1}s` }}>
-                  <PillarHealthCard pillar={pillar} />
+                  <PillarHealthCard
+                    pillar={pillar}
+                    onClick={() => setSelectedPillar(pillar)}
+                  />
                 </div>
               ))}
             </div>
@@ -1249,6 +1516,16 @@ export function Cognition() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Pillar Detail Modal */}
+      {selectedPillar && (
+        <PillarDetailModal
+          pillar={selectedPillar}
+          frameworkUsage={frameworkUsage}
+          activities={realtimeActivity}
+          onClose={() => setSelectedPillar(null)}
+        />
       )}
     </div>
   );
