@@ -36,10 +36,12 @@ export default {
       1,
       'always',
       [
+        'cognition',  // Cognitive Layer 0 (LOGOS/ETHOS/PATHOS)
         'kernel',     // Kernel layer (gateway, sanitizer, audit, event-bus)
         'system',     // System layer (router, storage)
         'agents',     // Agent layer (core, guardian, planner, executor, memory)
         'governance', // Governance layer (council, arbiter, overseer)
+        'autonomous', // Autonomous operations (scheduler, briefings, knowledge)
         'api',        // REST API and WebSocket
         'cli',        // CLI commands
         'dashboard',  // Web dashboard
@@ -48,6 +50,8 @@ export default {
         'deps',       // Dependencies
         'repo',       // Repository configuration
         'changelog',  // CHANGELOG updates
+        'learning',   // Learning loop and self-improvement
+        'knowledge',  // Knowledge sources and validation
       ],
     ],
     // Subject must not be empty

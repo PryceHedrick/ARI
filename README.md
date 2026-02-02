@@ -20,7 +20,7 @@
 <br>
 
 [![CI](https://github.com/PryceHedrick/ARI/actions/workflows/ci.yml/badge.svg)](https://github.com/PryceHedrick/ARI/actions/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/tests-2597%20passing-brightgreen)](https://github.com/PryceHedrick/ARI)
+[![Tests](https://img.shields.io/badge/tests-3194%20passing-brightgreen)](https://github.com/PryceHedrick/ARI)
 [![Coverage](https://img.shields.io/badge/coverage-80%25%2B-brightgreen)](https://github.com/PryceHedrick/ARI)
 
 </div>
@@ -65,7 +65,7 @@ From Musashi's Book of Five Rings: cut away everything unnecessary. Clarity over
 
 ## Architecture
 
-ARI follows a six-layer architecture with strict unidirectional dependencies. Each layer can only depend on layers below it. All inter-layer communication happens through a typed EventBus.
+ARI follows a seven-layer architecture with strict unidirectional dependencies. Each layer can only depend on layers below it. All inter-layer communication happens through a typed EventBus.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
@@ -98,6 +98,11 @@ ARI follows a six-layer architecture with strict unidirectional dependencies. Ea
 │   LAYER 1: KERNEL                                                   │
 │   └── Gateway · Sanitizer · Audit · EventBus · Config · Types       │
 │                                                                     │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│   LAYER 0: COGNITIVE                                                │
+│   └── LOGOS (Reason) · ETHOS (Character) · PATHOS (Growth)          │
+│                                                                     │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -105,12 +110,13 @@ ARI follows a six-layer architecture with strict unidirectional dependencies. Ea
 
 | Layer | Purpose | Components |
 |-------|---------|------------|
+| **Cognitive** | Decision-making frameworks | LOGOS (Bayesian, Kelly, Expected Value), ETHOS (Bias Detection, Emotional State), PATHOS (CBT, Stoicism, Wisdom) |
 | **Kernel** | Security boundary and primitives | Gateway (HTTP), Sanitizer (injection detection), Audit (hash chain), EventBus (pub/sub), Config, Types (Zod schemas) |
 | **System** | Message routing and persistence | Router (event dispatch), Storage (context management) |
 | **Core** | Agent coordination and execution | Guardian (threat detection), Planner (task decomposition), Executor (tool invocation), Memory Manager (provenance tracking) |
 | **Strategic** | Governance and quality control | Council (13-member voting), Arbiter (5 constitutional rules), Overseer (5 quality gates) |
 | **Execution** | Process lifecycle | Daemon (macOS launchd integration) |
-| **Interfaces** | User interaction | CLI (8 commands), Dashboard (React), Integrations |
+| **Interfaces** | User interaction | CLI (11 commands), Dashboard (React), Integrations |
 
 ---
 
