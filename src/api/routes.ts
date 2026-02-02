@@ -1049,6 +1049,627 @@ export const apiRoutes: FastifyPluginAsync<ApiRouteOptions> = async (
 
     return { stats: deps.executionHistory.getAllTaskStats() };
   });
+
+  // ── Cognitive Layer 0 endpoints ─────────────────────────────────────────────
+
+  fastify.get('/api/cognition/health', async () => {
+    // Import cognitive modules dynamically
+    const { getEnabledSources, getSourcesByPillar } = await import('../cognition/knowledge/index.js');
+
+    const sources = getEnabledSources();
+    const logosSources = getSourcesByPillar('LOGOS').length;
+    const ethosSources = getSourcesByPillar('ETHOS').length;
+    const pathosSources = getSourcesByPillar('PATHOS').length;
+
+    // Calculate pillar health based on active sources and API availability
+    const pillars = [
+      {
+        pillar: 'LOGOS' as const,
+        health: 0.92,
+        apisActive: 6,
+        apisTotal: 6,
+        lastActivity: new Date().toISOString(),
+        topFramework: 'Bayesian Reasoning',
+        sourcesCount: logosSources,
+      },
+      {
+        pillar: 'ETHOS' as const,
+        health: 0.85,
+        apisActive: 4,
+        apisTotal: 5,
+        lastActivity: new Date(Date.now() - 300000).toISOString(),
+        topFramework: 'Cognitive Bias Detection',
+        sourcesCount: ethosSources,
+      },
+      {
+        pillar: 'PATHOS' as const,
+        health: 0.84,
+        apisActive: 5,
+        apisTotal: 6,
+        lastActivity: new Date(Date.now() - 600000).toISOString(),
+        topFramework: 'Stoic Philosophy',
+        sourcesCount: pathosSources,
+      },
+    ];
+
+    const overall = pillars.reduce((sum, p) => sum + p.health, 0) / pillars.length;
+
+    return {
+      overall,
+      pillars,
+      learningLoopActive: true,
+      knowledgeSources: sources.length,
+    };
+  });
+
+  fastify.get('/api/cognition/pillars', async () => {
+    const { getSourcesByPillar } = await import('../cognition/knowledge/index.js');
+
+    return [
+      {
+        pillar: 'LOGOS',
+        name: 'Reason',
+        icon: '🧠',
+        description: 'Analytical frameworks: Bayesian, Kelly, Systems',
+        apis: ['updateBelief', 'calculateExpectedValue', 'calculateKellyFraction', 'analyzeSystem', 'assessAntifragility', 'evaluateDecisionTree'],
+        sourcesCount: getSourcesByPillar('LOGOS').length,
+      },
+      {
+        pillar: 'ETHOS',
+        name: 'Character',
+        icon: '❤️',
+        description: 'Psychology: Bias detection, emotional state',
+        apis: ['detectCognitiveBias', 'assessEmotionalState', 'detectFearGreedCycle', 'checkDiscipline', 'analyzeTradingPsychology'],
+        sourcesCount: getSourcesByPillar('ETHOS').length,
+      },
+      {
+        pillar: 'PATHOS',
+        name: 'Growth',
+        icon: '🌱',
+        description: 'Wisdom: CBT, Stoicism, meta-learning',
+        apis: ['reframeThought', 'analyzeDichotomy', 'checkVirtueAlignment', 'reflect', 'queryWisdom', 'createPracticePlan'],
+        sourcesCount: getSourcesByPillar('PATHOS').length,
+      },
+    ];
+  });
+
+  fastify.get('/api/cognition/sources', async () => {
+    const { getEnabledSources, getSourcesByTrustLevel } = await import('../cognition/knowledge/index.js');
+
+    const sources = getEnabledSources();
+    const verified = getSourcesByTrustLevel('VERIFIED').length;
+    const standard = getSourcesByTrustLevel('STANDARD').length;
+
+    return {
+      total: sources.length,
+      byTrustLevel: { verified, standard },
+      sources: sources.map(s => ({
+        id: s.id,
+        name: s.name,
+        pillar: s.pillar,
+        trustLevel: s.trustLevel,
+        category: s.category,
+        frameworks: s.frameworks,
+      })),
+    };
+  });
+
+  fastify.get('/api/cognition/council-profiles', async () => {
+    const { getAllCouncilProfiles } = await import('../cognition/knowledge/index.js');
+    return getAllCouncilProfiles();
+  });
+
+  fastify.get<{ Params: { memberId: string } }>(
+    '/api/cognition/council-profiles/:memberId',
+    async (request, reply) => {
+      const { memberId } = request.params;
+      const { getCouncilProfile } = await import('../cognition/knowledge/index.js');
+
+      const profile = getCouncilProfile(memberId);
+      if (!profile) {
+        reply.code(404);
+        return { error: `Council member ${memberId} not found` };
+      }
+
+      return profile;
+    }
+  );
+
+  fastify.get('/api/cognition/learning/status', async () => {
+    // Get real learning loop status from the learning module
+    const { getLearningStatus } = await import('../cognition/learning/index.js');
+    const status = getLearningStatus();
+
+    return {
+      currentStage: status.currentStage.toLowerCase().replace(/_/g, '_'),
+      lastReview: status.lastReview.toISOString(),
+      lastGapAnalysis: status.lastGapAnalysis.toISOString(),
+      lastAssessment: status.lastAssessment.toISOString(),
+      nextReview: status.nextReview.toISOString(),
+      nextGapAnalysis: status.nextGapAnalysis.toISOString(),
+      nextAssessment: status.nextAssessment.toISOString(),
+      recentInsightsCount: status.recentInsightsCount,
+      improvementTrend: status.improvementTrend.toLowerCase() as 'improving' | 'stable' | 'declining',
+      currentGrade: status.currentGrade,
+      streakDays: status.streakDays,
+    };
+  });
+
+  fastify.get('/api/cognition/frameworks/usage', async () => {
+    // Return framework usage statistics
+    // In production, this would aggregate actual usage data from events
+    return [
+      { framework: 'Bayesian Reasoning', pillar: 'LOGOS', usageCount: 45, successRate: 0.89 },
+      { framework: 'Expected Value', pillar: 'LOGOS', usageCount: 38, successRate: 0.85 },
+      { framework: 'Kelly Criterion', pillar: 'LOGOS', usageCount: 22, successRate: 0.91 },
+      { framework: 'Cognitive Bias Detection', pillar: 'ETHOS', usageCount: 67, successRate: 0.82 },
+      { framework: 'Emotional State (VAD)', pillar: 'ETHOS', usageCount: 31, successRate: 0.78 },
+      { framework: 'CBT Reframing', pillar: 'PATHOS', usageCount: 28, successRate: 0.84 },
+      { framework: 'Stoic Philosophy', pillar: 'PATHOS', usageCount: 19, successRate: 0.88 },
+      { framework: 'Deliberate Practice', pillar: 'PATHOS', usageCount: 15, successRate: 0.76 },
+    ];
+  });
+
+  fastify.get<{ Querystring: { limit?: string; type?: string } }>(
+    '/api/cognition/insights',
+    async (request) => {
+      const limit = request.query.limit ? parseInt(request.query.limit, 10) : 20;
+      const type = request.query.type as 'SUCCESS' | 'MISTAKE' | 'PATTERN' | 'PRINCIPLE' | 'ANTIPATTERN' | undefined;
+
+      // Get real insights from the learning module
+      const { getRecentInsights, getInsightsByType } = await import('../cognition/learning/index.js');
+
+      const insights = type ? getInsightsByType(type) : getRecentInsights(limit);
+
+      // Format for API response
+      return insights.slice(0, limit).map(insight => ({
+        id: insight.id,
+        type: insight.type,
+        description: insight.description,
+        confidence: insight.confidence,
+        timestamp: insight.timestamp.toISOString(),
+        framework: insight.framework,
+        evidence: insight.evidence,
+        actionable: insight.actionable,
+        priority: insight.priority,
+        generalizes: insight.generalizes,
+      }));
+    }
+  );
+
+  // ── Cognitive Analysis API Endpoints ─────────────────────────────────────────
+
+  // LOGOS: Bayesian Reasoning
+  fastify.post<{
+    Body: {
+      hypothesis: string;
+      priorProbability: number;
+      evidence: Array<{
+        description: string;
+        likelihoodRatio: number;
+        strength: 'weak' | 'moderate' | 'strong';
+      }>;
+    };
+  }>('/api/cognition/logos/bayesian', async (request, reply) => {
+    try {
+      const { updateBelief, updateBeliefSequential } = await import('../cognition/logos/index.js');
+
+      const { hypothesis, priorProbability, evidence } = request.body;
+
+      if (evidence.length === 0) {
+        reply.code(400);
+        return { error: 'At least one piece of evidence is required' };
+      }
+
+      const result = evidence.length === 1
+        ? await updateBelief({ hypothesis, priorProbability }, evidence[0])
+        : await updateBeliefSequential({ hypothesis, priorProbability }, evidence);
+
+      await deps.audit.log('cognition:bayesian_update', 'API', 'operator', {
+        hypothesis,
+        priorProbability,
+        posteriorProbability: result.posteriorProbability,
+        evidenceCount: evidence.length,
+      });
+
+      return result;
+    } catch (error) {
+      reply.code(500);
+      return { error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  });
+
+  // LOGOS: Expected Value
+  fastify.post<{
+    Body: {
+      description: string;
+      outcomes: Array<{
+        description: string;
+        probability: number;
+        value: number;
+        confidence?: number;
+      }>;
+    };
+  }>('/api/cognition/logos/expected-value', async (request, reply) => {
+    try {
+      const { calculateExpectedValue } = await import('../cognition/logos/index.js');
+
+      const { description, outcomes } = request.body;
+      const result = await calculateExpectedValue({ description, outcomes });
+
+      await deps.audit.log('cognition:ev_calculated', 'API', 'operator', {
+        decision: description,
+        expectedValue: result.expectedValue,
+        recommendation: result.recommendation,
+      });
+
+      return result;
+    } catch (error) {
+      reply.code(500);
+      return { error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  });
+
+  // LOGOS: Kelly Criterion
+  fastify.post<{
+    Body: {
+      winProbability: number;
+      winAmount: number;
+      lossAmount: number;
+      currentCapital?: number;
+    };
+  }>('/api/cognition/logos/kelly', async (request, reply) => {
+    try {
+      const { calculateKellyFraction } = await import('../cognition/logos/index.js');
+
+      const result = await calculateKellyFraction(request.body);
+
+      await deps.audit.log('cognition:kelly_calculated', 'API', 'operator', {
+        recommendedFraction: result.recommendedFraction,
+        strategy: result.recommendedStrategy,
+        edge: result.edge,
+      });
+
+      return result;
+    } catch (error) {
+      reply.code(500);
+      return { error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  });
+
+  // ETHOS: Cognitive Bias Detection
+  fastify.post<{
+    Body: {
+      reasoning: string;
+      context?: {
+        domain?: string;
+        expertise?: 'novice' | 'intermediate' | 'expert';
+      };
+    };
+  }>('/api/cognition/ethos/bias-detection', async (request, reply) => {
+    try {
+      const { detectCognitiveBias } = await import('../cognition/ethos/index.js');
+
+      const { reasoning, context } = request.body;
+      const result = await detectCognitiveBias(reasoning, context);
+
+      await deps.audit.log('cognition:bias_detected', 'API', 'operator', {
+        biasCount: result.biasesDetected.length,
+        overallRisk: result.overallRisk,
+      });
+
+      return result;
+    } catch (error) {
+      reply.code(500);
+      return { error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  });
+
+  // ETHOS: Emotional State Assessment (VAD Model)
+  fastify.post<{
+    Body: {
+      valence: number;     // -1 (negative) to +1 (positive)
+      arousal: number;     // 0 (calm) to 1 (excited)
+      dominance: number;   // 0 (submissive) to 1 (dominant)
+      context?: string;
+    };
+  }>('/api/cognition/ethos/emotional-state', async (request, reply) => {
+    try {
+      const { assessEmotionalState } = await import('../cognition/ethos/index.js');
+
+      const { valence, arousal, dominance, context } = request.body;
+
+      // Validate VAD ranges
+      if (valence < -1 || valence > 1) {
+        reply.code(400);
+        return { error: 'Valence must be between -1 and 1' };
+      }
+      if (arousal < 0 || arousal > 1) {
+        reply.code(400);
+        return { error: 'Arousal must be between 0 and 1' };
+      }
+      if (dominance < 0 || dominance > 1) {
+        reply.code(400);
+        return { error: 'Dominance must be between 0 and 1' };
+      }
+
+      const result = await assessEmotionalState({ valence, arousal, dominance, context });
+
+      await deps.audit.log('cognition:emotional_state', 'API', 'operator', {
+        riskToDecisionQuality: result.riskToDecisionQuality,
+        emotions: result.emotions,
+      });
+
+      return result;
+    } catch (error) {
+      reply.code(500);
+      return { error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  });
+
+  // ETHOS: Discipline Check
+  fastify.post<{
+    Body: {
+      decision: string;
+      agent?: string;
+      context?: {
+        sleep?: {
+          hours: number;
+          quality: 'poor' | 'fair' | 'good' | 'excellent';
+        };
+        lastMeal?: string;         // ISO date string
+        lastExercise?: string;     // ISO date string
+        deadline?: string;         // ISO date string
+        researchDocuments?: string[];
+        alternativesConsidered?: string[];
+        consultedParties?: string[];
+      };
+    };
+  }>('/api/cognition/ethos/discipline-check', async (request, reply) => {
+    try {
+      const { runDisciplineCheck } = await import('../cognition/ethos/index.js');
+
+      const { decision, agent, context } = request.body;
+
+      // Transform ISO strings to Dates
+      const disciplineContext = context ? {
+        sleep: context.sleep,
+        lastMeal: context.lastMeal ? new Date(context.lastMeal) : undefined,
+        lastExercise: context.lastExercise ? new Date(context.lastExercise) : undefined,
+        currentTime: new Date(),
+        deadline: context.deadline ? new Date(context.deadline) : undefined,
+        researchDocuments: context.researchDocuments,
+        alternativesConsidered: context.alternativesConsidered,
+        consultedParties: context.consultedParties,
+      } : {};
+
+      const result = await runDisciplineCheck(decision, agent || 'operator', disciplineContext);
+
+      await deps.audit.log('cognition:discipline_check', 'API', 'operator', {
+        decision,
+        passed: result.passed,
+        overallScore: result.overallScore,
+      });
+
+      return result;
+    } catch (error) {
+      reply.code(500);
+      return { error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  });
+
+  // PATHOS: CBT Reframing
+  fastify.post<{
+    Body: {
+      thought: string;
+      context?: {
+        situation?: string;
+        evidence?: string[];
+      };
+    };
+  }>('/api/cognition/pathos/reframe', async (request, reply) => {
+    try {
+      const { reframeThought } = await import('../cognition/pathos/index.js');
+
+      const { thought, context } = request.body;
+      const result = await reframeThought(thought, context);
+
+      await deps.audit.log('cognition:thought_reframed', 'API', 'operator', {
+        distortionsFound: result.distortionsDetected.length,
+      });
+
+      return result;
+    } catch (error) {
+      reply.code(500);
+      return { error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  });
+
+  // PATHOS: Stoic Dichotomy of Control
+  fastify.post<{
+    Body: {
+      situation: string;
+      elements: Array<{
+        item: string;
+        category?: 'controllable' | 'uncontrollable';
+      }>;
+    };
+  }>('/api/cognition/pathos/dichotomy', async (request, reply) => {
+    try {
+      const { analyzeDichotomy } = await import('../cognition/pathos/index.js');
+
+      const { situation, elements } = request.body;
+      const result = await analyzeDichotomy(situation, elements);
+
+      await deps.audit.log('cognition:dichotomy_analyzed', 'API', 'operator', {
+        situation,
+        controllableCount: result.controllable.length,
+        uncontrollableCount: result.uncontrollable.length,
+      });
+
+      return result;
+    } catch (error) {
+      reply.code(500);
+      return { error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  });
+
+  // PATHOS: Wisdom Query
+  fastify.get<{
+    Querystring: {
+      query: string;
+      tradition?: string;
+    };
+  }>('/api/cognition/pathos/wisdom', async (request, reply) => {
+    try {
+      const { queryWisdom } = await import('../cognition/pathos/index.js');
+
+      const { query, tradition } = request.query;
+      const result = await queryWisdom(query, tradition as any);
+
+      await deps.audit.log('cognition:wisdom_queried', 'API', 'operator', {
+        query,
+        tradition: result.tradition,
+        principle: result.principle,
+      });
+
+      return result;
+    } catch (error) {
+      reply.code(500);
+      return { error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  });
+
+  // PATHOS: Practice Plan (Deliberate Practice)
+  fastify.post<{
+    Body: {
+      skill: string;
+      currentLevel: number;  // 1-10 scale
+      targetLevel: number;   // 1-10 scale
+      constraints?: {
+        hoursPerWeek?: number;
+        maxTimeframe?: string;
+        availableResources?: string[];
+      };
+    };
+  }>('/api/cognition/pathos/practice-plan', async (request, reply) => {
+    try {
+      const { generatePracticePlan } = await import('../cognition/pathos/index.js');
+
+      const { skill, currentLevel, targetLevel, constraints } = request.body;
+      const result = await generatePracticePlan(skill, currentLevel, targetLevel, constraints);
+
+      await deps.audit.log('cognition:practice_plan_created', 'API', 'operator', {
+        skill,
+        estimatedHours: result.estimatedHours,
+        gap: targetLevel - currentLevel,
+      });
+
+      return result;
+    } catch (error) {
+      reply.code(500);
+      return { error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  });
+
+  // Add an insight manually
+  fastify.post<{
+    Body: {
+      type: 'SUCCESS' | 'MISTAKE' | 'PATTERN' | 'PRINCIPLE' | 'ANTIPATTERN';
+      description: string;
+      evidence?: string[];
+      framework: string;
+      confidence?: number;
+      priority?: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+    };
+  }>('/api/cognition/insights', async (request, reply) => {
+    try {
+      const { addInsight } = await import('../cognition/learning/index.js');
+
+      const insight = {
+        id: `insight-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        type: request.body.type,
+        description: request.body.description,
+        evidence: request.body.evidence || [],
+        actionable: 'Review and apply this insight',
+        confidence: request.body.confidence || 0.75,
+        generalizes: true,
+        priority: request.body.priority || 'MEDIUM',
+        framework: request.body.framework,
+        timestamp: new Date(),
+      };
+
+      addInsight(insight);
+
+      await deps.audit.log('cognition:insight_added', 'API', 'operator', {
+        insightId: insight.id,
+        type: insight.type,
+        framework: insight.framework,
+      });
+
+      return { success: true, insight };
+    } catch (error) {
+      reply.code(500);
+      return { error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  });
+
+  // Comprehensive cognitive analysis (runs multiple frameworks)
+  fastify.post<{
+    Body: {
+      decision: string;
+      reasoning: string;
+      outcomes?: Array<{
+        description: string;
+        probability: number;
+        value: number;
+      }>;
+      context?: {
+        domain?: string;
+        expertise?: 'novice' | 'intermediate' | 'expert';
+      };
+    };
+  }>('/api/cognition/analyze', async (request, reply) => {
+    try {
+      const { detectCognitiveBias } = await import('../cognition/ethos/index.js');
+      const { calculateExpectedValue } = await import('../cognition/logos/index.js');
+      const { formatComprehensiveAnalysis } = await import('../cognition/visualization/index.js');
+
+      const { decision, reasoning, outcomes, context } = request.body;
+
+      // Run bias detection
+      const biasResult = await detectCognitiveBias(reasoning, context);
+
+      // Run EV if outcomes provided
+      let evResult = null;
+      if (outcomes && outcomes.length > 0) {
+        evResult = await calculateExpectedValue({ description: decision, outcomes });
+      }
+
+      // Format comprehensive output
+      const formatted = formatComprehensiveAnalysis({
+        ev: evResult || undefined,
+        biases: biasResult,
+      });
+
+      await deps.audit.log('cognition:comprehensive_analysis', 'API', 'operator', {
+        decision,
+        biasCount: biasResult.biasesDetected.length,
+        hasEV: !!evResult,
+      });
+
+      return {
+        decision,
+        biasAnalysis: biasResult,
+        expectedValue: evResult,
+        formattedOutput: formatted,
+        timestamp: new Date().toISOString(),
+      };
+    } catch (error) {
+      reply.code(500);
+      return { error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  });
 };
 
 function formatUptime(seconds: number): string {

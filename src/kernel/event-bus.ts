@@ -102,6 +102,118 @@ export interface EventMap {
 
   // ── Audit log event (for logging) ───────────────────────────────────────
   'audit:log': { action: string; agent: string; trustLevel: TrustLevel; details: Record<string, unknown> };
+
+  // ── Cognitive Layer 0: LOGOS events ─────────────────────────────────────
+  'cognition:belief_updated': {
+    hypothesis: string;
+    priorProbability: number;
+    posteriorProbability: number;
+    shift: number;
+    agent: string;
+    timestamp: string;
+  };
+  'cognition:expected_value_calculated': {
+    decision: string;
+    expectedValue: number;
+    recommendation: 'PROCEED' | 'CAUTION' | 'AVOID';
+    agent: string;
+    timestamp: string;
+  };
+  'cognition:kelly_calculated': {
+    recommendedFraction: number;
+    strategy: 'full' | 'half' | 'quarter' | 'avoid';
+    edge: number;
+    agent: string;
+    timestamp: string;
+  };
+
+  // ── Cognitive Layer 0: ETHOS events ─────────────────────────────────────
+  'cognition:bias_detected': {
+    agent: string;
+    biases: Array<{ type: string; severity: number }>;
+    reasoning: string;
+    timestamp: string;
+  };
+  'cognition:emotional_risk': {
+    agent: string;
+    state: { valence: number; arousal: number; dominance: number };
+    riskScore: number;
+    emotions: string[];
+    timestamp: string;
+  };
+  'cognition:discipline_check': {
+    agent: string;
+    decision: string;
+    passed: boolean;
+    overallScore: number;
+    violations: string[];
+    timestamp: string;
+  };
+
+  // ── Cognitive Layer 0: PATHOS events ────────────────────────────────────
+  'cognition:thought_reframed': {
+    original: string;
+    distortions: string[];
+    reframed: string;
+    agent: string;
+    timestamp: string;
+  };
+  'cognition:reflection_complete': {
+    outcomeId: string;
+    insights: string[];
+    principles: string[];
+    agent: string;
+    timestamp: string;
+  };
+  'cognition:wisdom_consulted': {
+    query: string;
+    tradition: string;
+    principle: string;
+    agent: string;
+    timestamp: string;
+  };
+  'cognition:practice_plan_created': {
+    skill: string;
+    currentLevel: number;
+    targetLevel: number;
+    estimatedHours: number;
+    agent: string;
+    timestamp: string;
+  };
+
+  // ── Cognitive Layer 0: Learning Loop events ─────────────────────────────
+  'learning:performance_review': {
+    period: string;
+    successRate: number;
+    biasCount: number;
+    insightCount: number;
+    recommendations: string[];
+    timestamp: string;
+  };
+  'learning:gap_analysis': {
+    period: string;
+    gapsFound: number;
+    topGaps: Array<{ domain: string; severity: string }>;
+    sourceSuggestions: number;
+    timestamp: string;
+  };
+  'learning:self_assessment': {
+    period: string;
+    grade: string;
+    improvement: number;
+    trend: string;
+    recommendations: string[];
+    timestamp: string;
+  };
+  'learning:insight_generated': {
+    insightId: string;
+    type: string;
+    description: string;
+    confidence: number;
+    source: string;
+    generalizes: boolean;
+    timestamp: string;
+  };
 }
 
 /**

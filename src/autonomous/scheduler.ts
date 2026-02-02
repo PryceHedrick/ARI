@@ -177,6 +177,44 @@ const DEFAULT_TASKS: Omit<ScheduledTask, 'lastRun' | 'nextRun'>[] = [
     handler: 'weekly_review',
     enabled: true,
   },
+
+  // ==========================================================================
+  // COGNITIVE LAYER 0: LEARNING LOOP TASKS
+  // ==========================================================================
+
+  {
+    id: 'cognitive-performance-review',
+    name: 'Cognitive Performance Review',
+    cron: '0 21 * * *', // 9:00 PM daily
+    handler: 'cognitive_performance_review',
+    enabled: true,
+    metadata: {
+      pillar: 'LEARNING',
+      description: 'Analyze decisions made in the past 24 hours',
+    },
+  },
+  {
+    id: 'cognitive-gap-analysis',
+    name: 'Cognitive Gap Analysis',
+    cron: '0 20 * * 0', // Sunday 8:00 PM
+    handler: 'cognitive_gap_analysis',
+    enabled: true,
+    metadata: {
+      pillar: 'LEARNING',
+      description: 'Identify knowledge gaps from the past week',
+    },
+  },
+  {
+    id: 'cognitive-self-assessment',
+    name: 'Cognitive Self-Assessment',
+    cron: '0 9 1 * *', // 1st of month, 9:00 AM
+    handler: 'cognitive_self_assessment',
+    enabled: true,
+    metadata: {
+      pillar: 'LEARNING',
+      description: 'Monthly comprehensive self-evaluation',
+    },
+  },
 ];
 
 export class Scheduler {

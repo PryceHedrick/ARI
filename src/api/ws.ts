@@ -198,6 +198,98 @@ export class WebSocketBroadcaster {
         this.broadcast('alert:resolved', payload);
       })
     );
+
+    // ==========================================================================
+    // COGNITIVE LAYER 0: Real-time cognitive activity events
+    // ==========================================================================
+
+    // LOGOS events
+    this.unsubscribers.push(
+      eventBus.on('cognition:belief_updated', (payload) => {
+        this.broadcast('cognition:belief_updated', payload);
+      })
+    );
+
+    this.unsubscribers.push(
+      eventBus.on('cognition:expected_value_calculated', (payload) => {
+        this.broadcast('cognition:expected_value_calculated', payload);
+      })
+    );
+
+    this.unsubscribers.push(
+      eventBus.on('cognition:kelly_calculated', (payload) => {
+        this.broadcast('cognition:kelly_calculated', payload);
+      })
+    );
+
+    // ETHOS events
+    this.unsubscribers.push(
+      eventBus.on('cognition:bias_detected', (payload) => {
+        this.broadcast('cognition:bias_detected', payload);
+      })
+    );
+
+    this.unsubscribers.push(
+      eventBus.on('cognition:emotional_risk', (payload) => {
+        this.broadcast('cognition:emotional_risk', payload);
+      })
+    );
+
+    this.unsubscribers.push(
+      eventBus.on('cognition:discipline_check', (payload) => {
+        this.broadcast('cognition:discipline_check', payload);
+      })
+    );
+
+    // PATHOS events
+    this.unsubscribers.push(
+      eventBus.on('cognition:thought_reframed', (payload) => {
+        this.broadcast('cognition:thought_reframed', payload);
+      })
+    );
+
+    this.unsubscribers.push(
+      eventBus.on('cognition:reflection_complete', (payload) => {
+        this.broadcast('cognition:reflection_complete', payload);
+      })
+    );
+
+    this.unsubscribers.push(
+      eventBus.on('cognition:wisdom_consulted', (payload) => {
+        this.broadcast('cognition:wisdom_consulted', payload);
+      })
+    );
+
+    this.unsubscribers.push(
+      eventBus.on('cognition:practice_plan_created', (payload) => {
+        this.broadcast('cognition:practice_plan_created', payload);
+      })
+    );
+
+    // Learning Loop events
+    this.unsubscribers.push(
+      eventBus.on('learning:performance_review', (payload) => {
+        this.broadcast('learning:performance_review', payload);
+      })
+    );
+
+    this.unsubscribers.push(
+      eventBus.on('learning:gap_analysis', (payload) => {
+        this.broadcast('learning:gap_analysis', payload);
+      })
+    );
+
+    this.unsubscribers.push(
+      eventBus.on('learning:self_assessment', (payload) => {
+        this.broadcast('learning:self_assessment', payload);
+      })
+    );
+
+    this.unsubscribers.push(
+      eventBus.on('learning:insight_generated', (payload) => {
+        this.broadcast('learning:insight_generated', payload);
+      })
+    );
   }
 
   /**
