@@ -110,19 +110,42 @@ export class BillingCycleManager {
   private eventBus: EventBus;
   private cycle: BillingCycleData;
 
+  // Processing queue to prevent race conditions
+  private processingQueue: Promise<void> = Promise.resolve();
+  private isProcessing: boolean = false;
+
   constructor(eventBus: EventBus) {
     this.eventBus = eventBus;
     this.cycle = this.loadSync();
 
-    // Listen for cost events
+    // Listen for cost events (queued to prevent race conditions)
     this.eventBus.on('cost:tracked', (event) => {
-      void this.recordSpending(event);
+      this.queueOperation(() => this.recordSpending(event));
     });
 
     // Check for cycle end daily
     this.eventBus.on('scheduler:daily_reset', () => {
-      void this.checkCycleEnd();
+      this.queueOperation(() => this.checkCycleEnd());
     });
+  }
+
+  /**
+   * Queue an operation to prevent race conditions.
+   * Operations are processed sequentially.
+   */
+  private queueOperation(operation: () => Promise<void>): void {
+    this.processingQueue = this.processingQueue
+      .then(async () => {
+        this.isProcessing = true;
+        try {
+          await operation();
+        } finally {
+          this.isProcessing = false;
+        }
+      })
+      .catch((error) => {
+        console.error('[BillingCycle] Operation failed:', error);
+      });
   }
 
   /**
