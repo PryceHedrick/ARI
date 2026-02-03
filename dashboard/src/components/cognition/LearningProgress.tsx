@@ -460,7 +460,6 @@ export function ReviewCalendar({
             <div key={weekIndex} className="flex flex-col gap-1" role="row">
               {week.map((date, dayIndex) => {
                 const activity = date ? activityMap.get(date.toISOString().split('T')[0]) : null;
-                const intensityLevel = getIntensityLevel(date);
                 const isSelected = selectedDate?.toISOString() === date?.toISOString();
 
                 return (

@@ -381,6 +381,155 @@ export const approveItem = (id: string, note?: string): Promise<{ success: boole
 export const rejectItem = (id: string, reason: string): Promise<{ success: boolean; id: string }> =>
   postAPI(`/approval-queue/${id}/reject`, { reason });
 
+// Billing Cycle Endpoints
+export interface BillingCycleStatus {
+  daysElapsed: number;
+  daysRemaining: number;
+  percentComplete: number;
+  totalSpent: number;
+  remaining: number;
+  dailyAverage: number;
+  projectedTotal: number;
+  onTrack: boolean;
+  status: 'under_budget' | 'on_track' | 'at_risk' | 'over_budget';
+  recommendation: string;
+  recommended?: {
+    dailyBudget: number;
+    confidence: number;
+    reason: string;
+  };
+  cycle?: {
+    totalBudget: number;
+  };
+}
+
+export const getBillingCycle = (): Promise<BillingCycleStatus> =>
+  fetchAPI('/billing/cycle');
+
+export const startNewBillingCycle = (): Promise<{ success: boolean }> =>
+  postAPI('/billing/new-cycle', {});
+
+// Value Analytics Endpoints
+export interface ValueMetrics {
+  morningBriefDelivered?: boolean;
+  eveningSummaryDelivered?: boolean;
+  testsGenerated?: number;
+  docsWritten?: number;
+  bugsFixed?: number;
+  codeImprovements?: number;
+  initiativesExecuted?: number;
+  highValueInsights?: number;
+  patternsLearned?: number;
+  tasksAttempted?: number;
+  tasksSucceeded?: number;
+  errorsEncountered?: number;
+}
+
+export interface DayValueAnalysis {
+  date: string;
+  cost: number;
+  tokens: number;
+  metrics: ValueMetrics;
+  deliverablesScore: number;
+  improvementsScore: number;
+  insightsScore: number;
+  efficiencyScore: number;
+  totalValueScore: number;
+  costPerPoint: number;
+  roi: number;
+  efficiency: 'excellent' | 'good' | 'moderate' | 'poor' | 'wasteful';
+  breakdown: string[];
+}
+
+export interface ValueAnalyticsSummary {
+  days: DayValueAnalysis[];
+  totalCost: number;
+  totalValuePoints: number;
+  averageValueScore: number;
+  averageCostPerPoint: number;
+  bestDay: { date: string; score: number } | null;
+  worstDay: { date: string; score: number } | null;
+  weeklyTrend: 'improving' | 'stable' | 'declining';
+  recommendations: string[];
+}
+
+export interface TodayValueProgress {
+  metrics: ValueMetrics;
+  currentScore: number;
+  breakdown: string[];
+}
+
+export interface WeeklyValueReport {
+  weekStart: string;
+  weekEnd: string;
+  totalCost: number;
+  totalValuePoints: number;
+  averageScore: number;
+  bestDay: DayValueAnalysis | null;
+  worstDay: DayValueAnalysis | null;
+  trend: string;
+  recommendations: string[];
+  costBreakdown: Array<{ category: string; cost: number; percentage: number }>;
+}
+
+export const getValueAnalytics = (): Promise<ValueAnalyticsSummary> =>
+  fetchAPI('/analytics/value');
+
+export const getValueDaily = (days?: number): Promise<DayValueAnalysis[]> =>
+  fetchAPI(`/analytics/value/daily${days ? `?days=${days}` : ''}`);
+
+export const getValueToday = (): Promise<TodayValueProgress> =>
+  fetchAPI('/analytics/value/today');
+
+export const getValueWeekly = (): Promise<WeeklyValueReport> =>
+  fetchAPI('/analytics/value/weekly');
+
+// Adaptive Learning Endpoints
+export interface UsagePattern {
+  id: string;
+  patternType: string;
+  observations: number;
+  confidence: number;
+  lastObserved: string;
+  data: Record<string, unknown>;
+  appliedCount: number;
+  successCount: number;
+  failureCount: number;
+}
+
+export interface AdaptiveRecommendation {
+  id: string;
+  type: string;
+  recommendation: string;
+  confidence: number;
+  appliedAt?: string;
+  result?: 'success' | 'failure' | 'pending';
+}
+
+export interface WeeklySummary {
+  weekStart: string;
+  weekEnd: string;
+  peakHours: number[];
+  avgDailySpend: number;
+  avgDailyValue: number;
+  preferredModels: Record<string, string>;
+  approvedInitiativeTypes: string[];
+  rejectedInitiativeTypes: string[];
+  adjustmentsMade: string[];
+}
+
+export const getAdaptivePatterns = (): Promise<UsagePattern[]> =>
+  fetchAPI('/adaptive/patterns');
+
+export const getAdaptiveRecommendations = (): Promise<AdaptiveRecommendation[]> =>
+  fetchAPI('/adaptive/recommendations');
+
+export const getAdaptiveSummaries = (): Promise<WeeklySummary[]> =>
+  fetchAPI('/adaptive/summaries');
+
+export const getAdaptivePeakHours = (): Promise<{ hours: number[] }> =>
+  fetchAPI('/adaptive/peak-hours');
+
 // Export fetchAPI for direct use if needed
 export { fetchAPI };
 
