@@ -355,4 +355,115 @@ describe('CostTracker', () => {
       expect(stats.newestEntry).toBeNull();
     });
   });
+
+  describe('getThrottleLevel', () => {
+    it('should return normal for low usage', () => {
+      // No usage = normal
+      const level = costTracker.getThrottleLevel();
+      expect(level).toBe('normal');
+    });
+
+    it('should return warning when approaching threshold', () => {
+      // Throttle is based on tokens, not cost
+      // Default maxTokens is 800,000, warning at 80% = 640,000 tokens
+      // Track enough to exceed 80%
+      costTracker.track({
+        operation: 'expensive',
+        agent: 'core',
+        provider: 'anthropic',
+        model: 'claude-sonnet-4',
+        inputTokens: 400_000,
+        outputTokens: 300_000, // Total 700,000 tokens = 87.5%
+      });
+
+      const level = costTracker.getThrottleLevel();
+      expect(['warning', 'reduce']).toContain(level);
+    });
+  });
+
+  describe('getThrottleStatus', () => {
+    it('should return complete throttle status', () => {
+      const status = costTracker.getThrottleStatus();
+
+      expect(status).toHaveProperty('level');
+      expect(status).toHaveProperty('usagePercent');
+      expect(status).toHaveProperty('tokensUsed');
+      expect(status).toHaveProperty('tokensRemaining');
+      expect(status).toHaveProperty('costUsed');
+      expect(status).toHaveProperty('projectedEOD');
+    });
+
+    it('should show 0 usage initially', () => {
+      const status = costTracker.getThrottleStatus();
+
+      expect(status.level).toBe('normal');
+      expect(status.usagePercent).toBe(0);
+      expect(status.tokensUsed).toBe(0);
+      expect(status.costUsed).toBe(0);
+    });
+  });
+
+  describe('canProceed', () => {
+    it('should always allow URGENT priority', () => {
+      // Even with high usage, URGENT should be allowed
+      const result = costTracker.canProceed(100000, 'URGENT');
+
+      expect(result.allowed).toBe(true);
+    });
+
+    it('should allow STANDARD priority normally', () => {
+      const result = costTracker.canProceed(1000, 'STANDARD');
+
+      expect(result.allowed).toBe(true);
+    });
+
+    it('should allow BACKGROUND priority when budget available', () => {
+      const result = costTracker.canProceed(1000, 'BACKGROUND');
+
+      expect(result.allowed).toBe(true);
+    });
+
+    it('should return throttled=false when not near limits', () => {
+      const result = costTracker.canProceed(1000, 'STANDARD');
+
+      expect(result.throttled).toBe(false);
+    });
+  });
+
+  describe('getTokenUsage', () => {
+    it('should return token usage record', () => {
+      costTracker.track({
+        operation: 'test',
+        agent: 'core',
+        provider: 'anthropic',
+        model: 'claude-sonnet-4',
+        inputTokens: 1000,
+        outputTokens: 500,
+      });
+
+      const usage = costTracker.getTokenUsage();
+
+      expect(usage.totalTokens).toBe(1500);
+      expect(usage.totalCost).toBeGreaterThan(0);
+      expect(usage.byModel['claude-sonnet-4']).toBeDefined();
+      expect(usage.byModel['claude-sonnet-4'].tokens).toBe(1500);
+    });
+
+    it('should track by task type', () => {
+      costTracker.track({
+        operation: 'morning_briefing',
+        agent: 'core',
+        provider: 'anthropic',
+        model: 'claude-sonnet-4',
+        inputTokens: 1000,
+        outputTokens: 500,
+      });
+
+      const usage = costTracker.getTokenUsage();
+
+      expect(usage.byTaskType['morning_briefing']).toBeDefined();
+      expect(usage.byTaskType['morning_briefing'].tokens).toBe(1500);
+      expect(usage.byTaskType['morning_briefing'].count).toBe(1);
+    });
+  });
 });
