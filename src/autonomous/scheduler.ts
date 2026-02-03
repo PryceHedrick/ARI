@@ -198,6 +198,28 @@ const DEFAULT_TASKS: Omit<ScheduledTask, 'lastRun' | 'nextRun'>[] = [
     enabled: true,
     essential: false,
   },
+  {
+    id: 'e2e-daily-run',
+    name: 'Daily E2E Test Suite',
+    cron: '0 9 * * *', // 9:00 AM daily
+    handler: 'e2e_daily_run',
+    enabled: true,
+    essential: false, // Skip when budget is constrained
+    metadata: {
+      description: 'Run automated E2E tests and file issues for failures',
+    },
+  },
+  {
+    id: 'self-improvement-daily',
+    name: 'Daily Self-Improvement Analysis',
+    cron: '0 21 * * *', // 9:00 PM daily
+    handler: 'self_improvement_daily',
+    enabled: true,
+    essential: false,
+    metadata: {
+      description: 'Analyze E2E results, learning patterns, and system performance',
+    },
+  },
 
   // ==========================================================================
   // COGNITIVE LAYER 0: LEARNING LOOP TASKS (NON-ESSENTIAL - Background)
