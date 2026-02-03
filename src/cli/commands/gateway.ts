@@ -17,6 +17,13 @@ import * as Storage from '../../system/storage.js';
 import { AutonomousAgent } from '../../autonomous/agent.js';
 import { dailyAudit } from '../../autonomous/daily-audit.js';
 
+// Budget and analytics components
+import { CostTracker } from '../../observability/cost-tracker.js';
+import { ApprovalQueue } from '../../autonomous/approval-queue.js';
+import { BillingCycleManager } from '../../autonomous/billing-cycle.js';
+import { ValueAnalytics } from '../../observability/value-analytics.js';
+import { AdaptiveLearner } from '../../autonomous/adaptive-learner.js';
+
 interface GatewayStartOptions {
   port: string;
 }
@@ -79,6 +86,14 @@ export function registerGatewayCommand(program: Command): void {
       // Initialize system router
       const router = new SystemRouter(eventBus, audit);
 
+      // Initialize budget and analytics components
+      const costTracker = new CostTracker(eventBus, audit);
+      const approvalQueue = new ApprovalQueue(eventBus);
+      const billingCycleManager = new BillingCycleManager(eventBus);
+      const valueAnalytics = new ValueAnalytics(eventBus);
+      const adaptiveLearner = new AdaptiveLearner(eventBus);
+      console.log('Budget and analytics components initialized');
+
       // Create gateway
       const gatewayInstance = new Gateway(port, audit, eventBus);
 
@@ -95,6 +110,12 @@ export function registerGatewayCommand(program: Command): void {
             memoryManager,
             executor,
             storage: Storage,
+            // Budget and analytics
+            costTracker,
+            approvalQueue,
+            billingCycleManager,
+            valueAnalytics,
+            adaptiveLearner,
           },
         });
         console.log('API routes registered');

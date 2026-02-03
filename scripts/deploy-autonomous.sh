@@ -59,8 +59,9 @@ echo ""
 # Step 5: Install dependencies
 echo "━━━ Step 5: Install Dependencies ━━━"
 # Install all dependencies (including dev) for TypeScript compilation
-# Use --ignore-scripts to skip husky prepare hook
-ssh_run "cd $MINI_PATH && npm install --ignore-scripts"
+# --include=dev overrides any global npm config that omits dev deps
+# --ignore-scripts skips husky prepare hook
+ssh_run "cd $MINI_PATH && npm install --include=dev --ignore-scripts"
 echo "✓ Dependencies installed"
 echo ""
 
@@ -116,7 +117,9 @@ echo ""
 
 # Step 10: Restart daemon
 echo "━━━ Step 10: Restart Daemon ━━━"
-ssh_run "cd $MINI_PATH && npx ari daemon restart"
+# No direct restart command, so uninstall and reinstall
+ssh_run "cd $MINI_PATH && npx ari daemon uninstall 2>/dev/null || true"
+ssh_run "cd $MINI_PATH && npx ari daemon install"
 echo "✓ Daemon restarted"
 echo ""
 
