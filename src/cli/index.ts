@@ -11,6 +11,7 @@ import { registerCognitiveCommand } from './commands/cognitive.js';
 import { createAutonomousCommand } from './commands/autonomous.js';
 import { createKnowledgeCommand } from './commands/knowledge.js';
 import { createAuditReportCommand } from './commands/audit-report.js';
+import { registerBudgetCommand } from './commands/budget.js';
 
 const program = new Command();
 
@@ -30,5 +31,6 @@ registerCognitiveCommand(program);
 program.addCommand(createAutonomousCommand());
 program.addCommand(createKnowledgeCommand());
 program.addCommand(createAuditReportCommand());
+registerBudgetCommand(program);
 
 program.parse();
