@@ -58,8 +58,9 @@ echo ""
 
 # Step 5: Install dependencies
 echo "━━━ Step 5: Install Dependencies ━━━"
-# Use --ignore-scripts to skip husky prepare hook (devDependency not available in production)
-ssh_run "cd $MINI_PATH && npm install --omit=dev --ignore-scripts"
+# Install all dependencies (including dev) for TypeScript compilation
+# Use --ignore-scripts to skip husky prepare hook
+ssh_run "cd $MINI_PATH && npm install --ignore-scripts"
 echo "✓ Dependencies installed"
 echo ""
 
