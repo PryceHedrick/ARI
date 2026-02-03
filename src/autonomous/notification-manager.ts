@@ -43,7 +43,11 @@ export type NotificationCategory =
   | 'finance'         // Money-related
   | 'task'            // Task completions
   | 'system'          // System status
-  | 'daily';          // Daily summaries
+  | 'daily'           // Daily summaries
+  | 'budget'          // Budget thresholds and alerts
+  | 'billing'         // Billing cycle events
+  | 'value'           // Value analytics
+  | 'adaptive';       // Adaptive learning recommendations
 
 export interface NotificationRequest {
   category: NotificationCategory;
@@ -110,7 +114,11 @@ const DEFAULT_CONFIG: NotificationConfig = {
     finance: 30,
     task: 15,
     system: 60,
-    daily: 1440, // Once per day
+    daily: 1440,    // Once per day
+    budget: 60,     // Once per hour max
+    billing: 1440,  // Once per day
+    value: 720,     // Twice per day max
+    adaptive: 1440, // Once per day
   },
 };
 
@@ -128,6 +136,10 @@ const CATEGORY_PRIORITIES: Record<NotificationCategory, InternalPriority> = {
   task: 'low',
   system: 'low',
   daily: 'normal',
+  budget: 'high',      // Budget alerts are important
+  billing: 'normal',   // Billing cycle notifications
+  value: 'low',        // Value analytics
+  adaptive: 'low',     // Adaptive recommendations
 };
 
 // Map our internal priorities to P0-P4 for routing
@@ -555,6 +567,10 @@ export class NotificationManager {
       task: '✓',
       system: '▪',
       daily: '▫',
+      budget: '⚡',
+      billing: '📊',
+      value: '💎',
+      adaptive: '🧠',
     };
     return icons[category];
   }
@@ -843,6 +859,140 @@ export class NotificationManager {
       title: 'Budget Update',
       body: `${bar} ${percent}%\n\n$${spent.toFixed(2)} / $${limit.toFixed(2)}\n${daysRemaining} days left`,
       priority: percent >= 90 ? 'high' : percent >= 75 ? 'normal' : 'low',
+    });
+  }
+
+  // ─── Budget System Methods ────────────────────────────────────────────────────
+
+  /**
+   * Budget warning notification
+   */
+  async budgetWarning(
+    percentUsed: number,
+    remaining: number,
+    recommendation: string
+  ): Promise<NotificationResult> {
+    const priority: InternalPriority = percentUsed >= 90 ? 'high' : 'normal';
+
+    return this.notify({
+      category: 'budget',
+      title: `Budget ${percentUsed.toFixed(0)}% Used`,
+      body: `$${remaining.toFixed(2)} remaining today. ${recommendation}`,
+      priority,
+      dedupKey: `budget_warning_${Math.floor(percentUsed / 5) * 5}`,
+    });
+  }
+
+  /**
+   * Budget critical notification (95%+ consumed)
+   */
+  async budgetCritical(percentUsed: number): Promise<NotificationResult> {
+    return this.notify({
+      category: 'budget',
+      title: 'Budget Critical',
+      body: `Budget ${percentUsed.toFixed(0)}% consumed. Autonomous work paused. User interactions only.`,
+      priority: 'critical',
+      dedupKey: 'budget_critical',
+    });
+  }
+
+  /**
+   * Billing cycle warning notification
+   */
+  async billingCycleWarning(daysRemaining: number, status: string): Promise<NotificationResult> {
+    return this.notify({
+      category: 'billing',
+      title: `Billing Cycle: ${daysRemaining} Days Left`,
+      body: `Status: ${status}. Review spending at your convenience.`,
+      priority: 'normal',
+      dedupKey: `billing_warning_${daysRemaining}`,
+    });
+  }
+
+  /**
+   * Billing cycle start notification
+   */
+  async billingCycleStart(budget: number): Promise<NotificationResult> {
+    return this.notify({
+      category: 'billing',
+      title: 'New Billing Cycle Started',
+      body: `Fresh $${budget.toFixed(2)} budget for the next 14 days. Daily target: $${(budget / 14).toFixed(2)}.`,
+      priority: 'normal',
+      dedupKey: 'billing_cycle_start',
+    });
+  }
+
+  /**
+   * Daily value report notification
+   */
+  async dailyValueReport(
+    score: number,
+    cost: number,
+    efficiency: string
+  ): Promise<NotificationResult> {
+    const emoji = score >= 70 ? '★' : score >= 50 ? '✓' : score >= 30 ? '◈' : '✗';
+
+    return this.notify({
+      category: 'value',
+      title: `${emoji} Daily Value: ${score}/100`,
+      body: `Spent $${cost.toFixed(2)} | Efficiency: ${efficiency} | Cost/Point: $${(cost / Math.max(score, 1)).toFixed(3)}`,
+      priority: score < 30 ? 'normal' : 'low',
+      dedupKey: `value_daily_${new Date().toISOString().split('T')[0]}`,
+    });
+  }
+
+  /**
+   * Weekly value report notification
+   */
+  async weeklyValueReport(report: {
+    averageScore: number;
+    totalCost: number;
+    trend: string;
+    recommendations: string[];
+  }): Promise<NotificationResult> {
+    const trendEmoji = report.trend === 'improving' ? '↑' :
+                       report.trend === 'declining' ? '↓' : '→';
+
+    const lines: string[] = [
+      `Avg Score: ${report.averageScore.toFixed(0)}/100 | Total: $${report.totalCost.toFixed(2)} | Trend: ${trendEmoji} ${report.trend}`,
+    ];
+
+    if (report.recommendations.length > 0) {
+      lines.push('');
+      lines.push('Recommendations:');
+      report.recommendations.slice(0, 3).forEach(r => {
+        lines.push(`• ${r}`);
+      });
+    }
+
+    return this.notify({
+      category: 'value',
+      title: `${trendEmoji} Weekly Value Report`,
+      body: lines.join('\n'),
+      priority: 'normal',
+      dedupKey: 'value_weekly',
+    });
+  }
+
+  /**
+   * Adaptive learning recommendation notification
+   */
+  async adaptiveRecommendation(rec: {
+    type: string;
+    recommendation: string;
+    confidence: number;
+  }): Promise<NotificationResult> {
+    // Only notify for high-confidence recommendations
+    if (rec.confidence < 0.75) {
+      return { sent: false, reason: 'Confidence too low' };
+    }
+
+    return this.notify({
+      category: 'adaptive',
+      title: `Recommendation: ${rec.type}`,
+      body: `${rec.recommendation} (${(rec.confidence * 100).toFixed(0)}% confidence)`,
+      priority: 'low',
+      dedupKey: `adaptive_${rec.type}`,
     });
   }
 }
