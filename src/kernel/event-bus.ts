@@ -82,6 +82,7 @@ export interface EventMap {
   // ── Scheduler events ─────────────────────────────────────────────────────
   'scheduler:task_run': { taskId: string; taskName: string; startedAt: Date; runId?: string };
   'scheduler:task_complete': { taskId: string; taskName: string; duration: number; success: boolean; error?: string; runId?: string; triggeredBy?: 'scheduler' | 'manual' | 'api' | 'subagent' };
+  'scheduler:daily_reset': { date: string; previousDate: string };
 
   // ── Knowledge events ─────────────────────────────────────────────────────
   'knowledge:indexed': { documentCount: number; duration: number };
@@ -390,6 +391,7 @@ export interface EventMap {
   'code:improved': { description: string; file: string };
   'insight:high_value': { insight: string; category: string };
   'pattern:learned': { pattern: string; confidence: number };
+  'initiative:executed': { initiativeId: string; title: string; category: string; success: boolean };
 
   // ═══════════════════════════════════════════════════════════════════════
   // ADAPTIVE LEARNING events (Pattern Recognition)
