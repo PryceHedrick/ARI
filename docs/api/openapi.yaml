@@ -1,0 +1,529 @@
+openapi: 3.0.3
+info:
+  title: ARI API
+  description: |
+    Artificial Reasoning Intelligence - Your Life Operating System
+
+    ## Security
+    - All endpoints are loopback-only (127.0.0.1)
+    - All requests pass through content sanitization
+    - Trust levels affect risk scoring
+  version: 2.1.0
+  contact:
+    name: Pryce Hedrick
+    url: https://github.com/Ari-OS/ARI
+
+servers:
+  - url: http://127.0.0.1:3141
+    description: Local gateway (loopback-only)
+
+tags:
+  - name: health
+    description: System health and status
+  - name: cognition
+    description: Cognitive layer (LOGOS/ETHOS/PATHOS)
+  - name: alerts
+    description: Alert management
+  - name: e2e
+    description: End-to-end testing
+  - name: budget
+    description: Budget and model management
+  - name: governance
+    description: Constitutional governance
+
+paths:
+  /api/health:
+    get:
+      summary: Basic health check
+      tags: [health]
+      responses:
+        '200':
+          description: System is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+  /api/health/detailed:
+    get:
+      summary: Detailed component health
+      tags: [health]
+      responses:
+        '200':
+          description: Component-level health status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DetailedHealthResponse'
+
+  /api/cognition/health:
+    get:
+      summary: Cognitive layer health
+      tags: [cognition]
+      responses:
+        '200':
+          description: LOGOS/ETHOS/PATHOS status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CognitionHealthResponse'
+
+  /api/cognition/logos/bayesian:
+    post:
+      summary: Bayesian belief update
+      tags: [cognition]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BayesianUpdateRequest'
+      responses:
+        '200':
+          description: Updated belief
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BayesianUpdateResponse'
+
+  /api/cognition/ethos/bias-detection:
+    post:
+      summary: Detect cognitive biases
+      tags: [cognition]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BiasDetectionRequest'
+      responses:
+        '200':
+          description: Detected biases
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BiasDetectionResponse'
+
+  /api/cognition/pathos/reframe:
+    post:
+      summary: CBT thought reframing
+      tags: [cognition]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReframeRequest'
+      responses:
+        '200':
+          description: Reframed thought
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReframeResponse'
+
+  /api/alerts:
+    get:
+      summary: List alerts
+      tags: [alerts]
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+            maximum: 100
+        - name: severity
+          in: query
+          schema:
+            $ref: '#/components/schemas/AlertSeverity'
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/AlertStatus'
+      responses:
+        '200':
+          description: Paginated alert list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AlertListResponse'
+
+  /api/alerts/{id}:
+    get:
+      summary: Get single alert
+      tags: [alerts]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Alert details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Alert'
+        '404':
+          description: Alert not found
+
+  /api/alerts/{id}/acknowledge:
+    post:
+      summary: Acknowledge alert
+      tags: [alerts]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Alert acknowledged
+        '404':
+          description: Alert not found
+
+  /api/e2e/runs:
+    get:
+      summary: List E2E test runs
+      tags: [e2e]
+      responses:
+        '200':
+          description: Test run history
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/E2ERunsResponse'
+
+  /api/e2e/run:
+    post:
+      summary: Trigger E2E test run
+      tags: [e2e]
+      responses:
+        '200':
+          description: Test run started
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  started:
+                    type: boolean
+                  runId:
+                    type: string
+
+  /api/budget/status:
+    get:
+      summary: Get budget status
+      tags: [budget]
+      responses:
+        '200':
+          description: Current budget status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BudgetStatus'
+
+  /api/budget/recommended-model:
+    get:
+      summary: Get recommended model for task type
+      tags: [budget]
+      parameters:
+        - name: taskType
+          in: query
+          required: true
+          schema:
+            $ref: '#/components/schemas/TaskType'
+      responses:
+        '200':
+          description: Recommended model
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModelRecommendation'
+
+  /api/governance/council:
+    get:
+      summary: Get council status
+      tags: [governance]
+      responses:
+        '200':
+          description: Council status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CouncilStatus'
+
+components:
+  schemas:
+    HealthResponse:
+      type: object
+      required: [status, version, uptime]
+      properties:
+        status:
+          type: string
+          enum: [healthy, degraded, unhealthy]
+        version:
+          type: string
+        uptime:
+          type: number
+          description: Uptime in seconds
+
+    DetailedHealthResponse:
+      type: object
+      properties:
+        gateway:
+          $ref: '#/components/schemas/ComponentHealth'
+        eventBus:
+          $ref: '#/components/schemas/ComponentHealth'
+        audit:
+          $ref: '#/components/schemas/ComponentHealth'
+        sanitizer:
+          $ref: '#/components/schemas/ComponentHealth'
+        agents:
+          $ref: '#/components/schemas/ComponentHealth'
+        governance:
+          $ref: '#/components/schemas/ComponentHealth'
+
+    ComponentHealth:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [healthy, degraded, unhealthy]
+        details:
+          type: object
+
+    CognitionHealthResponse:
+      type: object
+      properties:
+        logos:
+          type: object
+          properties:
+            status:
+              type: string
+            lastUpdate:
+              type: string
+              format: date-time
+        ethos:
+          type: object
+          properties:
+            biasesDetected:
+              type: integer
+            valuesAligned:
+              type: boolean
+        pathos:
+          type: object
+          properties:
+            emotionalState:
+              type: string
+            cbtSessionsAvailable:
+              type: integer
+
+    BayesianUpdateRequest:
+      type: object
+      required: [hypothesis, priorProbability, evidence, likelihood]
+      properties:
+        hypothesis:
+          type: string
+        priorProbability:
+          type: number
+          minimum: 0
+          maximum: 1
+        evidence:
+          type: string
+        likelihood:
+          type: number
+          minimum: 0
+          maximum: 1
+
+    BayesianUpdateResponse:
+      type: object
+      properties:
+        hypothesis:
+          type: string
+        posteriorProbability:
+          type: number
+        confidence:
+          type: number
+
+    BiasDetectionRequest:
+      type: object
+      required: [statement]
+      properties:
+        statement:
+          type: string
+
+    BiasDetectionResponse:
+      type: object
+      properties:
+        biases:
+          type: array
+          items:
+            type: string
+        confidence:
+          type: number
+
+    ReframeRequest:
+      type: object
+      required: [thought]
+      properties:
+        thought:
+          type: string
+
+    ReframeResponse:
+      type: object
+      properties:
+        original:
+          type: string
+        reframed:
+          type: string
+        distortion:
+          type: string
+
+    AlertSeverity:
+      type: string
+      enum: [info, warning, critical]
+
+    AlertStatus:
+      type: string
+      enum: [active, acknowledged, resolved, expired]
+
+    Alert:
+      type: object
+      required: [id, severity, status, title, message, timestamp]
+      properties:
+        id:
+          type: string
+          format: uuid
+        severity:
+          $ref: '#/components/schemas/AlertSeverity'
+        status:
+          $ref: '#/components/schemas/AlertStatus'
+        title:
+          type: string
+        message:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        acknowledgedAt:
+          type: string
+          format: date-time
+
+    AlertListResponse:
+      type: object
+      properties:
+        alerts:
+          type: array
+          items:
+            $ref: '#/components/schemas/Alert'
+        total:
+          type: integer
+        page:
+          type: integer
+        hasMore:
+          type: boolean
+
+    E2ERunsResponse:
+      type: object
+      properties:
+        runs:
+          type: array
+          items:
+            $ref: '#/components/schemas/E2ETestRun'
+        passRate:
+          type: number
+        lastRun:
+          type: string
+          format: date-time
+        consecutiveFailures:
+          type: integer
+
+    E2ETestRun:
+      type: object
+      properties:
+        id:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        passed:
+          type: integer
+        failed:
+          type: integer
+        duration:
+          type: integer
+          description: Duration in milliseconds
+
+    TaskType:
+      type: string
+      enum: [simple, standard, complex, critical]
+
+    BudgetStatus:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [normal, warning, critical, paused]
+        spent:
+          type: number
+        remaining:
+          type: number
+        percentUsed:
+          type: number
+        mode:
+          type: string
+          enum: [conservative, balanced, aggressive, paused]
+        daysRemaining:
+          type: integer
+
+    ModelRecommendation:
+      type: object
+      properties:
+        model:
+          type: string
+        reason:
+          type: string
+        budgetMode:
+          type: string
+        percentUsed:
+          type: number
+
+    CouncilStatus:
+      type: object
+      properties:
+        memberCount:
+          type: integer
+        quorum:
+          type: number
+        activeProposals:
+          type: integer
+
+    TrustLevel:
+      type: string
+      enum: [system, operator, verified, standard, untrusted, hostile]
+      description: |
+        Trust level affects risk multiplier:
+        - system: 0.5x
+        - operator: 0.6x
+        - verified: 0.75x
+        - standard: 1.0x
+        - untrusted: 1.5x
+        - hostile: 2.0x
+
+  securitySchemes:
+    trustLevel:
+      type: apiKey
+      in: header
+      name: X-Trust-Level
+      description: Trust level for risk calculation
