@@ -80,7 +80,7 @@ export const apiRoutes: FastifyPluginAsync<ApiRouteOptions> = async (
     await fastify.register(fastifyStatic, {
       root: dashboardDistPath,
       prefix: '/',
-      decorateReply: false, // Don't conflict with other plugins
+      // decorateReply defaults to true, enabling reply.sendFile()
     });
 
     console.log(`Dashboard serving from: ${dashboardDistPath}`);
