@@ -209,6 +209,6 @@ export class Gateway {
     plugin: FastifyPluginAsync<T>,
     opts?: T
   ): Promise<void> {
-    await this.server.register(plugin, opts);
+    await this.server.register(plugin, opts ?? {} as T);
   }
 }
