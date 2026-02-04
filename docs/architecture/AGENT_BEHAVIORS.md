@@ -313,7 +313,7 @@ interface MemoryProvenance {
 ## Governor Agent — Constitutional Enforcement
 
 ### Purpose
-Enforces the 5 constitutional rules and manages the 13-member council.
+Enforces the 5 constitutional rules and manages the 15-member council.
 
 ### Constitutional Rules
 
@@ -364,7 +364,7 @@ Enforces the 5 constitutional rules and manages the 13-member council.
 | 4 | **Least Privilege** | Three-layer permission checks |
 | 5 | **Trust Required** | All messages have trust level |
 
-### Council Voting (13 Members)
+### Council Voting (15 Members)
 
 ```
 Proposal Submitted
@@ -372,7 +372,7 @@ Proposal Submitted
        ▼
 ┌─────────────────┐
 │ Council Reviews │
-│ (13 members)    │
+│ (15 members)    │
 └────────┬────────┘
          │
     Vote Collected

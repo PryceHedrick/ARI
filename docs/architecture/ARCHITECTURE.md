@@ -234,9 +234,9 @@ The governance layer enforces constitutional rules, manages voting, and gates qu
 **Constitutional guarantee**: Arbiter rules cannot be overridden by votes.
 
 #### council.ts
-- **13-member voting council**
+- **15-member voting council**
 - **3 thresholds**: MAJORITY (>50%), SUPERMAJORITY (>=66%), UNANIMOUS (100%)
-- **50% quorum requirement**: At least 7 of 13 must participate
+- **50% quorum requirement**: At least 8 of 15 must participate
 - **1-hour default deadline** for votes
 - Early conclusion logic (vote closes when outcome is determined)
 - Voting agents: router, planner, executor, memory_manager, guardian, research, marketing, sales, content, seo, build, development, client_comms
@@ -460,7 +460,7 @@ Agent → Propose Action → Arbiter (Layer 2)
                     ▼             ▼
                   DENIED      Council (Layer 2)
                                   ↓
-                            Create Vote (13 members)
+                            Create Vote (15 members)
                                   ↓
                             Cast Votes (quorum = 7)
                                   ↓
@@ -583,8 +583,8 @@ Agent → Propose Action → Arbiter (Layer 2)
 - **Binding**: All rulings are binding
 
 ### Council
-- **Members**: 13 voting agents
-- **Quorum**: 50% (7 of 13)
+- **Members**: 15 voting agents
+- **Quorum**: 50% (8 of 15)
 - **Thresholds**: MAJORITY (>50%), SUPERMAJORITY (>=66%), UNANIMOUS (100%)
 - **Deadline**: 60 minutes default
 - **Early Conclusion**: Vote closes when outcome is determined

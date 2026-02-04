@@ -116,7 +116,7 @@ The following infrastructure was implemented in v3:
 
 The following v12-specified capabilities were missing in v3 and have been implemented:
 
-- [x] **Governance layer** — Implemented: 13-member council voting, Arbiter (5 rules), Overseer (5 gates)
+- [x] **Governance layer** — Implemented: 15-member council voting, Arbiter (5 rules), Overseer (5 gates)
   - src/governance/council.ts, arbiter.ts, overseer.ts, stop-the-line.ts
 
 - [x] **Context system** — Implemented: context routing, storage, CLI commands

@@ -38,7 +38,7 @@ Anyone can wrap Baileys for WhatsApp. Anyone can use grammY for Telegram. These 
 - LOGOS: Bayesian reasoning, Kelly criterion, expected value
 - ETHOS: 10-bias detection, emotional state monitoring
 - PATHOS: CBT reframing, Stoic philosophy, wisdom integration
-- Constitutional governance with 13-member Council
+- Constitutional governance with 15-member Council
 - SHA-256 hash-chained immutable audit
 - 5-stage continuous learning loop
 

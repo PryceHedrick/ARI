@@ -80,7 +80,7 @@ ARI has a foundational layer dedicated to *how to think*, not just *what to do*:
 
 ARI doesn't just execute — it deliberates:
 
-- **Council**: 13-member body that votes on significant decisions
+- **Council**: 15-member body that votes on significant decisions
 - **Arbiter**: Enforces 6 constitutional rules that cannot be violated
 - **Overseer**: 5 quality gates before any major action
 

@@ -175,7 +175,7 @@ src/
 │   ├── executor.ts      # Tool execution, permissions
 │   └── memory-manager.ts # Provenance-tracked memory
 ├── governance/          # Layer 4: Constitutional enforcement
-│   ├── council.ts       # 13-member voting
+│   ├── council.ts       # 15-member voting
 │   ├── arbiter.ts       # 5 constitutional rules
 │   └── overseer.ts      # 5 quality gates
 ├── ops/                 # Layer 5: Infrastructure

@@ -6,7 +6,7 @@ This document describes the governance structure of ARI's multi-agent system, in
 
 ARI uses a three-tier governance system:
 
-1. **Council** - Democratic voting body (13 members)
+1. **Council** - Democratic voting body (15 members)
 2. **Arbiter** - Constitutional enforcement (5 rules)
 3. **Overseer** - Quality gate enforcement (5 gates)
 
@@ -16,7 +16,7 @@ The Council is the democratic decision-making body composed of 13 agent members.
 
 ### Composition
 
-The Council consists of 13 members representing different domains:
+The Council consists of 15 members representing different domains:
 
 | Member ID | Role | Domain |
 |-----------|------|--------|

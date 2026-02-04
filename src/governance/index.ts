@@ -2,7 +2,7 @@
  * Governance layer exports (Layer 4 - Strategic).
  *
  * The governance layer provides:
- * - Council: 13-member governing body for collective decisions (Legislative)
+ * - Council: 15-member governing body for collective decisions (Legislative)
  * - Arbiter: Constitutional enforcement of hard invariants (Judicial)
  * - Overseer: Quality gate enforcement for releases
  * - PolicyEngine: Central authority for permission decisions (Executive/Governance)

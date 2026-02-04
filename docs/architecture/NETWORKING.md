@@ -379,7 +379,7 @@ ARI exists at a **higher level of abstraction** than both OpenClaw and Claude Co
 │   • LOGOS (Bayesian reasoning, Kelly criterion, decision trees)          │
 │   • ETHOS (Bias detection, emotional state, discipline checks)           │
 │   • PATHOS (CBT reframing, Stoic philosophy, wisdom tradition)           │
-│   • 13-member Council with voting thresholds                             │
+│   • 15-member Council with voting thresholds                             │
 │   • Immutable SHA-256 audit chain                                        │
 │   • Autonomous operations (scheduled tasks, learning loops)              │
 │                                                                          │

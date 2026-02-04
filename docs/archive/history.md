@@ -258,7 +258,7 @@ Each agent was designed following three principles:
 
 | Agent | Role | Key Capability |
 |-------|------|----------------|
-| **Council** | Legislature | 13-member voting, quorum thresholds, term limits |
+| **Council** | Legislature | 15-member voting, quorum thresholds, term limits |
 | **Arbiter** | Judiciary | 5 constitutional rules, final authority, sign-off power |
 | **Overseer** | Quality | 5 release gates, coverage enforcement, documentation checks |
 

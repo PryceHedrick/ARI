@@ -159,13 +159,13 @@ export const CONSTITUTIONAL_RULES = Object.freeze([
 // ═══════════════════════════════════════════════════════════════════════════════
 
 /**
- * The Council - ARI's 13-member governance body
+ * The Council - ARI's 15-member governance body
  *
  * Handles voting on proposals, policy changes, and collective decisions.
  */
 export const COUNCIL = Object.freeze({
   name: 'The Council',
-  members: 13,
+  members: 15,
   votingAgents: Object.freeze([
     'router',
     'planner',

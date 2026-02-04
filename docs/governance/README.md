@@ -18,7 +18,7 @@
 
 | Agent | Role | Authority |
 |-------|------|-----------|
-| **Council** | 13-member voting body | Collective decisions |
+| **Council** | 15-member voting body | Collective decisions |
 | **Arbiter** | Constitutional enforcer | 5 inviolable rules |
 | **Overseer** | Quality gatekeeper | 5 quality gates |
 

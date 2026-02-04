@@ -351,9 +351,9 @@ Cross-partition access requires SYSTEM trust level.
 **Quorum Thresholds:**
 | Decision Type | Threshold | Required Votes |
 |--------------|-----------|----------------|
-| Standard | 50% | 7 of 13 |
-| Significant | 67% | 9 of 13 |
-| Critical | 100% | 13 of 13 |
+| Standard | 50% | 7 of 15 |
+| Significant | 67% | 9 of 15 |
+| Critical | 100% | 13 of 15 |
 
 **Vote Lifecycle:**
 ```

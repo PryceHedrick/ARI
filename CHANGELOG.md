@@ -86,7 +86,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Sandbox and timeout enforcement
 
 #### Council Renamed
-- **The Council** — 13-member governance body
+- **The Council** — 15-member governance body
   - Latin: "council, plan, deliberation"
   - Backwards-compatible export (`Council` still works)
 
@@ -127,7 +127,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Memory Manager** — Provenance-tracked memory with 6 types and 3 partitions
 
 #### Constitutional Governance
-- **Council** — 13-member voting body with 3 quorum thresholds (majority, supermajority, unanimous)
+- **Council** — 15-member voting body with 3 quorum thresholds (majority, supermajority, unanimous)
 - **Arbiter** — Constitutional enforcement with 5 hard rules
 - **Overseer** — Quality gate enforcement with 5 release gates
 - **Stop-the-Line** — Immediate halt capability for security violations

@@ -242,7 +242,7 @@ Common quorum models:
 
 **Decision**
 
-Require 50% quorum for all votes: At least 7 of 13 agents must participate for a vote to be valid.
+Require 50% quorum for all votes: At least 8 of 15 agents must participate for a vote to be valid.
 
 Quorum applies before threshold calculation:
 1. Check quorum: votedCount >= 7
@@ -258,7 +258,7 @@ Positive:
 - Prevents minority rule (7 agents is majority of 13)
 - Consistent rule across all vote types (no special cases)
 - Allows votes to proceed even with some absent agents
-- Easy to understand (50% rounds to 7 of 13)
+- Easy to understand (50% rounds to 8 of 15)
 
 Negative:
 - Votes can fail due to apathy (agents don't participate)
@@ -660,7 +660,7 @@ Mitigations:
 | ADR-001 | In-process agents | All agents run in one Node.js process |
 | ADR-002 | 3-level permissions | READ_ONLY, WRITE_SAFE, WRITE_DESTRUCTIVE, ADMIN |
 | ADR-003 | Context isolation | Strict namespace partitions (PUBLIC, INTERNAL, SENSITIVE) |
-| ADR-004 | 50% quorum | 7 of 13 agents must participate in votes |
+| ADR-004 | 50% quorum | 8 of 15 agents must participate in votes |
 | ADR-005 | Dual stop authority | Operator + Guardian can halt operations |
 | ADR-006 | 1-hour deadline | Votes expire after 60 minutes |
 | ADR-007 | Append-only rollback | Decisions supersede, never delete |

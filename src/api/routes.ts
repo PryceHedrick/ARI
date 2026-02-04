@@ -289,7 +289,7 @@ export const apiRoutes: FastifyPluginAsync<ApiRouteOptions> = async (
         </div>
         <div class="stat">
           <span class="stat-label">Council</span>
-          <span class="stat-value">13 members</span>
+          <span class="stat-value">15 members</span>
         </div>
       </div>
 

@@ -8,7 +8,7 @@ import { EmptyState } from '../components/ui/EmptyState';
 import { ErrorState } from '../components/ui/ErrorState';
 import { CardSkeleton, ProposalCardSkeleton } from '../components/ui/Skeleton';
 
-// 13-member council from ARI's governance design
+// 15-member council from ARI's governance design
 const COUNCIL_MEMBERS = [
   { id: 'router', name: 'Router', role: 'Event routing', type: 'system' },
   { id: 'planner', name: 'Planner', role: 'Task decomposition', type: 'agent' },
@@ -103,14 +103,14 @@ export function Governance() {
               style={{ background: 'var(--bg-tertiary)' }}
             >
               <div className="text-xs" style={{ color: 'var(--text-muted)' }}>Council</div>
-              <div className="text-lg font-bold" style={{ color: 'var(--ari-purple)' }}>13</div>
+              <div className="text-lg font-bold" style={{ color: 'var(--ari-purple)' }}>15</div>
             </div>
             <div
               className="rounded-xl px-4 py-2"
               style={{ background: 'var(--bg-tertiary)' }}
             >
               <div className="text-xs" style={{ color: 'var(--text-muted)' }}>Quorum</div>
-              <div className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>7</div>
+              <div className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>8</div>
             </div>
           </div>
         </div>
@@ -123,7 +123,7 @@ export function Governance() {
             className="mb-4 text-sm font-semibold uppercase tracking-wider"
             style={{ color: 'var(--text-muted)' }}
           >
-            Governance Council (13 Members)
+            Governance Council (15 Members)
           </h2>
           <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 stagger-children">
             {COUNCIL_MEMBERS.map((member) => {
@@ -166,7 +166,7 @@ export function Governance() {
             }}
           >
             <span className="font-medium" style={{ color: 'var(--text-primary)' }}>Voting:</span> 50%+1 (simple majority) required.
-            <span className="ml-2 font-medium" style={{ color: 'var(--text-primary)' }}>Quorum:</span> 7/13 members.
+            <span className="ml-2 font-medium" style={{ color: 'var(--text-primary)' }}>Quorum:</span> 8/15 members.
             <span className="ml-2 font-medium" style={{ color: 'var(--text-primary)' }}>Operator:</span> Can override council decision (logged).
           </div>
         </section>
