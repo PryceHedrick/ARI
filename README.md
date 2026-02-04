@@ -128,7 +128,7 @@ Security is enforced at the kernel layer through five invariants:
 The HTTP gateway binds exclusively to `127.0.0.1:3141`. This is hardcoded, not configurable. No external network access is possible.
 
 ### 2. Content ≠ Command
-All inbound messages are treated as data, never as executable instructions. The Sanitizer scans every input against 21 injection patterns across 6 categories before processing.
+All inbound messages are treated as data, never as executable instructions. The Sanitizer scans every input against 27 injection patterns across 10 categories before processing.
 
 ### 3. Immutable Audit Trail
 Every operation is logged to a SHA-256 hash chain. Each entry contains the hash of the previous entry, creating a tamper-evident log. If any entry is modified, the chain breaks.
@@ -278,7 +278,7 @@ ari daemon uninstall          Remove background service
 src/
 ├── kernel/           # Layer 1: Security boundary
 │   ├── gateway.ts    # Fastify HTTP server (loopback only)
-│   ├── sanitizer.ts  # 21-pattern injection detection
+│   ├── sanitizer.ts  # 27-pattern injection detection
 │   ├── audit.ts      # SHA-256 hash chain logger
 │   ├── event-bus.ts  # Typed pub/sub system
 │   ├── config.ts     # Configuration management

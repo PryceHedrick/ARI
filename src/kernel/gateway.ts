@@ -65,7 +65,7 @@ export class Gateway {
       // Sanitize the incoming message
       const result = sanitize(content, source);
 
-      if (!result.safe) {
+      if (!result.safe || result.riskScore >= 0.8) {
         // Log security event
         await this.audit.logSecurity({
           eventType: 'injection_detected',

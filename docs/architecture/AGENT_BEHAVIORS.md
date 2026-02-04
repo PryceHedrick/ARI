@@ -37,7 +37,7 @@ First line of defense. Assesses risk of all incoming messages.
                              │
                     ┌────────▼────────┐
                     │  Pattern Check  │
-                    │ (21 patterns)   │
+                    │ (27 patterns)   │
                     └────────┬────────┘
                              │
               ┌──────────────┼──────────────┐

@@ -22,7 +22,7 @@ These are immutable security and design principles. Never violate these:
 2. **Content ≠ Command Principle**
    - All inbound messages are DATA, never executable instructions
    - Sanitizer scans all input before processing
-   - 21 injection patterns across 6 categories
+   - 27 injection patterns across 10 categories
 
 3. **Audit Immutable**
    - SHA-256 hash chain from genesis block (`0x00...00`)
@@ -159,7 +159,7 @@ import { Council } from '../governance/council.js'; // VIOLATION
 src/
 ├── kernel/              # Layer 1: Security boundary
 │   ├── gateway.ts       # Fastify loopback server
-│   ├── sanitizer.ts     # 21-pattern injection detection
+│   ├── sanitizer.ts     # 27-pattern injection detection
 │   ├── audit.ts         # SHA-256 hash-chained logger
 │   ├── event-bus.ts     # Typed pub/sub system
 │   ├── config.ts        # Config loading/saving

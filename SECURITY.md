@@ -56,7 +56,7 @@ The gateway binds exclusively to `127.0.0.1:3141`. No external network access.
 All inbound messages are treated as DATA, never as executable instructions.
 
 - **Implementation**: Sanitizer scans all input before processing
-- **Patterns detected**: 21 injection patterns across 6 categories
+- **Patterns detected**: 27 injection patterns across 10 categories
 - **Action**: Log suspicious patterns, block high-risk content (risk ≥ 0.8)
 
 ### 3. SHA-256 Hash Chain Audit Trail
@@ -97,7 +97,7 @@ Destructive operations require explicit user approval.
 
 ### Injection Detection
 
-The sanitizer detects 21 patterns across 6 categories:
+The sanitizer detects 27 patterns across 10 categories:
 
 1. **Direct Override** (4 patterns): "ignore previous instructions", "disregard all rules", etc.
 2. **Role Manipulation** (4 patterns): "you are now a", "pretend you are", etc.

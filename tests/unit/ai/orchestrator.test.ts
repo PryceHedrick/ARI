@@ -44,6 +44,28 @@ describe('AIOrchestrator', () => {
     });
   });
 
+  describe('constructor — API key validation', () => {
+    it('should reject empty API key', () => {
+      expect(() => new AIOrchestrator(eventBus, { apiKey: '' }))
+        .toThrow('Invalid Anthropic API key');
+    });
+
+    it('should reject short API key', () => {
+      expect(() => new AIOrchestrator(eventBus, { apiKey: 'short' }))
+        .toThrow('Invalid Anthropic API key');
+    });
+
+    it('should reject whitespace-only API key', () => {
+      expect(() => new AIOrchestrator(eventBus, { apiKey: '          ' }))
+        .toThrow('Invalid Anthropic API key');
+    });
+
+    it('should accept valid API key format', () => {
+      expect(() => new AIOrchestrator(eventBus, { apiKey: 'test-api-key' }))
+        .not.toThrow();
+    });
+  });
+
   describe('execute — basic pipeline', () => {
     it('should return a valid AIResponse', async () => {
       const response = await orchestrator.execute(makeRequest());
@@ -138,7 +160,7 @@ describe('AIOrchestrator', () => {
       const Anthropic = (await import('@anthropic-ai/sdk')).default;
       const mockCreate = vi.fn().mockRejectedValue(new Error('API error'));
 
-      orchestrator = new AIOrchestrator(eventBus, { apiKey: 'test' });
+      orchestrator = new AIOrchestrator(eventBus, { apiKey: 'test-api-key-for-testing' });
       // Access the mocked Anthropic instance
       const client = (orchestrator as unknown as Record<string, unknown>).client as {
         messages: { create: typeof mockCreate };
@@ -225,7 +247,7 @@ describe('AIOrchestrator', () => {
       const Anthropic = (await import('@anthropic-ai/sdk')).default;
       const mockCreate = vi.fn().mockRejectedValue(new Error('API error'));
 
-      orchestrator = new AIOrchestrator(eventBus, { apiKey: 'test' });
+      orchestrator = new AIOrchestrator(eventBus, { apiKey: 'test-api-key-for-testing' });
       const client = (orchestrator as unknown as Record<string, unknown>).client as {
         messages: { create: typeof mockCreate };
       };

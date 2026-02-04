@@ -38,7 +38,7 @@ const CONSTITUTIONAL_RULES = [
 const QUALITY_GATES = [
   { id: 1, name: 'Risk Threshold', desc: 'Auto-block at risk ≥ 0.8', threshold: 0.8 },
   { id: 2, name: 'Schema Validation', desc: 'All input validated via Zod schemas', threshold: 1.0 },
-  { id: 3, name: 'Injection Detection', desc: '21 patterns across 6 categories', threshold: 1.0 },
+  { id: 3, name: 'Injection Detection', desc: '27 patterns across 10 categories', threshold: 1.0 },
   { id: 4, name: 'Rate Limiting', desc: 'Token bucket per sender', threshold: 0.9 },
   { id: 5, name: 'Permission Checks', desc: 'Agent allowlist, trust level, permission tier', threshold: 1.0 },
 ];

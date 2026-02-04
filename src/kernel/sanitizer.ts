@@ -150,6 +150,50 @@ export const INJECTION_PATTERNS: readonly InjectionPattern[] = [
     severity: 'critical',
     description: 'Explicit data exfiltration attempt',
   },
+
+  // SSRF patterns
+  {
+    pattern: /file:\/\//i,
+    category: 'SSRF',
+    severity: 'critical',
+    description: 'File protocol SSRF attempt',
+  },
+  {
+    pattern: /gopher:\/\/|dict:\/\//i,
+    category: 'SSRF',
+    severity: 'critical',
+    description: 'Dangerous protocol SSRF attempt',
+  },
+
+  // Path Traversal patterns (URL-encoded)
+  {
+    pattern: /\.\.%2[fF]|\.\.%5[cC]/i,
+    category: 'Path Traversal',
+    severity: 'high',
+    description: 'URL-encoded path traversal detected',
+  },
+  {
+    pattern: /\.\.[/\\]/,
+    category: 'Path Traversal',
+    severity: 'high',
+    description: 'Directory traversal sequence detected',
+  },
+
+  // Null Byte Injection patterns
+  {
+    pattern: /%00|\\x00/i,
+    category: 'Null Byte Injection',
+    severity: 'high',
+    description: 'Null byte injection detected',
+  },
+
+  // XML Injection patterns
+  {
+    pattern: /<!\[CDATA\[|<!ENTITY|<!DOCTYPE\s+\w+\s+SYSTEM/i,
+    category: 'XML Injection',
+    severity: 'high',
+    description: 'XML entity/CDATA injection detected',
+  },
 ] as const;
 
 /**

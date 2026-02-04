@@ -64,7 +64,7 @@ npm run test:coverage    # With coverage
 ## Security Tests
 
 Security paths require explicit testing of all attack vectors.
-Test each of the 21 injection patterns in sanitizer.ts.
+Test each of the 27 injection patterns in sanitizer.ts.
 
 Example pattern:
 ```typescript

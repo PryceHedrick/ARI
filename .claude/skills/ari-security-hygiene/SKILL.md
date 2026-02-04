@@ -79,7 +79,7 @@ SAFE (execFileNoThrow):
   → Fails safely with "bad revision"
 ```
 
-## Prompt Injection Defense (21 Patterns)
+## Prompt Injection Defense (27 Patterns)
 
 ARI detects and blocks these injection categories:
 
@@ -139,7 +139,7 @@ When ingesting external content (web pages, documents, user input):
 │                                                             │
 │ 1. RECEIVE                                                  │
 │    ↓                                                        │
-│ 2. SANITIZE (21-pattern scan)                               │
+│ 2. SANITIZE (27-pattern scan)                               │
 │    • Strip control characters                               │
 │    • Decode and re-check                                    │
 │    • Flag suspicious patterns                               │
@@ -245,7 +245,7 @@ async function securityAudit(): Promise<boolean> {
 
 ## Implementation Files
 
-- `src/kernel/sanitizer.ts` — 21-pattern injection detection
+- `src/kernel/sanitizer.ts` — 27-pattern injection detection
 - `src/kernel/audit.ts` — SHA-256 hash-chained logging
 - `src/utils/execFileNoThrow.ts` — Safe command execution
 - `src/agents/guardian.ts` — Threat assessment

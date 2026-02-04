@@ -1,6 +1,6 @@
 ---
 name: ari-injection-detection
-description: ARI's 21-pattern injection detection across 6 categories
+description: ARI's 27-pattern injection detection across 6 categories
 triggers:
   - "injection detection"
   - "sanitize input"
@@ -12,7 +12,7 @@ triggers:
 
 ## Purpose
 
-Detect and block injection attacks using ARI's 21-pattern detection system across 6 categories.
+Detect and block injection attacks using ARI's 27-pattern detection system across 6 categories.
 
 ## Pattern Categories
 
@@ -153,5 +153,5 @@ if (result.detections.length > 0) {
 # Run injection detection tests
 npm test -- tests/security/injection-detection.test.ts
 
-# Expected: 100% coverage on all 21 patterns
+# Expected: 100% coverage on all 27 patterns
 ```

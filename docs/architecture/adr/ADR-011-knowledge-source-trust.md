@@ -105,9 +105,9 @@ function isWhitelisted(url: string): boolean {
 
 **Purpose**: Remove potentially malicious content before processing
 
-**Extends**: Existing [`sanitizer.ts`](../../src/kernel/sanitizer.ts) (21 patterns) with **cognitive-specific patterns**.
+**Extends**: Existing [`sanitizer.ts`](../../src/kernel/sanitizer.ts) (27 patterns) with **cognitive-specific patterns**.
 
-**Additional Patterns** (beyond existing 21):
+**Additional Patterns** (beyond existing 27):
 
 | Pattern | Detection | Example | Mitigation |
 |---------|-----------|---------|------------|
@@ -439,7 +439,7 @@ graph TD
     Stage1 -->|Not Whitelisted| Reject1[Reject - Log Attempt]
     Stage1 -->|Whitelisted| Stage2[Stage 2: Sanitization]
     
-    Stage2 --> CheckInjection{21 Injection Patterns}
+    Stage2 --> CheckInjection{27 Injection Patterns}
     CheckInjection -->|Detected| Reject2[Reject - Security Threat]
     CheckInjection -->|Clean| CheckCognitive{Cognitive Patterns}
     

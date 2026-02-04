@@ -20,7 +20,7 @@ npm audit
 ```
 
 ### 3. Injection Pattern Validation
-- Verify all 21 injection patterns are tested
+- Verify all 27 injection patterns are tested
 - Check sanitizer coverage is 100%
 
 ### 4. Trust Level Verification
@@ -50,7 +50,7 @@ npm audit
 - [ ] No high vulnerabilities
 
 ### Injection Defense
-- [ ] All 21 patterns tested
+- [ ] All 27 patterns tested
 - [ ] Sanitizer 100% coverage
 - [ ] Risk scoring calibrated
 

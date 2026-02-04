@@ -39,7 +39,7 @@ ARI follows Semantic Versioning: `MAJOR.MINOR.PATCH`
 ### Security
 - [ ] Security paths have 100% coverage
 - [ ] Audit trail integrity verified
-- [ ] All 21 injection patterns tested
+- [ ] All 27 injection patterns tested
 - [ ] Trust level system validated
 
 ### Documentation

@@ -244,7 +244,7 @@ A distributed ARI would be multiple separate instances. A centralized ARI is one
 | Data interception | All traffic encrypted end-to-end |
 | Rogue device | Tailscale device approval + SSH keys |
 | Audit tampering | SHA-256 hash chain, append-only log |
-| Injection attacks | 21-pattern Sanitizer, Content ≠ Command |
+| Injection attacks | 27-pattern Sanitizer, Content ≠ Command |
 
 ### Attack Surface
 

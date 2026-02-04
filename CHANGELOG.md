@@ -168,7 +168,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
-- 21-pattern injection detection across 6 categories
+- 27-pattern injection detection across 10 categories
 - 6-level trust scoring with risk multipliers (0.5x to 2.0x)
 - SHA-256 hash-chained tamper-evident audit logging
 - Auto-block at risk threshold ≥ 0.8
@@ -196,7 +196,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - No remote access by design
 
 #### Sanitizer
-- 21 injection patterns across 6 categories:
+- 27 injection patterns across 10 categories:
   - Direct Override (5 patterns)
   - Role Manipulation (4 patterns)
   - Command Injection (4 patterns)

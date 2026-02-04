@@ -96,6 +96,11 @@ export class AIOrchestrator {
   private readonly startedAt: number = Date.now();
 
   constructor(eventBus: EventBus, config: OrchestratorConfig) {
+    if (!config.apiKey || config.apiKey.trim().length < 10) {
+      throw new Error(
+        'Invalid Anthropic API key: key must be at least 10 characters',
+      );
+    }
     this.client = new Anthropic({ apiKey: config.apiKey });
     this.eventBus = eventBus;
     this.registry = new ModelRegistry();

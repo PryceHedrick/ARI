@@ -107,7 +107,7 @@ This led to the **Aurora Protocol** — a complete rewrite of the specification 
 
 1. **Universal Kernel** — Business logic extracted from core agents
 2. **Content ≠ Command Principle** — All inbound data treated as data, never instructions
-3. **21 Injection Patterns** — Comprehensive detection for 6 attack categories
+3. **27 Injection Patterns** — Comprehensive detection for 6 attack categories
 4. **Provenance Tracking** — Every memory entry tracks its source chain
 5. **Constitutional Governance** — Council voting, Arbiter oversight, formal decision-making
 
@@ -131,7 +131,7 @@ Kagemusha focused on building the **hardened kernel**:
 // Core security primitives
 src/kernel/
 ├── gateway.ts      // Loopback-only Fastify server (127.0.0.1 hardcoded)
-├── sanitizer.ts    // 21-pattern injection detection
+├── sanitizer.ts    // 27-pattern injection detection
 ├── audit.ts        // SHA-256 hash-chained logging
 ├── event-bus.ts    // Typed pub/sub communication
 ├── config.ts       // Zod-validated configuration
@@ -318,7 +318,7 @@ ARI handles sensitive life data — finances, health, relationships, business. B
 - macOS launchd daemon
 - Web dashboard (view-only)
 - SHA-256 hash-chained audit
-- 21-pattern injection detection
+- 27-pattern injection detection
 - MCP server with 15 tools
 
 ### Roadmap (Not Yet Implemented)

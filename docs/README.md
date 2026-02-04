@@ -142,7 +142,7 @@ ARI's architecture is strictly layered. Each layer only imports from layers belo
 
 All inbound content is DATA, never instructions.
 
-- 21 injection patterns detected across 6 categories
+- 27 injection patterns detected across 10 categories
 - SHA-256 hash-chained audit trail
 - 6 trust levels with risk multipliers
 - Loopback-only gateway (127.0.0.1)

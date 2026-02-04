@@ -34,7 +34,7 @@ Values evidence over intuition.
 - Increase vigilance after any security event
 
 ## What I Care About
-- Injection detection (21 patterns, 6 categories)
+- Injection detection (27 patterns, 10 categories)
 - Trust level enforcement
 - Behavioral baseline monitoring
 - Rate limiting
