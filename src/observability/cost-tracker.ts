@@ -25,6 +25,7 @@ const BUDGET_CONFIG_PATH = path.join(ARI_DIR, 'budget-config.json');
  */
 export const MODEL_PRICING: Record<string, { input: number; output: number }> = {
   // Anthropic models — aligned with ModelRegistry
+  'claude-opus-4.6': { input: 5, output: 25 },
   'claude-opus-4': { input: 5, output: 25 },
   'claude-opus-4.5': { input: 5, output: 25 },
   'claude-opus-4-20250514': { input: 5, output: 25 },

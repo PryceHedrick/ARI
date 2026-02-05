@@ -12,8 +12,19 @@ import { ModelTierSchema } from './types.js';
  */
 const DEFAULT_MODELS: ModelDefinition[] = [
   {
-    id: 'claude-opus-4.5',
+    id: 'claude-opus-4.6',
     quality: 10,
+    speed: 5,
+    costPer1MInput: 5.00,
+    costPer1MOutput: 25.00,
+    costPer1MCacheRead: 0.50,
+    maxContextTokens: 1_000_000,
+    supportsCaching: true,
+    isAvailable: true,
+  },
+  {
+    id: 'claude-opus-4.5',
+    quality: 9,
     speed: 4,
     costPer1MInput: 5.00,
     costPer1MOutput: 25.00,

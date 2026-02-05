@@ -9,10 +9,21 @@ describe('ModelRegistry', () => {
   });
 
   describe('getModel', () => {
+    it('should return opus 4.6 with correct pricing', () => {
+      const model = registry.getModel('claude-opus-4.6');
+      expect(model.id).toBe('claude-opus-4.6');
+      expect(model.quality).toBe(10);
+      expect(model.speed).toBe(5);
+      expect(model.costPer1MInput).toBe(5.0);
+      expect(model.costPer1MOutput).toBe(25.0);
+      expect(model.maxContextTokens).toBe(1_000_000);
+      expect(model.isAvailable).toBe(true);
+    });
+
     it('should return opus 4.5 with correct pricing', () => {
       const model = registry.getModel('claude-opus-4.5');
       expect(model.id).toBe('claude-opus-4.5');
-      expect(model.quality).toBe(10);
+      expect(model.quality).toBe(9);
       expect(model.speed).toBe(4);
       expect(model.costPer1MInput).toBe(5.0);
       expect(model.costPer1MOutput).toBe(25.0);
@@ -52,15 +63,15 @@ describe('ModelRegistry', () => {
   });
 
   describe('listModels', () => {
-    it('should list all 5 models', () => {
+    it('should list all 6 models', () => {
       const models = registry.listModels();
-      expect(models).toHaveLength(5);
+      expect(models).toHaveLength(6);
     });
 
     it('should filter available only', () => {
       const available = registry.listModels({ availableOnly: true });
       // Sonnet 5 is unavailable by default
-      expect(available).toHaveLength(4);
+      expect(available).toHaveLength(5);
       expect(available.every(m => m.isAvailable)).toBe(true);
     });
   });
@@ -128,12 +139,13 @@ describe('ModelRegistry', () => {
   });
 
   describe('getHighestQualityAvailable', () => {
-    it('should return opus 4.5 as highest quality', () => {
+    it('should return opus 4.6 as highest quality', () => {
       const best = registry.getHighestQualityAvailable();
-      expect(best.id).toBe('claude-opus-4.5');
+      expect(best.id).toBe('claude-opus-4.6');
     });
 
     it('should return next best when opus disabled', () => {
+      registry.setAvailability('claude-opus-4.6', false);
       registry.setAvailability('claude-opus-4.5', false);
       const best = registry.getHighestQualityAvailable();
       expect(best.id).toBe('claude-sonnet-4');

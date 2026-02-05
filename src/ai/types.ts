@@ -11,6 +11,7 @@ import { AgentIdSchema, TrustLevelSchema } from '../kernel/types.js';
  * Sonnet 5 included but starts as unavailable — flip when released.
  */
 export const ModelTierSchema = z.enum([
+  'claude-opus-4.6',
   'claude-opus-4.5',
   'claude-sonnet-5',
   'claude-sonnet-4',
