@@ -104,9 +104,65 @@ export function getLearningStatus(): LearningProgress {
   const nextGapAnalysis = getNextScheduledTime('20:00', 'weekly', 0); // Sunday
   const nextAssessment = getNextScheduledTime('09:00', 'monthly', 1); // 1st of month
 
+  // Calculate stage progress based on completed stages
+  const stagesCompleted = [
+    learningState.lastReview !== null,      // Stage 1: Performance Review
+    learningState.lastGapAnalysis !== null,  // Stage 2: Gap Analysis
+    false,                                   // Stage 3: Source Discovery (not yet tracked)
+    false,                                   // Stage 4: Knowledge Integration (not yet tracked)
+    learningState.lastAssessment !== null,   // Stage 5: Self-Assessment
+  ].filter(Boolean).length;
+  const stageProgress = stagesCompleted / 5;
+
+  // Calculate improvement trend from insight generation rate
+  const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
+  const recentInsights = learningState.insights.filter(i => i.timestamp >= oneWeekAgo).length;
+  const olderInsights = learningState.insights.filter(i => i.timestamp >= twoWeeksAgo && i.timestamp < oneWeekAgo).length;
+  const improvementTrend: 'IMPROVING' | 'DECLINING' | 'STABLE' =
+    recentInsights > olderInsights * 1.1 ? 'IMPROVING' :
+    recentInsights < olderInsights * 0.9 ? 'DECLINING' : 'STABLE';
+
+  // Calculate grade from success metrics
+  const totalInsights = learningState.insights.length;
+  const hasRecentReview = learningState.lastReview !== null &&
+    (now.getTime() - learningState.lastReview.getTime()) < 48 * 60 * 60 * 1000;
+  const hasRecentGapAnalysis = learningState.lastGapAnalysis !== null &&
+    (now.getTime() - learningState.lastGapAnalysis.getTime()) < 8 * 24 * 60 * 60 * 1000;
+
+  let gradeScore = 0;
+  if (hasRecentReview) gradeScore += 30;
+  if (hasRecentGapAnalysis) gradeScore += 20;
+  if (totalInsights >= 20) gradeScore += 25;
+  else if (totalInsights >= 10) gradeScore += 15;
+  else if (totalInsights >= 5) gradeScore += 10;
+  if (stagesCompleted >= 3) gradeScore += 25;
+  else if (stagesCompleted >= 2) gradeScore += 15;
+
+  const currentGrade: 'A' | 'B' | 'C' | 'D' | 'F' = gradeScore >= 85 ? 'A' : gradeScore >= 70 ? 'B' : gradeScore >= 55 ? 'C' : gradeScore >= 40 ? 'D' : 'F';
+
+  // Calculate streak: consecutive days with at least 1 insight
+  let streakDays = 0;
+  const checkDate = new Date(now);
+  checkDate.setHours(0, 0, 0, 0);
+
+  while (streakDays < 365) {
+    const dayStart = new Date(checkDate);
+    const dayEnd = new Date(checkDate);
+    dayEnd.setDate(dayEnd.getDate() + 1);
+
+    const hasActivity = learningState.insights.some(
+      i => i.timestamp >= dayStart && i.timestamp < dayEnd
+    ) || (learningState.lastReview !== null && learningState.lastReview >= dayStart && learningState.lastReview < dayEnd);
+
+    if (!hasActivity) break;
+    streakDays++;
+    checkDate.setDate(checkDate.getDate() - 1);
+  }
+
   return {
     currentStage: learningState.currentStage,
-    stageProgress: 0.5, // TODO: Implement actual progress tracking
+    stageProgress,
     lastReview: learningState.lastReview || now,
     lastGapAnalysis: learningState.lastGapAnalysis || now,
     lastAssessment: learningState.lastAssessment || now,
@@ -115,9 +171,9 @@ export function getLearningStatus(): LearningProgress {
     nextAssessment,
     recentInsights: learningState.insights.slice(-10),
     recentInsightsCount: learningState.insights.length,
-    improvementTrend: 'IMPROVING', // TODO: Calculate from metrics
-    currentGrade: 'B', // TODO: Calculate from assessments
-    streakDays: 0, // TODO: Track streak
+    improvementTrend,
+    currentGrade,
+    streakDays,
   };
 }
 
@@ -261,6 +317,25 @@ export async function runPerformanceReview(
     recommendations.push(`Most common bias: ${topBias[0]} (${topBias[1]} occurrences) - apply specific mitigation`);
   }
 
+  // Calculate confidence calibration
+  let overconfidenceRate = 0;
+  let underconfidenceRate = 0;
+  if (evDecisions.length > 0) {
+    const overconfident = evDecisions.filter(d => d.expectedValue! > d.actualValue! * 1.2);
+    const underconfident = evDecisions.filter(d => d.expectedValue! < d.actualValue! * 0.8);
+    overconfidenceRate = overconfident.length / evDecisions.length;
+    underconfidenceRate = underconfident.length / evDecisions.length;
+  }
+
+  // Aggregate framework usage from decisions
+  const frameworkCounts = new Map<string, { used: number; successful: number }>();
+  // For now, framework tracking is not available per-decision — leave empty but typed
+  const frameworkUsage = Array.from(frameworkCounts.entries()).map(([framework, counts]) => ({
+    framework,
+    usageCount: counts.used,
+    successRate: counts.used > 0 ? counts.successful / counts.used : 0,
+  }));
+
   const result: PerformanceReview = {
     period: {
       start: reviewPeriod.start,
@@ -278,8 +353,8 @@ export async function runPerformanceReview(
       meanError,
       rmse,
       calibration: 1 - Math.min(1, rmse),
-      overconfidenceRate: 0, // TODO: Calculate from predictions
-      underconfidenceRate: 0, // TODO: Calculate from predictions
+      overconfidenceRate,
+      underconfidenceRate,
     },
     biasesDetected: {
       total: allBiases.length,
@@ -291,7 +366,7 @@ export async function runPerformanceReview(
       highRiskDecisions,
       highRiskRate: decisions.length > 0 ? highRiskDecisions / decisions.length : 0,
     },
-    frameworkUsage: [], // TODO: Track framework usage per decision
+    frameworkUsage,
     patterns,
     insights,
     recommendations,

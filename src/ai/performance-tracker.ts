@@ -132,7 +132,7 @@ export class PerformanceTracker {
         await fs.writeFile(this.persistPath, json, 'utf-8');
       }
     } catch {
-      // Silent — persist is best-effort. System continues without it.
+      // Persist is best-effort — system continues without it
     }
   }
 
@@ -187,7 +187,10 @@ export class PerformanceTracker {
       metric.errorCount += 1;
     }
 
-    this.persist().catch(() => {});
+    this.persist().catch((err) => {
+      // eslint-disable-next-line no-console
+      console.error('[PerformanceTracker] Persist failed:', err);
+    });
   }
 
   /**
@@ -203,7 +206,10 @@ export class PerformanceTracker {
       metric.qualitySum = metric.qualitySum - 0.8 + qualityScore;
     }
 
-    this.persist().catch(() => {});
+    this.persist().catch((err) => {
+      // eslint-disable-next-line no-console
+      console.error('[PerformanceTracker] Persist failed:', err);
+    });
   }
 
   /**

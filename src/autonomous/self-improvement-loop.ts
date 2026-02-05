@@ -19,6 +19,7 @@
 import { EventBus } from '../kernel/event-bus.js';
 import { DecisionJournal } from '../cognition/learning/decision-journal.js';
 import type { Initiative, InitiativeCategory } from './initiative-engine.js';
+import type { CouncilInterface } from '../kernel/types.js';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { homedir } from 'node:os';
@@ -75,6 +76,7 @@ interface StoredState {
 export class SelfImprovementLoop {
   private eventBus: EventBus;
   private decisionJournal: DecisionJournal | null = null;
+  private council: CouncilInterface | null = null;
   private outcomes: ImprovementOutcome[] = [];
   private unsubscribers: Array<() => void> = [];
   private initialized = false;
@@ -92,12 +94,14 @@ export class SelfImprovementLoop {
     eventBus: EventBus,
     options: {
       decisionJournal?: DecisionJournal;
+      council?: CouncilInterface;
       config?: Partial<LoopConfig>;
       persistPath?: string;
     } = {}
   ) {
     this.eventBus = eventBus;
     this.decisionJournal = options.decisionJournal ?? null;
+    this.council = options.council ?? null;
     this.persistPath = options.persistPath ??
       path.join(homedir(), '.ari', 'self-improvement-state.json');
 
@@ -239,18 +243,38 @@ export class SelfImprovementLoop {
 
   /**
    * Request Council governance for an initiative.
-   * Returns the vote_id for tracking, or null if governance not required.
+   * Returns approval result and vote_id if governance was executed.
    */
-  requestGovernanceApproval(initiative: Initiative): string | null {
-    if (!this.requiresGovernance(initiative)) return null;
+  async requestGovernanceApproval(
+    initiative: Initiative
+  ): Promise<{ approved: boolean; voteId: string | null }> {
+    if (!this.requiresGovernance(initiative)) {
+      return { approved: true, voteId: null };
+    }
 
-    // Emit event for Council to pick up
-    const voteRequest = {
+    // If no council instance, fall back to approval (for backward compatibility)
+    if (!this.council) {
+      this.eventBus.emit('audit:log', {
+        action: 'self_improvement:governance_requested',
+        agent: 'SELF_IMPROVEMENT',
+        trustLevel: 'system',
+        details: {
+          initiativeId: initiative.id,
+          threshold: this.config.governanceThreshold,
+          fallback: true,
+        },
+      });
+      return { approved: true, voteId: `vote-${initiative.id}` };
+    }
+
+    // Create a vote in the Council
+    const vote = this.council.createVote({
       topic: `Initiative: ${initiative.title}`,
       description: `${initiative.description}\n\nRationale: ${initiative.rationale}\nCategory: ${initiative.category}\nEffort: ${initiative.effort}\nImpact: ${initiative.impact}`,
       threshold: this.config.governanceThreshold,
-      initiated_by: 'INITIATIVE' as const,
-    };
+      deadline_minutes: 60,
+      initiated_by: 'autonomous',
+    });
 
     this.eventBus.emit('audit:log', {
       action: 'self_improvement:governance_requested',
@@ -258,11 +282,60 @@ export class SelfImprovementLoop {
       trustLevel: 'system',
       details: {
         initiativeId: initiative.id,
+        voteId: vote.vote_id,
         threshold: this.config.governanceThreshold,
       },
     });
 
-    return `vote-${initiative.id}`;
+    // Wait for vote completion (with timeout)
+    const result = await this.waitForVoteCompletion(vote.vote_id);
+
+    if (result.approved) {
+      this.eventBus.emit('audit:log', {
+        action: 'self_improvement:governance_approved',
+        agent: 'SELF_IMPROVEMENT',
+        trustLevel: 'system',
+        details: {
+          initiativeId: initiative.id,
+          voteId: vote.vote_id,
+        },
+      });
+    } else {
+      this.stats.governanceBlocked++;
+      this.eventBus.emit('audit:log', {
+        action: 'self_improvement:governance_rejected',
+        agent: 'SELF_IMPROVEMENT',
+        trustLevel: 'system',
+        details: {
+          initiativeId: initiative.id,
+          voteId: vote.vote_id,
+        },
+      });
+    }
+
+    return { approved: result.approved, voteId: vote.vote_id };
+  }
+
+  /**
+   * Wait for a vote to complete, with 1-hour timeout.
+   * Returns whether the vote was approved.
+   */
+  private async waitForVoteCompletion(voteId: string): Promise<{ approved: boolean }> {
+    return new Promise((resolve) => {
+      const timeout = setTimeout(() => {
+        // Auto-reject on timeout
+        unsub();
+        resolve({ approved: false });
+      }, 60 * 60 * 1000); // 1 hour
+
+      const unsub = this.eventBus.on('vote:completed', (payload) => {
+        if (payload.voteId === voteId) {
+          clearTimeout(timeout);
+          unsub();
+          resolve({ approved: payload.status === 'APPROVED' });
+        }
+      });
+    });
   }
 
   /**
@@ -358,8 +431,9 @@ export class SelfImprovementLoop {
             this.outcomes = this.outcomes.slice(-this.config.maxOutcomeHistory);
           }
 
-          this.persistState().catch(() => {
-            // Best-effort
+          this.persistState().catch((err: unknown) => {
+            // eslint-disable-next-line no-console
+            console.error('[SelfImprovement] Persist failed:', err);
           });
         }
       }
@@ -476,8 +550,10 @@ export class SelfImprovementLoop {
       } catch {
         await fs.writeFile(this.persistPath, JSON.stringify(state, null, 2), 'utf-8');
       }
-    } catch {
-      // Best-effort persistence
+    } catch (err) {
+      // Best-effort persistence — log but don't throw
+      // eslint-disable-next-line no-console
+      console.error('[SelfImprovement] State persistence failed:', err);
     }
   }
 
@@ -499,7 +575,7 @@ export class SelfImprovementLoop {
         ...state.stats,
       };
     } catch {
-      // No state file — start fresh
+      // No state file or corrupted — start fresh (expected on first run)
     }
   }
 }

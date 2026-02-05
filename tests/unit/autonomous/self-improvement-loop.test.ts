@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { tmpdir } from 'node:os';
 import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
@@ -7,6 +7,7 @@ import { EventBus } from '../../../src/kernel/event-bus.js';
 import { DecisionJournal } from '../../../src/cognition/learning/decision-journal.js';
 import { SelfImprovementLoop } from '../../../src/autonomous/self-improvement-loop.js';
 import type { Initiative } from '../../../src/autonomous/initiative-engine.js';
+import type { CouncilInterface, Vote, VoteOption } from '../../../src/kernel/types.js';
 
 function makeInitiative(overrides: Partial<Initiative> = {}): Initiative {
   return {
@@ -122,10 +123,11 @@ describe('SelfImprovementLoop', () => {
       expect(loop.requiresGovernance(opportunities)).toBe(false);
     });
 
-    it('should request governance approval', () => {
+    it('should request governance approval', async () => {
       const initiative = makeInitiative({ category: 'CODE_QUALITY' });
-      const voteId = loop.requestGovernanceApproval(initiative);
-      expect(voteId).toContain(initiative.id);
+      const result = await loop.requestGovernanceApproval(initiative);
+      expect(result.approved).toBe(true);
+      expect(result.voteId).toContain(initiative.id);
     });
 
     it('should skip governance when disabled', () => {
@@ -135,6 +137,103 @@ describe('SelfImprovementLoop', () => {
       });
       const initiative = makeInitiative({ category: 'CODE_QUALITY' });
       expect(loopNoGov.requiresGovernance(initiative)).toBe(false);
+    });
+
+    it('should call Council.createVote when council is provided', async () => {
+      const mockCouncil: CouncilInterface = {
+        createVote: vi.fn((request) => ({
+          vote_id: `vote-${randomUUID()}`,
+          topic: request.topic,
+          description: request.description,
+          threshold: request.threshold,
+          deadline: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+          votes: {},
+          status: 'OPEN',
+        })),
+        castVote: vi.fn(),
+        getVote: vi.fn(),
+        getOpenVotes: vi.fn(),
+        expireOverdueVotes: vi.fn(),
+      };
+
+      const loopWithCouncil = new SelfImprovementLoop(eventBus, {
+        council: mockCouncil,
+        persistPath: join(tmpDir, 'with-council.json'),
+      });
+      await loopWithCouncil.initialize();
+
+      const initiative = makeInitiative({ category: 'CODE_QUALITY', title: 'Add tests' });
+
+      // Trigger the vote in the background
+      const votePromise = loopWithCouncil.requestGovernanceApproval(initiative);
+
+      // Simulate vote completion after 50ms
+      setTimeout(() => {
+        eventBus.emit('vote:completed', {
+          voteId: (mockCouncil.createVote as ReturnType<typeof vi.fn>).mock.results[0].value.vote_id,
+          status: 'APPROVED',
+        });
+      }, 50);
+
+      const result = await votePromise;
+
+      expect(mockCouncil.createVote).toHaveBeenCalledWith(
+        expect.objectContaining({
+          topic: 'Initiative: Add tests',
+          threshold: 'MAJORITY',
+          initiated_by: 'autonomous',
+        })
+      );
+      expect(result.approved).toBe(true);
+      expect(result.voteId).toBeDefined();
+
+      await loopWithCouncil.shutdown();
+    });
+
+    it('should track governanceBlocked stat when vote is rejected', async () => {
+      const mockCouncil: CouncilInterface = {
+        createVote: vi.fn((request) => ({
+          vote_id: `vote-${randomUUID()}`,
+          topic: request.topic,
+          description: request.description,
+          threshold: request.threshold,
+          deadline: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+          votes: {},
+          status: 'OPEN',
+        })),
+        castVote: vi.fn(),
+        getVote: vi.fn(),
+        getOpenVotes: vi.fn(),
+        expireOverdueVotes: vi.fn(),
+      };
+
+      const loopWithCouncil = new SelfImprovementLoop(eventBus, {
+        council: mockCouncil,
+        persistPath: join(tmpDir, 'with-council-2.json'),
+      });
+      await loopWithCouncil.initialize();
+
+      const initiative = makeInitiative({ category: 'CODE_QUALITY', title: 'Refactor' });
+
+      // Trigger the vote in the background
+      const votePromise = loopWithCouncil.requestGovernanceApproval(initiative);
+
+      // Simulate vote rejection after 50ms
+      setTimeout(() => {
+        eventBus.emit('vote:completed', {
+          voteId: (mockCouncil.createVote as ReturnType<typeof vi.fn>).mock.results[0].value.vote_id,
+          status: 'REJECTED',
+        });
+      }, 50);
+
+      const result = await votePromise;
+
+      expect(result.approved).toBe(false);
+
+      const stats = loopWithCouncil.getStats();
+      expect(stats.governanceBlocked).toBe(1);
+
+      await loopWithCouncil.shutdown();
     });
   });
 

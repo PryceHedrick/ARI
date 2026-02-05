@@ -344,10 +344,19 @@ export class Core {
 
     // Step 0: Write to scratchpad for working memory
     if (this.scratchpad) {
-      this.scratchpad.write('core', `message:${messageId}`, message.content, {
-        taskId: messageId,
-        metadata: { source: message.source, timestamp: message.timestamp },
-      });
+      try {
+        this.scratchpad.write('core', `message:${messageId}`, message.content, {
+          taskId: messageId,
+          metadata: { source: message.source, timestamp: message.timestamp },
+        });
+      } catch {
+        this.eventBus.emit('audit:log', {
+          action: 'component:degraded',
+          agent: 'core',
+          trustLevel: 'system',
+          details: { component: 'scratchpad', operation: 'write' },
+        });
+      }
     }
 
     // Step 1: Guardian threat assessment
@@ -356,27 +365,36 @@ export class Core {
     // Step 2: Apply SOUL influence if available
     let soulInfluence: { confidence: number; reasoning: string } | undefined;
     if (this.soulManager && this.soulManager.hasIdentity('core')) {
-      const decision = {
-        action: message.content.substring(0, 100),
-        confidence: 1 - assessment.risk_score,
-        alternatives: ['process', 'block', 'escalate'],
-      };
-      const influenced = this.soulManager.influenceDecision('core', decision);
-      soulInfluence = { confidence: influenced.confidence, reasoning: influenced.reasoning };
-
-      // SOUL might recommend blocking
-      if (influenced.action === 'BLOCK') {
-        await this.auditLogger.log('core:message_blocked_by_soul', 'core', 'system', {
-          message_id: messageId,
-          reasoning: influenced.reasoning,
-        });
-        return {
-          blocked: true,
-          threat_level: 'soul_block',
-          tasks_executed: 0,
-          tasks_succeeded: 0,
-          tasks_failed: 0,
+      try {
+        const decision = {
+          action: message.content.substring(0, 100),
+          confidence: 1 - assessment.risk_score,
+          alternatives: ['process', 'block', 'escalate'],
         };
+        const influenced = this.soulManager.influenceDecision('core', decision);
+        soulInfluence = { confidence: influenced.confidence, reasoning: influenced.reasoning };
+
+        // SOUL might recommend blocking
+        if (influenced.action === 'BLOCK') {
+          await this.auditLogger.log('core:message_blocked_by_soul', 'core', 'system', {
+            message_id: messageId,
+            reasoning: influenced.reasoning,
+          });
+          return {
+            blocked: true,
+            threat_level: 'soul_block',
+            tasks_executed: 0,
+            tasks_succeeded: 0,
+            tasks_failed: 0,
+          };
+        }
+      } catch {
+        this.eventBus.emit('audit:log', {
+          action: 'component:degraded',
+          agent: 'core',
+          trustLevel: 'system',
+          details: { component: 'soul_manager', operation: 'influence_decision' },
+        });
       }
     }
 
@@ -400,10 +418,28 @@ export class Core {
     // Core does not import SystemRouter directly (layer boundary).
     this.eventBus.emit('message:accepted', message);
 
+    // Step 3.5: Retrieve learned patterns for context
+    let learnedInsights: string[] = [];
+    if (this.learningMachine) {
+      try {
+        const patterns = this.learningMachine.getPatterns();
+        learnedInsights = patterns
+          .filter((p: { confidence: number }) => p.confidence >= 0.7)
+          .slice(0, 3)
+          .map((p: { response: string; confidence: number }) => `[Learned] ${p.response} (confidence: ${(p.confidence * 100).toFixed(0)}%)`);
+      } catch {
+        // Pattern retrieval is non-critical — continue without it
+      }
+    }
+
     // Step 4: Create a plan for the message
+    const planDescription = learnedInsights.length > 0
+      ? `Handle message: ${message.content.substring(0, 100)}\n\nLearned insights:\n${learnedInsights.join('\n')}`
+      : `Handle message: ${message.content.substring(0, 100)}`;
+
     const planId = await this.planner.createPlan(
       `Process message ${messageId}`,
-      `Handle message: ${message.content.substring(0, 100)}`,
+      planDescription,
       'core'
     );
 
@@ -422,19 +458,32 @@ export class Core {
 
     // Step 6: Learn from this interaction
     if (this.learningMachine) {
-      await this.learningMachine.observe({
-        id: messageId,
-        type: executionResult.succeeded > 0 ? 'task_completed' : 'task_failed',
-        success: executionResult.failed === 0,
-        agent: 'core',
-        taskDescription: message.content.substring(0, 200),
-        steps: [`executed: ${executionResult.executed}`, `succeeded: ${executionResult.succeeded}`],
-      });
+      try {
+        await this.learningMachine.observe({
+          id: messageId,
+          type: executionResult.succeeded > 0 ? 'task_completed' : 'task_failed',
+          success: executionResult.failed === 0,
+          agent: 'core',
+          taskDescription: message.content.substring(0, 200),
+          steps: [`executed: ${executionResult.executed}`, `succeeded: ${executionResult.succeeded}`],
+        });
+      } catch {
+        this.eventBus.emit('audit:log', {
+          action: 'component:degraded',
+          agent: 'core',
+          trustLevel: 'system',
+          details: { component: 'learning_machine', operation: 'observe' },
+        });
+      }
     }
 
     // Clean up scratchpad for this message
     if (this.scratchpad) {
-      this.scratchpad.delete('core', `message:${messageId}`);
+      try {
+        this.scratchpad.delete('core', `message:${messageId}`);
+      } catch {
+        // Non-critical cleanup failure
+      }
     }
 
     // Step 7: Audit final result

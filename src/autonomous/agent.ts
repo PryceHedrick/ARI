@@ -24,6 +24,7 @@ import { ChangelogGenerator } from './changelog-generator.js';
 import { AgentSpawner } from './agent-spawner.js';
 import { BriefingGenerator } from './briefings.js';
 import { InitiativeEngine } from './initiative-engine.js';
+import { SelfImprovementLoop } from './self-improvement-loop.js';
 import { generateDailyBrief, formatDailyBrief } from './user-deliverables.js';
 import { CostTracker, ThrottleLevel } from '../observability/cost-tracker.js';
 import { ApprovalQueue } from './approval-queue.js';
@@ -57,6 +58,7 @@ export class AutonomousAgent {
   private agentSpawner: AgentSpawner;
   private briefingGenerator: BriefingGenerator | null = null;
   private initiativeEngine: InitiativeEngine;
+  private selfImprovementLoop: SelfImprovementLoop | null = null;
 
   // Budget-aware components
   private costTracker: CostTracker | null = null;
@@ -109,8 +111,9 @@ export class AutonomousAgent {
       const configData = await fs.readFile(CONFIG_PATH, 'utf-8');
       const fileConfig = JSON.parse(configData) as Partial<AutonomousConfig>;
       this.config = { ...this.config, ...fileConfig };
-    } catch {
-      // Use defaults
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.warn('[Agent] Config parse failed, using defaults:', err instanceof Error ? err.message : String(err));
     }
 
     // Load previous state
@@ -118,8 +121,9 @@ export class AutonomousAgent {
       const stateData = await fs.readFile(STATE_PATH, 'utf-8');
       const prevState = JSON.parse(stateData) as Partial<AgentState>;
       this.state.tasksProcessed = prevState.tasksProcessed ?? 0;
-    } catch {
-      // Fresh state
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.info('[Agent] No previous state, starting fresh:', err instanceof Error ? err.message : String(err));
     }
 
     // Initialize queue
@@ -137,6 +141,12 @@ export class AutonomousAgent {
 
     // Initialize initiative engine (proactive autonomy)
     await this.initiativeEngine.init();
+
+    // Initialize self-improvement loop
+    this.selfImprovementLoop = new SelfImprovementLoop(this.eventBus, {
+      config: { governanceEnabled: true },
+    });
+    await this.selfImprovementLoop.initialize();
 
     // Initialize CostTracker for budget-aware operations
     // Uses a lightweight audit logger that emits events (full AuditLogger requires more setup)
@@ -231,6 +241,11 @@ export class AutonomousAgent {
 
     // Stop initiative engine
     this.initiativeEngine.stop();
+
+    // Stop self-improvement loop
+    if (this.selfImprovementLoop) {
+      await this.selfImprovementLoop.shutdown();
+    }
 
     if (this.pollTimer) {
       clearTimeout(this.pollTimer);
@@ -954,6 +969,66 @@ export class AutonomousAgent {
       } catch (error) {
         // eslint-disable-next-line no-console
         console.error('[Cognitive] Spaced repetition review failed:', error);
+      }
+    });
+
+    // Daily self-improvement review at 9 PM (10 PM UTC)
+    this.scheduler.registerHandler('self_improvement_daily', async () => {
+      try {
+        if (!this.selfImprovementLoop) return;
+
+        const { DecisionJournal } = await import('../cognition/learning/decision-journal.js');
+
+        // Get today's decision journal entries
+        const journal = new DecisionJournal();
+        await journal.initialize(this.eventBus);
+        const recentDecisions = journal.getRecentDecisions(24);
+
+        // Process each decision as an outcome
+        let processed = 0;
+        for (const decision of recentDecisions) {
+          if (decision.outcome && decision.outcome !== 'pending') {
+            await this.selfImprovementLoop.processOutcome(
+              {
+                id: decision.id,
+                title: decision.decision,
+                description: decision.reasoning || '',
+                rationale: decision.reasoning || '',
+                category: 'IMPROVEMENTS' as const,
+                priority: decision.confidence,
+                effort: 'LOW' as const,
+                impact: 'MEDIUM' as const,
+                autonomous: true,
+                forUser: false,
+                createdAt: new Date(decision.timestamp),
+                status: 'COMPLETED' as const,
+              },
+              decision.outcome === 'success',
+              {
+                summary: `Decision: ${decision.decision} - ${decision.outcome}`,
+                governanceApproved: true,
+              }
+            );
+            processed++;
+          }
+        }
+
+        // Emit completion event
+        this.eventBus.emit('audit:log', {
+          action: 'self_improvement:daily_complete',
+          agent: 'SELF_IMPROVEMENT',
+          trustLevel: 'system' as const,
+          details: {
+            decisionsProcessed: processed,
+            totalDecisions: recentDecisions.length,
+          },
+        });
+
+        // eslint-disable-next-line no-console
+        console.log(`[Self-Improvement] Daily review: ${processed}/${recentDecisions.length} decisions processed`);
+      } catch (error) {
+        // eslint-disable-next-line no-console
+        console.error('[Self-Improvement] Daily review failed:', error);
       }
     });
 

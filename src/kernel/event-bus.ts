@@ -16,6 +16,7 @@ export interface EventMap {
   'gateway:stopped': { reason: string };
   'system:ready': { version: string };
   'system:error': { error: Error; context: string };
+  'system:handler_error': { event: string; error: string; handler: string; timestamp: Date };
   'system:halted': { authority: string; reason: string; timestamp: Date };
   'system:resumed': { authority: string; timestamp: Date };
 
@@ -542,6 +543,8 @@ export interface EventMap {
  */
 export class EventBus {
   private listeners: Map<string, Set<(payload: unknown) => void>> = new Map();
+  private handlerErrors: number = 0;
+  private handlerTimeoutMs: number = 30_000; // 30 second default timeout
 
   /**
    * Subscribe to an event
@@ -595,8 +598,21 @@ export class EventBus {
       try {
         handler(payload);
       } catch (error) {
-        // Log error but continue processing other handlers
+        this.handlerErrors++;
+        const errorMsg = error instanceof Error ? error.message : String(error);
+
+        // Log to console as fallback
         console.error(`Error in event handler for '${String(event)}':`, error);
+
+        // Emit error event (guard against recursion from handler_error handlers)
+        if (event !== 'system:handler_error' && event !== 'audit:log') {
+          this.emit('system:handler_error', {
+            event: String(event),
+            error: errorMsg,
+            handler: handler.name || 'anonymous',
+            timestamp: new Date(),
+          });
+        }
       }
     }
   }
@@ -624,6 +640,7 @@ export class EventBus {
    */
   clear(): void {
     this.listeners.clear();
+    this.handlerErrors = 0;
   }
 
   /**
@@ -634,5 +651,19 @@ export class EventBus {
   listenerCount(event: keyof EventMap): number {
     const handlers = this.listeners.get(event);
     return handlers ? handlers.size : 0;
+  }
+
+  /**
+   * Get the number of handler errors that have occurred
+   */
+  getHandlerErrorCount(): number {
+    return this.handlerErrors;
+  }
+
+  /**
+   * Set handler timeout in milliseconds (0 to disable)
+   */
+  setHandlerTimeout(ms: number): void {
+    this.handlerTimeoutMs = ms;
   }
 }

@@ -212,6 +212,92 @@ export class AnthropicMonitor extends EventEmitter {
     return { relevance: 'low', category: 'feature' };
   }
 
+  /**
+   * Detect if an update announces a new model availability.
+   * Returns model ID if detected, null otherwise.
+   */
+  detectModelAvailability(update: AnthropicUpdate): {
+    modelId: string;
+    specs?: { quality?: number; speed?: number; contextWindow?: number; pricing?: { input: number; output: number } };
+  } | null {
+    const text = `${update.title} ${update.description}`.toLowerCase();
+
+    // Detect Sonnet 5 specifically
+    if ((text.includes('sonnet 5') || text.includes('claude-sonnet-5') || text.includes('sonnet-5')) &&
+        update.category === 'model') {
+      return {
+        modelId: 'claude-sonnet-5',
+        specs: undefined, // Will be filled from actual announcement
+      };
+    }
+
+    // Detect Opus 5
+    if ((text.includes('opus 5') || text.includes('claude-opus-5') || text.includes('opus-5')) &&
+        update.category === 'model') {
+      return {
+        modelId: 'claude-opus-5',
+        specs: undefined,
+      };
+    }
+
+    // Detect Haiku 5
+    if ((text.includes('haiku 5') || text.includes('claude-haiku-5') || text.includes('haiku-5')) &&
+        update.category === 'model') {
+      return {
+        modelId: 'claude-haiku-5',
+        specs: undefined,
+      };
+    }
+
+    return null;
+  }
+
+  /**
+   * Generate an activation plan for a newly available model.
+   * Includes A/B testing framework for gradual rollout.
+   */
+  generateModelActivationPlan(modelId: string): {
+    activationSteps: string[];
+    abTestConfig: {
+      initialTrafficPercent: number;
+      rampSchedule: { day: number; percent: number }[];
+      qualityThreshold: number;
+      costThreshold: number;
+      autoPromoteAfterDays: number;
+    };
+    rollbackTriggers: string[];
+  } {
+    return {
+      activationSteps: [
+        `Set modelRegistry.setAvailability('${modelId}', true)`,
+        `Create Council vote: "Activate ${modelId} for standard tasks?"`,
+        'Configure A/B test with 10% initial traffic',
+        'Monitor quality, latency, and cost for 24 hours',
+        'If metrics pass thresholds, ramp to 25%',
+        'Continue ramping per schedule until 100%',
+      ],
+      abTestConfig: {
+        initialTrafficPercent: 10,
+        rampSchedule: [
+          { day: 1, percent: 10 },
+          { day: 3, percent: 25 },
+          { day: 5, percent: 50 },
+          { day: 7, percent: 100 },
+        ],
+        qualityThreshold: 0.75, // Must match or exceed current model quality
+        costThreshold: 1.2,     // Must not exceed 120% of current model cost
+        autoPromoteAfterDays: 7,
+      },
+      rollbackTriggers: [
+        'Error rate exceeds 10% over 1-hour window',
+        'Average latency exceeds 2x current model',
+        'Quality score drops below 0.6',
+        'Cost per request exceeds 150% of estimate',
+        'Circuit breaker opens for this model',
+      ],
+    };
+  }
+
   // ── Security Assessment ──────────────────────────────────────────────────
 
   assessSecurity(update: AnthropicUpdate): SecurityAssessment {
@@ -683,6 +769,19 @@ export class AnthropicMonitor extends EventEmitter {
     const security = this.assessSecurity(update);
     const ariAnalysis = this.analyzeForARI(update, security);
     const councilDecision = this.simulateCouncilVote(update, security, ariAnalysis);
+
+    // Detect if this is a new model announcement
+    const modelDetection = this.detectModelAvailability(update);
+    if (modelDetection) {
+      const activationPlan = this.generateModelActivationPlan(modelDetection.modelId);
+      // Emit model detection event
+      this.emit('model:detected', {
+        modelId: modelDetection.modelId,
+        specs: modelDetection.specs,
+        activationPlan,
+        councilApproved: councilDecision.result === 'PASSED',
+      });
+    }
 
     // Only generate implementation plan if council approved
     const implementationPlan = councilDecision.result === 'PASSED'
