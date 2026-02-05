@@ -202,6 +202,15 @@ export class WebSocketBroadcaster {
     // ==========================================================================
     // COGNITIVE LAYER 0: Real-time cognitive activity events
     // ==========================================================================
+    //
+    // This implements the `cognition:live` WebSocket channel for Phase 4D.
+    // All cognitive events (LOGOS/ETHOS/PATHOS), learning loop events,
+    // decision journal entries, and self-improvement outcomes are broadcast
+    // in real-time to connected WebSocket clients.
+    //
+    // To subscribe: connect to ws://127.0.0.1:3000/ws
+    // Events are automatically streamed to all connected clients.
+    // ==========================================================================
 
     // LOGOS events
     this.unsubscribers.push(

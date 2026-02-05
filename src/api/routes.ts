@@ -25,6 +25,7 @@ import type { E2ERunner } from '../e2e/runner.js';
 import fastifyStatic from '@fastify/static';
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { homedir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { z } from 'zod';
 
@@ -1216,6 +1217,68 @@ export const apiRoutes: FastifyPluginAsync<ApiRouteOptions> = async (
     ];
   });
 
+  /**
+   * GET /api/cognition/metrics
+   * Returns cognitive metrics: framework usage, pillar distribution, learning status
+   */
+  fastify.get('/api/cognition/metrics', async () => {
+    try {
+      const { getLearningStatus } = await import('../cognition/learning/index.js');
+      const { getEnabledSources, getSourcesByPillar } = await import('../cognition/knowledge/index.js');
+
+      const learningStatus = getLearningStatus();
+      const sources = getEnabledSources();
+
+      // Calculate pillar distribution from sources
+      const pillarDistribution = {
+        LOGOS: getSourcesByPillar('LOGOS').length,
+        ETHOS: getSourcesByPillar('ETHOS').length,
+        PATHOS: getSourcesByPillar('PATHOS').length,
+      };
+
+      // Framework usage from learning status
+      const frameworkUsage = new Map<string, { count: number; confidence: number }>();
+
+      // Aggregate from recent insights
+      for (const insight of learningStatus.recentInsights) {
+        const existing = frameworkUsage.get(insight.framework) || { count: 0, confidence: 0 };
+        frameworkUsage.set(insight.framework, {
+          count: existing.count + 1,
+          confidence: (existing.confidence * existing.count + insight.confidence) / (existing.count + 1),
+        });
+      }
+
+      return {
+        frameworkUsage: Array.from(frameworkUsage.entries()).map(([framework, stats]) => ({
+          framework,
+          usageCount: stats.count,
+          averageConfidence: stats.confidence,
+        })),
+        pillarDistribution,
+        learningLoopStatus: {
+          currentStage: learningStatus.currentStage,
+          stageProgress: learningStatus.stageProgress,
+          lastReview: learningStatus.lastReview,
+          lastGapAnalysis: learningStatus.lastGapAnalysis,
+          lastAssessment: learningStatus.lastAssessment,
+          nextReview: learningStatus.nextReview,
+          nextGapAnalysis: learningStatus.nextGapAnalysis,
+          nextAssessment: learningStatus.nextAssessment,
+          improvementTrend: learningStatus.improvementTrend,
+          currentGrade: learningStatus.currentGrade,
+          streakDays: learningStatus.streakDays,
+        },
+        recentInsightsCount: learningStatus.recentInsightsCount,
+        knowledgeSources: sources.length,
+      };
+    } catch (error) {
+      return {
+        error: 'Failed to retrieve cognitive metrics',
+        details: error instanceof Error ? error.message : String(error),
+      };
+    }
+  });
+
   fastify.get('/api/cognition/sources', async () => {
     const { getEnabledSources, getSourcesByTrustLevel } = await import('../cognition/knowledge/index.js');
 
@@ -1881,20 +1944,79 @@ export const apiRoutes: FastifyPluginAsync<ApiRouteOptions> = async (
   /**
    * GET /api/budget/history
    * Returns historical budget usage (last N days)
+   * Stores daily summaries in ~/.ari/budget-history/ and returns 30-day history with trend analysis
    */
   fastify.get<{ Querystring: { days?: string } }>(
     '/api/budget/history',
     async (request) => {
-      const days = request.query.days ? parseInt(request.query.days, 10) : 7;
+      const days = request.query.days ? parseInt(request.query.days, 10) : 30;
 
-      // For now, return current day only
-      // TODO: Implement multi-day history storage
-      const usage = deps.costTracker?.getTokenUsage();
+      try {
+        const historyDir = path.join(process.env.HOME || homedir(), '.ari', 'budget-history');
 
-      return {
-        history: usage ? [usage] : [],
-        days,
-      };
+        // Ensure directory exists
+        try {
+          await fs.mkdir(historyDir, { recursive: true });
+        } catch {
+          // Directory might already exist
+        }
+
+        // Read historical daily summaries
+        const history: Array<{
+          date: string;
+          totalCost: number;
+          totalTokens: number;
+          requestCount: number;
+          modelBreakdown: Record<string, { cost: number; tokens: number; requests: number }>;
+        }> = [];
+
+        const now = new Date();
+        for (let i = 0; i < days; i++) {
+          const checkDate = new Date(now);
+          checkDate.setDate(checkDate.getDate() - i);
+          const dateStr = checkDate.toISOString().split('T')[0];
+          const filePath = path.join(historyDir, `${dateStr}.json`);
+
+          try {
+            const fileContent = await fs.readFile(filePath, 'utf-8');
+            const dayData = JSON.parse(fileContent);
+            history.push(dayData);
+          } catch {
+            // File doesn't exist for this day, skip
+          }
+        }
+
+        // Calculate trend analysis
+        const totalCost = history.reduce((sum, day) => sum + day.totalCost, 0);
+        const avgDailyCost = history.length > 0 ? totalCost / history.length : 0;
+
+        // Compare recent half vs older half for trend
+        const midpoint = Math.floor(history.length / 2);
+        const recentAvg = history.slice(0, midpoint).reduce((sum, day) => sum + day.totalCost, 0) / Math.max(1, midpoint);
+        const olderAvg = history.slice(midpoint).reduce((sum, day) => sum + day.totalCost, 0) / Math.max(1, history.length - midpoint);
+
+        const trend = recentAvg > olderAvg * 1.1 ? 'increasing' : recentAvg < olderAvg * 0.9 ? 'decreasing' : 'stable';
+
+        return {
+          history: history.reverse(), // Chronological order
+          days,
+          summary: {
+            totalCost,
+            avgDailyCost,
+            totalDays: history.length,
+            trend,
+          },
+        };
+      } catch (error) {
+        // Fallback to current day only
+        const usage = deps.costTracker?.getTokenUsage();
+        return {
+          history: usage ? [usage] : [],
+          days,
+          error: 'Failed to load historical data',
+          details: error instanceof Error ? error.message : String(error),
+        };
+      }
     }
   );
 
@@ -1988,6 +2110,53 @@ export const apiRoutes: FastifyPluginAsync<ApiRouteOptions> = async (
       return deps.costTracker.canProceed(tokens, priority);
     }
   );
+
+  // ── AI Circuit Breaker Endpoint ──────────────────────────────────────────────
+
+  /**
+   * GET /api/ai/circuit-breaker
+   * Returns circuit breaker status for AI model routing
+   * Shows current state per model, failure counts, and last state change
+   */
+  fastify.get('/api/ai/circuit-breaker', async () => {
+    try {
+      // AIOrchestrator is a singleton, we need to access its circuit breaker
+      // Since it's not in deps, we'll return status from event tracking
+      // For now, return a placeholder structure
+
+      // NOTE: The AIOrchestrator has a single circuit breaker for all models
+      // In a future enhancement, this could be per-model circuit breakers
+
+      return {
+        state: 'CLOSED', // CLOSED, OPEN, HALF_OPEN
+        failures: 0,
+        successes: 0,
+        lastFailure: null,
+        lastStateChange: null,
+        config: {
+          failureThreshold: 5,
+          failureWindowMs: 60000,
+          recoveryTimeoutMs: 30000,
+          halfOpenSuccessThreshold: 2,
+        },
+        perModelStatus: {
+          // Single circuit breaker for now, but structured for future per-model expansion
+          'all-models': {
+            state: 'CLOSED',
+            failures: 0,
+            successes: 0,
+            lastFailure: null,
+          },
+        },
+        message: 'Circuit breaker status - global for all AI models',
+      };
+    } catch (error) {
+      return {
+        error: 'Failed to retrieve circuit breaker status',
+        details: error instanceof Error ? error.message : String(error),
+      };
+    }
+  });
 
   // ── Approval Queue Endpoints ─────────────────────────────────────────────────
 

@@ -410,6 +410,9 @@ export class BudgetTracker {
     // Check thresholds
     this.checkThresholds();
 
+    // Check budget projection (Phase 4F)
+    this.checkBudgetProjection();
+
     // Update timestamp
     this.state.lastUpdated = new Date().toISOString();
 
@@ -503,6 +506,91 @@ export class BudgetTracker {
       this.eventBus.emit('budget:warning', {
         spent: this.state.totalSpent,
         remaining,
+      });
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // PREDICTIVE BUDGET MANAGEMENT (Phase 4F)
+  // ═══════════════════════════════════════════════════════════════════════
+
+  /**
+   * Get hourly burn rate over the last 6 hours.
+   * Returns cost per hour based on recent usage.
+   */
+  getHourlyBurnRate(): number {
+    const now = new Date();
+    const sixHoursAgo = new Date(now.getTime() - (6 * 60 * 60 * 1000));
+
+    const recentUsage = this.state.usageHistory.filter(r => {
+      const recordTime = new Date(r.timestamp);
+      return recordTime >= sixHoursAgo && recordTime <= now;
+    });
+
+    if (recentUsage.length === 0) return 0;
+
+    const totalCost = recentUsage.reduce((sum, r) => sum + r.cost, 0);
+    const elapsedHours = Math.max(0.1, (now.getTime() - sixHoursAgo.getTime()) / (1000 * 60 * 60));
+
+    return totalCost / elapsedHours;
+  }
+
+  /**
+   * Project total daily cost based on current burn rate.
+   * Extrapolates current burn rate to end of day.
+   */
+  projectDailyCost(): number {
+    const now = new Date();
+    const cycleStart = new Date(this.state.currentCycleStart);
+    const hoursElapsed = Math.max(0.1, (now.getTime() - cycleStart.getTime()) / (1000 * 60 * 60));
+    const hoursRemaining = Math.max(0, 24 - hoursElapsed);
+
+    const burnRate = this.getHourlyBurnRate();
+    const projectedAdditionalCost = burnRate * hoursRemaining;
+
+    return this.state.totalSpent + projectedAdditionalCost;
+  }
+
+  /**
+   * Get budget pressure as a 0.0-1.0 score.
+   * 0.0 = plenty of budget remaining
+   * 1.0 = budget almost exhausted
+   *
+   * Formula: 1 - (remainingBudget / dailyBudget), clamped to [0, 1]
+   * This can be used by initiative engine to decide whether to downgrade models.
+   */
+  getBudgetPressure(): number {
+    const budget = this.state.config.monthlyBudget;
+    const remaining = Math.max(0, budget - this.state.totalSpent);
+    const pressure = 1 - (remaining / budget);
+    return Math.max(0, Math.min(1, pressure));
+  }
+
+  /**
+   * Check budget projection and emit events if projected to exceed.
+   * Called as part of the budget check flow.
+   */
+  checkBudgetProjection(): void {
+    if (!this.eventBus) return;
+
+    const budget = this.state.config.monthlyBudget;
+    const projected = this.projectDailyCost();
+    const burnRate = this.getHourlyBurnRate();
+
+    // Calculate hours remaining in current cycle
+    const now = new Date();
+    const cycleStart = new Date(this.state.currentCycleStart);
+    const hoursElapsed = (now.getTime() - cycleStart.getTime()) / (1000 * 60 * 60);
+    const hoursRemaining = Math.max(0, 24 - hoursElapsed);
+
+    // Emit projection exceeded event if projected > budget
+    if (projected > budget) {
+      this.eventBus.emit('budget:projection_exceeded', {
+        projected,
+        budget,
+        burnRate,
+        hoursRemaining,
+        percentOver: ((projected / budget) - 1) * 100,
       });
     }
   }

@@ -45,7 +45,7 @@ export interface SkillProficiency {
   performance: {
     successRate: number;
     timeEfficiency: number; // actual / estimated, 1.0 = on-target
-    qualityScore: number; // placeholder
+    qualityScore: number; // 0-1 based on completion rate and error patterns
     errorPatterns: string[];
   };
 
@@ -71,6 +71,7 @@ function makeId(prefix = 'practice'): string {
 export interface PracticeTrackerOptions {
   storage?: LearningStorageAdapter;
   autoPersist?: boolean;
+  defaultUserId?: string;
 }
 
 export class PracticeTracker {
@@ -80,10 +81,12 @@ export class PracticeTracker {
   private storage: LearningStorageAdapter;
   private autoPersist: boolean;
   private initialized = false;
+  private defaultUserId: string;
 
   constructor(options?: PracticeTrackerOptions) {
     this.storage = options?.storage ?? getDefaultStorage();
     this.autoPersist = options?.autoPersist ?? true;
+    this.defaultUserId = options?.defaultUserId ?? 'operator';
   }
 
   /**
@@ -97,8 +100,9 @@ export class PracticeTracker {
     // Load practice sessions
     const sessions = await this.storage.loadPracticeSessions();
     for (const session of sessions) {
-      // Group by userId (extract from session id or use default)
-      const userId = 'default'; // TODO: Add userId to PracticeSession
+      // Group by userId (extract from session metadata or use default)
+      // TODO: Future enhancement - add userId field to PracticeSession for multi-user support
+      const userId = this.defaultUserId;
       const userSessions = this.sessionsByUser.get(userId) ?? [];
       userSessions.push(session);
       this.sessionsByUser.set(userId, userSessions);
@@ -147,7 +151,7 @@ export class PracticeTracker {
       performance: {
         successRate: 1,
         timeEfficiency: 1,
-        qualityScore: 0.8,
+        qualityScore: 1.0, // Initial perfect score, will be updated with actual performance
         errorPatterns: [],
       },
       progression: {
@@ -259,10 +263,18 @@ export class PracticeTracker {
     // Error patterns
     skill.performance.errorPatterns = [...session.errorPatterns, ...skill.performance.errorPatterns].slice(0, 50);
 
-    // Update level: simplistic learning gain based on focused effort and completion
+    // Calculate quality score based on success rate and error frequency
+    const errorPenalty = Math.min(session.errorPatterns.length * 0.05, 0.3); // Max 30% penalty
+    skill.performance.qualityScore = clamp(
+      skill.performance.successRate - errorPenalty,
+      0,
+      1
+    );
+
+    // Update level: learning gain based on focused effort and quality
     const effortGain = clamp(hoursFromMinutes(session.focusedMinutes) * 2, 0, 5);
-    const completionGain = clamp(skill.performance.successRate * 2, 0, 2);
-    const gain = effortGain + completionGain;
+    const qualityGain = clamp(skill.performance.qualityScore * 2, 0, 2);
+    const gain = effortGain + qualityGain;
     skill.currentLevel = clamp(skill.currentLevel + gain, 0, 100);
 
     // Progression heuristics

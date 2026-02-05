@@ -17,6 +17,7 @@ import { ValueScorer } from './value-scorer.js';
 import { CircuitBreaker } from './circuit-breaker.js';
 import { ResponseEvaluator } from './response-evaluator.js';
 import { PromptAssembler } from './prompt-assembler.js';
+import type { PerformanceTracker } from './performance-tracker.js';
 
 /**
  * AIPolicyGovernor interface for dependency injection.
@@ -56,6 +57,7 @@ export interface OrchestratorConfig {
   featureFlags?: Partial<AIFeatureFlags>;
   costTracker?: CostTracker;
   policyGovernor?: AIPolicyGovernorLike;
+  performanceTracker?: PerformanceTracker;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -104,8 +106,11 @@ export class AIOrchestrator {
     this.client = new Anthropic({ apiKey: config.apiKey });
     this.eventBus = eventBus;
     this.registry = new ModelRegistry();
-    this.scorer = new ValueScorer(eventBus, this.registry);
     this.circuitBreaker = new CircuitBreaker();
+    this.scorer = new ValueScorer(eventBus, this.registry, {
+      performanceTracker: config.performanceTracker,
+      circuitBreaker: this.circuitBreaker,
+    });
     this.evaluator = new ResponseEvaluator();
     this.assembler = new PromptAssembler(
       config.featureFlags?.AI_PROMPT_CACHING_ENABLED ?? true,

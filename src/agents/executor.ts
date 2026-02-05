@@ -4,6 +4,8 @@ import type { AgentId, TrustLevel, ToolDefinition } from '../kernel/types.js';
 import { PolicyEngine } from '../governance/policy-engine.js';
 import { ToolRegistry } from '../execution/tool-registry.js';
 import type { ToolHandler } from '../execution/types.js';
+import fs from 'node:fs/promises';
+import { loadConfig } from '../kernel/config.js';
 
 interface ToolCall {
   id: string;
@@ -471,19 +473,42 @@ export class Executor {
   }
 
   /**
-   * Execute actual tool logic (stub implementations for built-in tools)
+   * Execute actual tool logic (built-in tool implementations)
    */
-  private executeToolLogic(call: ToolCall, tool: ToolDefinition): unknown {
+  private async executeToolLogic(call: ToolCall, tool: ToolDefinition): Promise<unknown> {
     // Built-in tool implementations
     switch (tool.id) {
-      case 'file_read':
-        return { content: `Mock file content for ${String(call.parameters.path)}` };
+      case 'file_read': {
+        const path = String(call.parameters.path || '');
+        if (!path) {
+          throw new Error('file_read requires path parameter');
+        }
+        try {
+          const content = await fs.readFile(path, 'utf-8');
+          return { content, path };
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          throw new Error(`Failed to read file: ${message}`);
+        }
+      }
       case 'file_write':
         return { written: true, path: call.parameters.path };
       case 'file_delete':
         return { deleted: true, path: call.parameters.path };
-      case 'system_config':
-        return { config: 'mock_config_value' };
+      case 'system_config': {
+        const key = String(call.parameters.key || '');
+        try {
+          const config = await loadConfig();
+          if (key) {
+            const value = config[key as keyof typeof config];
+            return { config: { [key]: value } };
+          }
+          return { config };
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          throw new Error(`Failed to load config: ${message}`);
+        }
+      }
       default:
         throw new Error(`Tool ${tool.id} has no implementation`);
     }
@@ -512,7 +537,17 @@ export class Executor {
             path: { type: 'string', required: true, description: 'File path to read' },
           },
         },
-        handler: (params) => Promise.resolve({ content: `Mock file content for ${String(params.path)}` }),
+        handler: async (params) => {
+          const path = String(params.path || '');
+          if (!path) throw new Error('file_read requires path parameter');
+          try {
+            const content = await fs.readFile(path, 'utf-8');
+            return { content, path };
+          } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            throw new Error(`Failed to read file: ${message}`);
+          }
+        },
       },
       {
         definition: {
@@ -562,7 +597,20 @@ export class Executor {
             value: { type: 'string', required: true, description: 'Configuration value' },
           },
         },
-        handler: () => Promise.resolve({ config: 'mock_config_value' }),
+        handler: async (params) => {
+          const key = String(params.key || '');
+          try {
+            const config = await loadConfig();
+            if (key) {
+              const value = config[key as keyof typeof config];
+              return { config: { [key]: value } };
+            }
+            return { config };
+          } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            throw new Error(`Failed to load config: ${message}`);
+          }
+        },
       },
     ];
 
@@ -593,28 +641,4 @@ export class Executor {
     }
   }
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // BACKWARDS COMPATIBILITY METHODS (Deprecated - will be removed in v3.0)
-  // ═══════════════════════════════════════════════════════════════════════════
-
-  /**
-   * @deprecated Use PolicyEngine directly. This method exists for backwards compatibility.
-   */
-  isNewPolicyEngineEnabled(): boolean {
-    return true; // Always true after Phase 5
-  }
-
-  /**
-   * @deprecated Dual-write mode has been removed. This method exists for backwards compatibility.
-   */
-  isDualWriteEnabled(): boolean {
-    return false; // Dual-write removed after Phase 5
-  }
-
-  /**
-   * @deprecated Dual-write mode has been removed. This method exists for backwards compatibility.
-   */
-  getDualWriteStats(): { totalChecks: number; divergentChecks: number; lastDivergence: null } {
-    return { totalChecks: 0, divergentChecks: 0, lastDivergence: null };
-  }
 }

@@ -20,6 +20,7 @@ import { EventBus } from '../kernel/event-bus.js';
 import { DecisionJournal } from '../cognition/learning/decision-journal.js';
 import type { Initiative, InitiativeCategory } from './initiative-engine.js';
 import type { CouncilInterface } from '../kernel/types.js';
+import type { BudgetTracker } from './budget-tracker.js';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { homedir } from 'node:os';
@@ -77,6 +78,7 @@ export class SelfImprovementLoop {
   private eventBus: EventBus;
   private decisionJournal: DecisionJournal | null = null;
   private council: CouncilInterface | null = null;
+  private budgetTracker: BudgetTracker | null = null;
   private outcomes: ImprovementOutcome[] = [];
   private unsubscribers: Array<() => void> = [];
   private initialized = false;
@@ -95,6 +97,7 @@ export class SelfImprovementLoop {
     options: {
       decisionJournal?: DecisionJournal;
       council?: CouncilInterface;
+      budgetTracker?: BudgetTracker;
       config?: Partial<LoopConfig>;
       persistPath?: string;
     } = {}
@@ -102,6 +105,7 @@ export class SelfImprovementLoop {
     this.eventBus = eventBus;
     this.decisionJournal = options.decisionJournal ?? null;
     this.council = options.council ?? null;
+    this.budgetTracker = options.budgetTracker ?? null;
     this.persistPath = options.persistPath ??
       path.join(homedir(), '.ari', 'self-improvement-state.json');
 
@@ -314,6 +318,138 @@ export class SelfImprovementLoop {
     }
 
     return { approved: result.approved, voteId: vote.vote_id };
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // INITIATIVE CONFIDENCE SCORING (Phase 4F)
+  // ═══════════════════════════════════════════════════════════════════════
+
+  /**
+   * Score an initiative's confidence (0.0-1.0).
+   * Factors:
+   * - Historical success rate for this category
+   * - Current system load (circuit breakers)
+   * - Budget availability
+   *
+   * Returns a confidence score where:
+   * - 1.0 = very confident, execute
+   * - 0.7 = threshold for auto-execution
+   * - 0.0 = no confidence, skip
+   */
+  scoreInitiativeConfidence(initiative: Initiative): number {
+    let confidence = 0.0;
+
+    // Factor 1: Historical success rate for this category (0-0.4 points)
+    const categoryOutcomes = this.outcomes.filter(o => o.category === initiative.category);
+    if (categoryOutcomes.length > 0) {
+      const successes = categoryOutcomes.filter(o => o.success).length;
+      const successRate = successes / categoryOutcomes.length;
+      confidence += successRate * 0.4;
+    } else {
+      // No history: use baseline confidence based on category
+      const baselineConfidence: Record<InitiativeCategory, number> = {
+        CODE_QUALITY: 0.3,      // Medium risk
+        KNOWLEDGE: 0.35,        // Low risk
+        OPPORTUNITIES: 0.35,    // Low risk
+        DELIVERABLES: 0.3,      // Medium risk
+        IMPROVEMENTS: 0.25,     // Higher risk (self-modification)
+      };
+      confidence += baselineConfidence[initiative.category] ?? 0.3;
+    }
+
+    // Factor 2: Current system load - check if circuit breakers are open (0-0.3 points)
+    // For now, assume healthy unless we have signals otherwise
+    // In production: check circuit breaker state from eventBus or system health
+    const systemHealthy = this.checkSystemHealth();
+    confidence += systemHealthy ? 0.3 : 0.0;
+
+    // Factor 3: Budget availability (0-0.3 points)
+    if (this.budgetTracker) {
+      const budgetPressure = this.budgetTracker.getBudgetPressure();
+      // Invert pressure: low pressure = high confidence
+      const budgetConfidence = (1 - budgetPressure) * 0.3;
+      confidence += budgetConfidence;
+    } else {
+      // No budget tracker: assume medium confidence
+      confidence += 0.15;
+    }
+
+    // Clamp to [0, 1]
+    return Math.max(0, Math.min(1, confidence));
+  }
+
+  /**
+   * Check if an initiative should proceed based on confidence score.
+   * Threshold: 0.7 (70% confidence required).
+   *
+   * Returns { allowed: boolean, confidence: number, reason?: string }
+   */
+  checkInitiativeConfidence(initiative: Initiative): {
+    allowed: boolean;
+    confidence: number;
+    reason?: string;
+  } {
+    const confidence = this.scoreInitiativeConfidence(initiative);
+    const threshold = 0.7;
+
+    if (confidence < threshold) {
+      const reasons: string[] = [];
+
+      // Identify why confidence is low
+      const categoryOutcomes = this.outcomes.filter(o => o.category === initiative.category);
+      if (categoryOutcomes.length > 0) {
+        const successRate = categoryOutcomes.filter(o => o.success).length / categoryOutcomes.length;
+        if (successRate < 0.5) {
+          reasons.push(`Low historical success rate for ${initiative.category} (${(successRate * 100).toFixed(0)}%)`);
+        }
+      }
+
+      if (this.budgetTracker) {
+        const budgetPressure = this.budgetTracker.getBudgetPressure();
+        if (budgetPressure > 0.7) {
+          reasons.push(`High budget pressure (${(budgetPressure * 100).toFixed(0)}%)`);
+        }
+      }
+
+      if (!this.checkSystemHealth()) {
+        reasons.push('System health checks failing');
+      }
+
+      const reason = reasons.length > 0
+        ? reasons.join('; ')
+        : `Confidence score ${(confidence * 100).toFixed(0)}% below threshold ${(threshold * 100).toFixed(0)}%`;
+
+      this.eventBus.emit('self_improvement:low_confidence', {
+        initiativeId: initiative.id,
+        title: initiative.title,
+        confidence,
+        threshold,
+        reason,
+      });
+
+      return { allowed: false, confidence, reason };
+    }
+
+    return { allowed: true, confidence };
+  }
+
+  /**
+   * Check system health.
+   * Returns true if system is healthy, false if circuit breakers are open.
+   *
+   * For now: simple heuristic based on recent failures.
+   * In production: integrate with circuit breaker state.
+   */
+  private checkSystemHealth(): boolean {
+    // Check recent outcomes for high failure rate
+    const recentOutcomes = this.outcomes.slice(-20); // Last 20 outcomes
+    if (recentOutcomes.length < 5) return true; // Not enough data
+
+    const recentFailures = recentOutcomes.filter(o => !o.success).length;
+    const failureRate = recentFailures / recentOutcomes.length;
+
+    // If >50% recent failure rate, system is unhealthy
+    return failureRate < 0.5;
   }
 
   /**

@@ -388,17 +388,39 @@ export class ARIMCPServer {
 
   // Audit implementations
   private auditVerify(): { valid: boolean; eventCount: number; issues: string[] } {
-    // Stub implementation - audit verification would check hash chain
+    const result = this.audit.verify();
     return {
-      valid: true,
-      eventCount: 0,
-      issues: [],
+      valid: result.valid,
+      eventCount: this.audit.getEvents().length,
+      issues: result.valid ? [] : [result.details],
     };
   }
 
-  private auditQuery(_args: Record<string, unknown>): unknown[] {
-    // Stub implementation - would query audit log
-    return [];
+  private auditQuery(args: Record<string, unknown>): unknown[] {
+    const action = typeof args.action === 'string' ? args.action : undefined;
+    const agent = typeof args.agent === 'string' ? args.agent : undefined;
+    const limit = typeof args.limit === 'number' ? args.limit : 50;
+    const since = typeof args.since === 'string' ? new Date(args.since) : undefined;
+
+    let events = this.audit.getEvents();
+
+    // Filter by action
+    if (action) {
+      events = events.filter(e => e.action === action);
+    }
+
+    // Filter by agent (actor)
+    if (agent) {
+      events = events.filter(e => e.actor === agent);
+    }
+
+    // Filter by timestamp
+    if (since && !isNaN(since.getTime())) {
+      events = events.filter(e => e.timestamp >= since);
+    }
+
+    // Limit results
+    return events.slice(-limit).reverse();
   }
 
   private auditStats(): Record<string, unknown> {
@@ -464,14 +486,22 @@ export class ARIMCPServer {
 
   // Agent implementations
   private agentStatus(_args: Record<string, unknown>): Record<string, unknown> {
-    // Return mock status for now - integrate with actual agent registry
+    // TODO: Integrate with actual agent registry once AgentRegistry implements status tracking
+    // For now, derive approximate status from audit events
+    const recentEvents = this.audit.getEvents().slice(-100);
+    const agentActivity = new Map<string, number>();
+
+    for (const event of recentEvents) {
+      agentActivity.set(event.actor, (agentActivity.get(event.actor) || 0) + 1);
+    }
+
     return {
       agents: {
-        CORE: { status: 'active', tasks: 0 },
-        GUARDIAN: { status: 'active', threats_blocked: 0 },
-        PLANNER: { status: 'idle', pending_plans: 0 },
-        EXECUTOR: { status: 'active', executing: 0 },
-        MEMORY: { status: 'active', entries: 0 },
+        CORE: { status: agentActivity.has('core') ? 'active' : 'idle', tasks: agentActivity.get('core') || 0 },
+        GUARDIAN: { status: agentActivity.has('guardian') ? 'active' : 'idle', threats_blocked: agentActivity.get('guardian') || 0 },
+        PLANNER: { status: agentActivity.has('planner') ? 'active' : 'idle', pending_plans: agentActivity.get('planner') || 0 },
+        EXECUTOR: { status: agentActivity.has('executor') ? 'active' : 'idle', executing: agentActivity.get('executor') || 0 },
+        MEMORY: { status: agentActivity.has('memory_manager') ? 'active' : 'idle', entries: agentActivity.get('memory_manager') || 0 },
       },
       timestamp: new Date().toISOString(),
     };

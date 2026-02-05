@@ -536,6 +536,31 @@ export interface EventMap {
     duration: number;
     success: boolean;
   };
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // PHASE 4F events (Adaptive Routing, Budget Projection, Confidence)
+  // ═══════════════════════════════════════════════════════════════════════
+  'ai:model_fallback': {
+    originalModel: string;
+    fallbackModel: string;
+    reason: string;
+    category: string;
+    timestamp: string;
+  };
+  'budget:projection_exceeded': {
+    projected: number;
+    budget: number;
+    burnRate: number;
+    hoursRemaining: number;
+    percentOver: number;
+  };
+  'self_improvement:low_confidence': {
+    initiativeId: string;
+    title: string;
+    confidence: number;
+    threshold: number;
+    reason: string;
+  };
 }
 
 /**
