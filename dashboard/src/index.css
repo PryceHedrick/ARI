@@ -1,5 +1,53 @@
 @import "tailwindcss";
 
+@theme {
+  /* Background colors → bg-bg-* */
+  --color-bg-void: var(--bg-void);
+  --color-bg-primary: var(--bg-primary);
+  --color-bg-secondary: var(--bg-secondary);
+  --color-bg-tertiary: var(--bg-tertiary);
+  --color-bg-elevated: var(--bg-elevated);
+  --color-bg-interactive: var(--bg-interactive);
+  --color-bg-card: var(--bg-card);
+  --color-bg-card-hover: var(--bg-card-hover);
+
+  /* Text colors → text-text-* */
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-tertiary: var(--text-tertiary);
+  --color-text-muted: var(--text-muted);
+  --color-text-disabled: var(--text-disabled);
+
+  /* Border colors → border-border-* */
+  --color-border-subtle: var(--border-subtle);
+  --color-border-muted: var(--border-muted);
+  --color-border-default: var(--border-default);
+  --color-border-strong: var(--border-strong);
+  --color-border-purple: var(--border-purple);
+
+  /* ARI brand colors → bg-ari-*, text-ari-*, border-ari-* */
+  --color-ari-purple: var(--ari-purple);
+  --color-ari-purple-muted: var(--ari-purple-muted);
+  --color-ari-purple-dark: var(--ari-purple-dark);
+  --color-ari-success: var(--ari-success);
+  --color-ari-success-muted: var(--ari-success-muted);
+  --color-ari-error: var(--ari-error);
+  --color-ari-error-muted: var(--ari-error-muted);
+  --color-ari-warning: var(--ari-warning);
+  --color-ari-warning-muted: var(--ari-warning-muted);
+  --color-ari-info: var(--ari-info);
+  --color-ari-info-muted: var(--ari-info-muted);
+  --color-ari-cyan: var(--ari-cyan);
+
+  /* Cognitive pillar colors → bg-pillar-*, text-pillar-* */
+  --color-pillar-logos: var(--pillar-logos);
+  --color-pillar-logos-muted: var(--pillar-logos-muted);
+  --color-pillar-ethos: var(--pillar-ethos);
+  --color-pillar-ethos-muted: var(--pillar-ethos-muted);
+  --color-pillar-pathos: var(--pillar-pathos);
+  --color-pillar-pathos-muted: var(--pillar-pathos-muted);
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -884,4 +932,20 @@ select:focus-visible {
   opacity: 1;
   visibility: visible;
   transform: translateX(-50%) translateY(-8px);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * REDUCED MOTION — Respect user accessibility preferences
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .shimmer, .shimmer-purple,
+  .animate-pulse-glow, .animate-breathe-purple,
+  .status-dot-healthy { animation: none !important; }
 }
