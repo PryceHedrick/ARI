@@ -145,6 +145,53 @@ export interface AuditVerification {
   message: string;
 }
 
+// Governance Council Improvements (Phase 2.1.0)
+export interface DissentReport {
+  voteId: string;
+  topic: string;
+  decision: 'PASSED' | 'REJECTED';
+  dissenters: Array<{
+    agentId: string;
+    memberName: string;
+    pillar: string;
+    vote: 'APPROVE' | 'REJECT' | 'ABSTAIN';
+    reasoning: string;
+  }>;
+  consensusStrength: number;
+  domains: string[];
+  generatedAt: string;
+  precedents: string[];
+}
+
+export interface EmergencyVote {
+  voteId: string;
+  panelMembers: string[];
+  urgencyReason: string;
+  fullCouncilNotifiedAt: string;
+  overturnDeadline: string;
+  overturned: boolean;
+}
+
+export interface PendingFeedback {
+  voteId: string;
+  topic: string;
+  decision: 'PASSED' | 'REJECTED';
+  significance: 'high' | 'medium' | 'low';
+  requestedAt: string;
+  domains: string[];
+}
+
+export interface FeedbackStats {
+  pending: number;
+  resolved: number;
+  averageRating: number;
+  ratingDistribution: {
+    positive: number;
+    neutral: number;
+    negative: number;
+  };
+}
+
 export interface Tool {
   id: string;
   name: string;

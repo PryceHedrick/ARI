@@ -25,6 +25,10 @@ const mockRoutes: Array<[RegExp, MockResolver]> = [
   [/^\/api\/proposals\/[^/]+$/, () => mock.proposals[0]],
   [/^\/api\/governance\/rules$/, () => mock.governanceRules],
   [/^\/api\/governance\/gates$/, () => mock.qualityGates],
+  [/^\/api\/governance\/dissent-reports$/, () => mock.dissentReports],
+  [/^\/api\/governance\/emergency-votes$/, () => mock.emergencyVotes],
+  [/^\/api\/governance\/pending-feedback$/, () => mock.pendingFeedback],
+  [/^\/api\/governance\/feedback-stats$/, () => mock.feedbackStats],
 
   // Memory
   [/^\/api\/memory(\?.*)?$/, () => mock.memories],

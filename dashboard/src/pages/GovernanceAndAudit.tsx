@@ -6,6 +6,10 @@ import {
   getQualityGates,
   getAuditLog,
   verifyAuditChain,
+  getDissentReports,
+  getEmergencyVotes,
+  getPendingFeedback,
+  getFeedbackStats,
 } from '../api/client';
 import { TabGroup } from '../components/ui/TabGroup';
 import { PageHeader } from '../components/ui/PageHeader';
@@ -166,6 +170,31 @@ export default function GovernanceAndAudit() {
   const { data: gates, isLoading: gatesLoading, isError: gatesError, refetch: refetchGates } = useQuery({
     queryKey: ['governance', 'gates'],
     queryFn: getQualityGates,
+  });
+
+  // Council improvements queries
+  const { data: dissentReports } = useQuery({
+    queryKey: ['governance', 'dissent-reports'],
+    queryFn: getDissentReports,
+    refetchInterval: 30000,
+  });
+
+  const { data: emergencyVotes } = useQuery({
+    queryKey: ['governance', 'emergency-votes'],
+    queryFn: getEmergencyVotes,
+    refetchInterval: 15000,
+  });
+
+  const { data: pendingFeedback } = useQuery({
+    queryKey: ['governance', 'pending-feedback'],
+    queryFn: getPendingFeedback,
+    refetchInterval: 30000,
+  });
+
+  const { data: feedbackStats } = useQuery({
+    queryKey: ['governance', 'feedback-stats'],
+    queryFn: getFeedbackStats,
+    refetchInterval: 60000,
   });
 
   // Audit queries
@@ -355,7 +384,333 @@ export default function GovernanceAndAudit() {
                   <span className="text-xs text-ari-purple">View Agents →</span>
                 </div>
               </div>
+
+              {/* Pillar Quorum Indicator */}
+              <div className="mt-6 rounded-xl border border-border-muted bg-bg-card p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-sm font-medium text-text-secondary">
+                      Pillar Quorum Requirement
+                    </div>
+                    <div className="text-xs text-text-muted">
+                      At least 3 of 5 pillars must participate for valid votes
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    {COUNCIL_PILLARS.map((pillar) => (
+                      <div
+                        key={pillar.name}
+                        className="flex items-center gap-1.5 rounded-lg px-3 py-1.5"
+                        style={{
+                          background: pillar.cssBg,
+                          border: `1px solid color-mix(in srgb, ${pillar.cssColor} 30%, transparent)`,
+                        }}
+                      >
+                        <div
+                          className="h-2 w-2 rounded-full"
+                          style={{ background: pillar.cssColor }}
+                        />
+                        <span className="text-xs font-medium" style={{ color: pillar.cssColor }}>
+                          {pillar.name}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
             </section>
+
+            {/* Council Improvements Sections */}
+            {/* Dissent Reports */}
+            <CollapsibleSection
+              title="Dissent Reports"
+              summary={`${dissentReports?.length ?? 0} reports generated`}
+              defaultCollapsed
+              badge={
+                dissentReports && dissentReports.length > 0 ? (
+                  <span className="rounded px-2 py-0.5 text-xs bg-ari-warning-muted text-ari-warning">
+                    {dissentReports.length}
+                  </span>
+                ) : undefined
+              }
+            >
+              <div className="space-y-3 pt-3 stagger-children">
+                {dissentReports && dissentReports.length > 0 ? (
+                  dissentReports.map((report) => (
+                    <div
+                      key={report.voteId}
+                      className="rounded-xl border p-4 bg-ari-warning-muted"
+                      style={{
+                        border: '1px solid color-mix(in srgb, var(--ari-warning) 30%, transparent)',
+                      }}
+                    >
+                      <div className="mb-3 flex items-start justify-between">
+                        <div>
+                          <div className="font-medium text-text-primary">
+                            {report.topic}
+                          </div>
+                          <div className="mt-1 text-xs text-text-muted">
+                            Vote {report.voteId} · {report.decision} · Consensus: {(report.consensusStrength * 100).toFixed(0)}%
+                          </div>
+                        </div>
+                        <span
+                          className="rounded px-2 py-1 text-xs font-semibold"
+                          style={{
+                            background: report.decision === 'PASSED' ? 'var(--ari-success-muted)' : 'var(--ari-error-muted)',
+                            color: report.decision === 'PASSED' ? 'var(--ari-success)' : 'var(--ari-error)',
+                          }}
+                        >
+                          {report.decision}
+                        </span>
+                      </div>
+
+                      <div className="space-y-2">
+                        <div className="text-xs font-semibold text-text-secondary">
+                          Dissenters ({report.dissenters.length})
+                        </div>
+                        {report.dissenters.map((dissenter, idx) => (
+                          <div
+                            key={idx}
+                            className="rounded-lg border border-border-subtle bg-bg-card p-3"
+                          >
+                            <div className="mb-1 flex items-center gap-2">
+                              <span className="font-semibold text-text-primary">{dissenter.memberName}</span>
+                              <span className="rounded px-1.5 py-0.5 text-[9px] font-bold uppercase bg-bg-tertiary text-text-muted">
+                                {dissenter.pillar}
+                              </span>
+                              <span
+                                className="ml-auto rounded px-2 py-0.5 text-xs"
+                                style={{
+                                  background: dissenter.vote === 'REJECT' ? 'var(--ari-error-muted)' : 'var(--ari-success-muted)',
+                                  color: dissenter.vote === 'REJECT' ? 'var(--ari-error)' : 'var(--ari-success)',
+                                }}
+                              >
+                                {dissenter.vote}
+                              </span>
+                            </div>
+                            <div className="text-xs text-text-tertiary">
+                              {dissenter.reasoning}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="mt-3 flex gap-4 text-[10px] text-text-disabled">
+                        <span>Domains: {report.domains.join(', ')}</span>
+                        <span>Generated: {new Date(report.generatedAt).toLocaleString()}</span>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center text-sm text-text-muted py-4">
+                    No dissent reports generated
+                  </div>
+                )}
+              </div>
+            </CollapsibleSection>
+
+            {/* Emergency Votes */}
+            <CollapsibleSection
+              title="Emergency Votes"
+              summary={`${emergencyVotes?.length ?? 0} active`}
+              defaultCollapsed
+              badge={
+                emergencyVotes && emergencyVotes.length > 0 ? (
+                  <span className="rounded px-2 py-0.5 text-xs bg-ari-error-muted text-ari-error">
+                    {emergencyVotes.length} ACTIVE
+                  </span>
+                ) : undefined
+              }
+            >
+              <div className="space-y-3 pt-3 stagger-children">
+                {emergencyVotes && emergencyVotes.length > 0 ? (
+                  emergencyVotes.map((vote) => {
+                    const hoursRemaining = Math.max(0, Math.floor((new Date(vote.overturnDeadline).getTime() - Date.now()) / 3600000));
+                    return (
+                      <div
+                        key={vote.voteId}
+                        className="rounded-xl border p-4 bg-ari-error-muted"
+                        style={{
+                          border: '1px solid color-mix(in srgb, var(--ari-error) 30%, transparent)',
+                        }}
+                      >
+                        <div className="mb-3 flex items-start justify-between">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-lg">🚨</span>
+                              <div className="font-medium text-text-primary">
+                                Emergency Vote {vote.voteId}
+                              </div>
+                            </div>
+                            <div className="mt-1 text-xs text-text-muted">
+                              {vote.urgencyReason}
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-xs font-semibold text-ari-error">
+                              {hoursRemaining}h remaining
+                            </div>
+                            <div className="text-[10px] text-text-disabled">
+                              to overturn
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="mb-3">
+                          <div className="mb-2 text-xs font-semibold text-text-secondary">
+                            Emergency Panel ({vote.panelMembers.length} members)
+                          </div>
+                          <div className="flex flex-wrap gap-1.5">
+                            {vote.panelMembers.map((member) => (
+                              <span
+                                key={member}
+                                className="rounded-lg px-2 py-1 text-xs font-mono bg-bg-card border border-border-subtle text-text-secondary"
+                              >
+                                {member}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="flex gap-4 text-[10px] text-text-disabled">
+                          <span>Notified: {new Date(vote.fullCouncilNotifiedAt).toLocaleString()}</span>
+                          <span>Deadline: {new Date(vote.overturnDeadline).toLocaleString()}</span>
+                        </div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="text-center text-sm text-text-muted py-4">
+                    No emergency votes active
+                  </div>
+                )}
+              </div>
+            </CollapsibleSection>
+
+            {/* Decision Feedback */}
+            <CollapsibleSection
+              title="Decision Feedback Loop"
+              summary={`${feedbackStats?.pending ?? 0} pending`}
+              defaultCollapsed
+              badge={
+                feedbackStats && feedbackStats.pending > 0 ? (
+                  <span className="rounded px-2 py-0.5 text-xs bg-ari-purple-muted text-ari-purple">
+                    {feedbackStats.pending}
+                  </span>
+                ) : undefined
+              }
+            >
+              <div className="space-y-4 pt-3">
+                {/* Stats Overview */}
+                {feedbackStats && (
+                  <div className="grid gap-4 md:grid-cols-3">
+                    <Card>
+                      <div className="text-xs text-text-muted">Pending Feedback</div>
+                      <div className="mt-1 text-2xl font-bold text-text-primary">
+                        {feedbackStats.pending}
+                      </div>
+                    </Card>
+                    <Card>
+                      <div className="text-xs text-text-muted">Average Rating</div>
+                      <div className="mt-1 text-2xl font-bold text-text-primary">
+                        {(feedbackStats.averageRating * 100).toFixed(0)}%
+                      </div>
+                    </Card>
+                    <Card>
+                      <div className="text-xs text-text-muted">Total Resolved</div>
+                      <div className="mt-1 text-2xl font-bold text-text-primary">
+                        {feedbackStats.resolved}
+                      </div>
+                    </Card>
+                  </div>
+                )}
+
+                {/* Pending Feedback Items */}
+                <div>
+                  <div className="mb-3 text-xs font-semibold text-text-secondary">
+                    Pending Feedback Requests
+                  </div>
+                  <div className="space-y-2 stagger-children">
+                    {pendingFeedback && pendingFeedback.length > 0 ? (
+                      pendingFeedback.map((item) => (
+                        <div
+                          key={item.voteId}
+                          className="rounded-xl border p-4 bg-ari-purple-muted"
+                          style={{
+                            border: '1px solid color-mix(in srgb, var(--ari-purple) 30%, transparent)',
+                          }}
+                        >
+                          <div className="mb-2 flex items-start justify-between">
+                            <div>
+                              <div className="font-medium text-text-primary">
+                                {item.topic}
+                              </div>
+                              <div className="mt-1 text-xs text-text-muted">
+                                Vote {item.voteId} · {item.decision}
+                              </div>
+                            </div>
+                            <span
+                              className="rounded px-2 py-1 text-xs font-semibold"
+                              style={{
+                                background: item.significance === 'high'
+                                  ? 'var(--ari-error-muted)'
+                                  : item.significance === 'medium'
+                                    ? 'var(--ari-warning-muted)'
+                                    : 'var(--ari-info-muted)',
+                                color: item.significance === 'high'
+                                  ? 'var(--ari-error)'
+                                  : item.significance === 'medium'
+                                    ? 'var(--ari-warning)'
+                                    : 'var(--ari-info)',
+                              }}
+                            >
+                              {item.significance.toUpperCase()}
+                            </span>
+                          </div>
+                          <div className="flex gap-4 text-[10px] text-text-disabled">
+                            <span>Domains: {item.domains.join(', ')}</span>
+                            <span>Requested: {new Date(item.requestedAt).toLocaleString()}</span>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-center text-sm text-text-muted py-4">
+                        No pending feedback requests
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Rating Distribution */}
+                {feedbackStats && feedbackStats.ratingDistribution && (
+                  <div>
+                    <div className="mb-3 text-xs font-semibold text-text-secondary">
+                      Feedback Rating Distribution
+                    </div>
+                    <div className="grid gap-3 md:grid-cols-3">
+                      <div className="rounded-lg border border-border-muted bg-ari-success-muted p-3">
+                        <div className="text-xs text-text-muted">Positive</div>
+                        <div className="mt-1 text-xl font-bold text-ari-success">
+                          {feedbackStats.ratingDistribution.positive}
+                        </div>
+                      </div>
+                      <div className="rounded-lg border border-border-muted bg-bg-tertiary p-3">
+                        <div className="text-xs text-text-muted">Neutral</div>
+                        <div className="mt-1 text-xl font-bold text-text-secondary">
+                          {feedbackStats.ratingDistribution.neutral}
+                        </div>
+                      </div>
+                      <div className="rounded-lg border border-border-muted bg-ari-error-muted p-3">
+                        <div className="text-xs text-text-muted">Negative</div>
+                        <div className="mt-1 text-xl font-bold text-ari-error">
+                          {feedbackStats.ratingDistribution.negative}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </CollapsibleSection>
 
             {/* Constitutional Rules */}
             <CollapsibleSection

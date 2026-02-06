@@ -96,6 +96,77 @@ export const qualityGates = [
   { id: 'gate-005', name: 'Permission Checks', description: 'Agent allowlist + trust level + permission tier', threshold: 1.0, enabled: true, passCount: 31209, failCount: 89 },
 ];
 
+// ─── Governance Council Improvements (Phase 2.1.0) ──────
+
+export const dissentReports = [
+  {
+    voteId: 'v-001',
+    topic: 'Enable external API access for weather data',
+    decision: 'PASSED' as const,
+    dissenters: [
+      { agentId: 'guardian', memberName: 'AEGIS', pillar: 'protection', vote: 'REJECT' as const, reasoning: 'External API access increases attack surface' },
+      { agentId: 'risk_assessor', memberName: 'SCOUT', pillar: 'protection', vote: 'REJECT' as const, reasoning: 'Insufficient risk assessment for third-party data' },
+    ],
+    consensusStrength: 0.69,
+    domains: ['security', 'execution'],
+    generatedAt: hoursAgo(3),
+    precedents: [],
+  },
+  {
+    voteId: 'v-012',
+    topic: 'Reduce code review thoroughness threshold',
+    decision: 'REJECTED' as const,
+    dissenters: [
+      { agentId: 'executor', memberName: 'BOLT', pillar: 'infrastructure', vote: 'APPROVE' as const, reasoning: 'Faster iteration cycle needed for prototype phase' },
+    ],
+    consensusStrength: 0.93,
+    domains: ['quality', 'execution'],
+    generatedAt: daysAgo(2),
+    precedents: ['v-003'],
+  },
+];
+
+export const emergencyVotes = [
+  {
+    voteId: 'ev-001',
+    panelMembers: ['wellness', 'ethics', 'guardian'],
+    urgencyReason: 'Critical health alert detected',
+    fullCouncilNotifiedAt: hoursAgo(1),
+    overturnDeadline: new Date(Date.now() + 20 * 60 * 60 * 1000).toISOString(),
+    overturned: false,
+  },
+];
+
+export const pendingFeedback = [
+  {
+    voteId: 'v-002',
+    topic: 'Adjust budget allocation for Q1',
+    decision: 'PASSED' as const,
+    significance: 'high' as const,
+    requestedAt: hoursAgo(2),
+    domains: ['financial', 'resources'],
+  },
+  {
+    voteId: 'v-009',
+    topic: 'Enable automated GitHub PR merges',
+    decision: 'PASSED' as const,
+    significance: 'medium' as const,
+    requestedAt: daysAgo(1),
+    domains: ['execution', 'automation'],
+  },
+];
+
+export const feedbackStats = {
+  pending: 2,
+  resolved: 14,
+  averageRating: 0.67,
+  ratingDistribution: {
+    positive: 10,
+    neutral: 3,
+    negative: 1,
+  },
+};
+
 // ─── Memory ──────────────────────────────────────
 
 export const memories = [
