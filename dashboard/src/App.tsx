@@ -1,21 +1,20 @@
-import { useState } from 'react';
+import { Suspense, lazy } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Layout } from './components/Layout';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { WebSocketProvider, useWebSocketContext } from './contexts/WebSocketContext';
 import { AlertBanner } from './components/alerts/AlertBanner';
 import { CommandPalette } from './components/CommandPalette';
-import { Home } from './pages/Home';
-import { Health } from './pages/Health';
-import { Autonomy } from './pages/Autonomy';
-import { Governance } from './pages/Governance';
-import { Memory } from './pages/Memory';
-import { Tools } from './pages/Tools';
-import { Agents } from './pages/Agents';
-import { Audit } from './pages/Audit';
-import { Cognition } from './pages/Cognition';
-import { E2E } from './pages/E2E';
-import { Budget } from './pages/Budget';
+import { PageSkeleton } from './components/PageSkeleton';
+
+const SystemStatus = lazy(() => import('./pages/SystemStatus'));
+const AgentsAndTools = lazy(() => import('./pages/AgentsAndTools'));
+const Cognition = lazy(() => import('./pages/cognition'));
+const Autonomy = lazy(() => import('./pages/Autonomy'));
+const GovernanceAndAudit = lazy(() => import('./pages/GovernanceAndAudit'));
+const Memory = lazy(() => import('./pages/Memory'));
+const Operations = lazy(() => import('./pages/Operations'));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -28,47 +27,30 @@ const queryClient = new QueryClient({
 });
 
 function AppContent() {
-  const [currentPage, setCurrentPage] = useState('home');
+  const location = useLocation();
+  const navigate = useNavigate();
   const { status: wsStatus } = useWebSocketContext();
-
-  const renderPage = () => {
-    switch (currentPage) {
-      case 'health':
-        return <Health />;
-      case 'autonomy':
-        return <Autonomy />;
-      case 'cognition':
-        return <Cognition />;
-      case 'governance':
-        return <Governance />;
-      case 'memory':
-        return <Memory />;
-      case 'tools':
-        return <Tools />;
-      case 'agents':
-        return <Agents />;
-      case 'audit':
-        return <Audit />;
-      case 'e2e':
-        return <E2E />;
-      case 'budget':
-        return <Budget />;
-      default:
-        return <Home />;
-    }
-  };
+  const currentPage = location.pathname.split('/')[1] || 'system';
 
   return (
     <>
-      {/* Critical Alert Banner */}
-      <AlertBanner onNavigateToAlerts={() => setCurrentPage('audit')} />
-
-      {/* Command Palette */}
-      <CommandPalette onNavigate={setCurrentPage} />
-
-      <Layout currentPage={currentPage} onNavigate={setCurrentPage} wsStatus={wsStatus}>
-        <ErrorBoundary>
-          {renderPage()}
+      <AlertBanner onNavigateToAlerts={() => navigate('/governance')} />
+      <CommandPalette onNavigate={(page) => navigate(`/${page}`)} />
+      <Layout currentPage={currentPage} wsStatus={wsStatus}>
+        <ErrorBoundary key={currentPage}>
+          <Suspense fallback={<PageSkeleton />}>
+            <Routes>
+              <Route path="/" element={<Navigate to="/system" replace />} />
+              <Route path="/system" element={<SystemStatus />} />
+              <Route path="/agents" element={<AgentsAndTools />} />
+              <Route path="/cognition" element={<Cognition />} />
+              <Route path="/autonomy" element={<Autonomy />} />
+              <Route path="/governance" element={<GovernanceAndAudit />} />
+              <Route path="/memory" element={<Memory />} />
+              <Route path="/operations" element={<Operations />} />
+              <Route path="*" element={<Navigate to="/system" replace />} />
+            </Routes>
+          </Suspense>
         </ErrorBoundary>
       </Layout>
     </>
@@ -79,7 +61,9 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <WebSocketProvider>
-        <AppContent />
+        <BrowserRouter>
+          <AppContent />
+        </BrowserRouter>
       </WebSocketProvider>
     </QueryClientProvider>
   );

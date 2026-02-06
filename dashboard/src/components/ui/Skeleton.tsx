@@ -4,13 +4,13 @@ interface SkeletonProps {
 
 export function Skeleton({ className = '' }: SkeletonProps) {
   return (
-    <div className={`animate-pulse rounded bg-gray-700 ${className}`} />
+    <div className={`animate-pulse rounded bg-bg-tertiary shimmer-purple ${className}`} />
   );
 }
 
 export function CardSkeleton() {
   return (
-    <div className="rounded-lg border border-gray-700 bg-gray-800 p-6">
+    <div className="rounded-lg border border-border-muted bg-bg-secondary p-6">
       <Skeleton className="mb-3 h-4 w-24" />
       <Skeleton className="mb-2 h-6 w-16" />
       <Skeleton className="mt-4 h-3 w-full" />
@@ -21,7 +21,7 @@ export function CardSkeleton() {
 
 export function AgentCardSkeleton() {
   return (
-    <div className="rounded-lg border border-gray-700 bg-gray-800 p-6">
+    <div className="rounded-lg border border-border-muted bg-bg-secondary p-6">
       <div className="mb-4 flex justify-between">
         <div>
           <Skeleton className="h-5 w-20" />
@@ -56,7 +56,7 @@ export function AuditEntrySkeleton() {
 
 export function ToolCardSkeleton() {
   return (
-    <div className="rounded-lg border border-gray-700 bg-gray-800 p-4">
+    <div className="rounded-lg border border-border-muted bg-bg-secondary p-4">
       <div className="mb-2 flex items-start justify-between">
         <Skeleton className="h-5 w-28" />
         <Skeleton className="h-5 w-16 rounded" />
@@ -73,7 +73,7 @@ export function ToolCardSkeleton() {
 
 export function MemoryCardSkeleton() {
   return (
-    <div className="rounded-lg border border-gray-700 bg-gray-800 p-6">
+    <div className="rounded-lg border border-border-muted bg-bg-secondary p-6">
       <div className="mb-3 flex gap-2">
         <Skeleton className="h-5 w-14 rounded" />
         <Skeleton className="h-5 w-16 rounded" />
@@ -95,7 +95,7 @@ export function MemoryCardSkeleton() {
 
 export function ProposalCardSkeleton() {
   return (
-    <div className="rounded-lg border border-gray-700 bg-gray-800 p-6">
+    <div className="rounded-lg border border-border-muted bg-bg-secondary p-6">
       <div className="mb-3 flex items-start justify-between">
         <div className="flex-1">
           <Skeleton className="h-6 w-48" />
@@ -118,7 +118,7 @@ export function ProposalCardSkeleton() {
 
 export function StatusCardSkeleton() {
   return (
-    <div className="rounded-lg border border-gray-700 bg-gray-800 p-6">
+    <div className="rounded-lg border border-border-muted bg-bg-secondary p-6">
       <Skeleton className="mb-3 h-4 w-20" />
       <Skeleton className="mb-4 h-6 w-16 rounded-full" />
       <div className="space-y-2">

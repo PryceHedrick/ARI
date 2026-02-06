@@ -23,6 +23,10 @@ import type {
   BudgetProfileName,
   BudgetProfileChangeResult,
   ApprovalQueueResponse,
+  DissentReport,
+  EmergencyVote,
+  PendingFeedback,
+  FeedbackStats,
 } from '../types/api';
 
 const API_BASE = '/api';
@@ -91,6 +95,18 @@ export const getGovernanceRules = (): Promise<ConstitutionalRule[]> =>
 
 export const getQualityGates = (): Promise<QualityGate[]> =>
   fetchAPI('/governance/gates');
+
+export const getDissentReports = (): Promise<DissentReport[]> =>
+  fetchAPI('/governance/dissent-reports');
+
+export const getEmergencyVotes = (): Promise<EmergencyVote[]> =>
+  fetchAPI('/governance/emergency-votes');
+
+export const getPendingFeedback = (): Promise<PendingFeedback[]> =>
+  fetchAPI('/governance/pending-feedback');
+
+export const getFeedbackStats = (): Promise<FeedbackStats> =>
+  fetchAPI('/governance/feedback-stats');
 
 // Memory Endpoints
 export const getMemories = (params?: {

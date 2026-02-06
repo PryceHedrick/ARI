@@ -74,9 +74,10 @@ export function BudgetPanel() {
     );
   }
 
-  const throttleColor = THROTTLE_COLORS[data.throttle.level];
-  const throttleLabel = THROTTLE_LABELS[data.throttle.level];
-  const throttleIcon = THROTTLE_ICONS[data.throttle.level];
+  const throttleLevel = data.throttle?.level ?? 'normal';
+  const throttleColor = THROTTLE_COLORS[throttleLevel];
+  const throttleLabel = THROTTLE_LABELS[throttleLevel];
+  const throttleIcon = THROTTLE_ICONS[throttleLevel];
 
   return (
     <div
@@ -100,7 +101,7 @@ export function BudgetPanel() {
               className="text-2xl font-bold font-mono"
               style={{ color: throttleColor }}
             >
-              {data.usage.percentUsed.toFixed(1)}%
+              {(data.usage?.percentUsed ?? 0).toFixed(1)}%
             </span>
             <span
               className="text-xs px-2 py-0.5 rounded flex items-center gap-1"
@@ -176,7 +177,7 @@ export function BudgetPanel() {
       </div>
 
       {/* Projected EOD */}
-      {data.throttle.projectedEOD > 0 && (
+      {(data.throttle?.projectedEOD ?? 0) > 0 && (
         <div
           className="mt-4 pt-4"
           style={{ borderTop: '1px solid var(--border-muted)' }}
