@@ -8,15 +8,15 @@ export function StatusBadge({ status, size = 'md' }: StatusBadgeProps) {
     switch (status) {
       case 'healthy':
       case 'active':
-        return 'bg-green-500';
+        return 'bg-ari-success';
       case 'degraded':
       case 'idle':
-        return 'bg-yellow-500';
+        return 'bg-ari-warning';
       case 'unhealthy':
       case 'stopped':
-        return 'bg-red-500';
+        return 'bg-ari-error';
       default:
-        return 'bg-gray-500';
+        return 'bg-bg-tertiary';
     }
   };
 
