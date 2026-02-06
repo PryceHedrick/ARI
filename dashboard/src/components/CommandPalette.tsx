@@ -17,14 +17,13 @@ interface SearchItem {
 }
 
 const PAGES: SearchItem[] = [
-  { id: 'home', type: 'page', title: 'Overview', description: 'Dashboard home', icon: '◉', onSelect: () => {} },
-  { id: 'health', type: 'page', title: 'Health', description: 'System status', icon: '♥', onSelect: () => {} },
+  { id: 'system', type: 'page', title: 'System Status', description: 'Overview & Health', icon: '◉', onSelect: () => {} },
+  { id: 'agents', type: 'page', title: 'Agents & Tools', description: 'Agent status & tool registry', icon: '⬡', onSelect: () => {} },
+  { id: 'cognition', type: 'page', title: 'Cognition', description: 'LOGOS/ETHOS/PATHOS', icon: '🧠', onSelect: () => {} },
   { id: 'autonomy', type: 'page', title: 'Autonomy', description: 'Scheduler & Subagents', icon: '↻', onSelect: () => {} },
-  { id: 'agents', type: 'page', title: 'Agents', description: 'Agent status', icon: '⬡', onSelect: () => {} },
-  { id: 'governance', type: 'page', title: 'Governance', description: 'Council & Rules', icon: '⚖', onSelect: () => {} },
+  { id: 'governance', type: 'page', title: 'Governance', description: 'Council, Rules & Audit', icon: '⚖', onSelect: () => {} },
   { id: 'memory', type: 'page', title: 'Memory', description: 'Knowledge base', icon: '⬢', onSelect: () => {} },
-  { id: 'tools', type: 'page', title: 'Tools', description: 'Tool registry', icon: '⚙', onSelect: () => {} },
-  { id: 'audit', type: 'page', title: 'Audit Trail', description: 'Hash chain', icon: '⊞', onSelect: () => {} },
+  { id: 'operations', type: 'page', title: 'Operations', description: 'Budget & E2E Tests', icon: '⚙', onSelect: () => {} },
 ];
 
 export function CommandPalette({ onNavigate }: CommandPaletteProps) {
