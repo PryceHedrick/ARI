@@ -124,7 +124,7 @@ vi.mock('node:fs/promises', () => ({
 vi.mock('../../../src/kernel/event-bus.js', () => ({
   EventBus: vi.fn().mockImplementation(() => ({
     emit: mockEventBusEmit,
-    on: vi.fn(),
+    on: vi.fn().mockReturnValue(() => {}),
     off: vi.fn(),
   })),
 }));

@@ -101,7 +101,7 @@ export function registerGatewayCommand(program: Command): void {
       const heartbeat = new HeartbeatMonitor(eventBus);
       heartbeat.register('gateway', 'kernel', async () => ({ status: 'up' }));
       heartbeat.register('audit', 'kernel', async () => ({
-        entries: (await audit.getChain()).length,
+        entries: audit.getEvents().length,
       }));
       heartbeat.register('memory', 'agent', async () => ({
         entries: memoryManager.getStats().total_entries,

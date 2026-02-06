@@ -458,19 +458,24 @@ export class SelfImprovementLoop {
    */
   private async waitForVoteCompletion(voteId: string): Promise<{ approved: boolean }> {
     return new Promise((resolve) => {
-      const timeout = setTimeout(() => {
-        // Auto-reject on timeout
-        unsub();
-        resolve({ approved: false });
-      }, 60 * 60 * 1000); // 1 hour
+      let resolved = false;
 
       const unsub = this.eventBus.on('vote:completed', (payload) => {
-        if (payload.voteId === voteId) {
+        if (payload.voteId === voteId && !resolved) {
+          resolved = true;
           clearTimeout(timeout);
           unsub();
           resolve({ approved: payload.status === 'APPROVED' });
         }
       });
+
+      const timeout = setTimeout(() => {
+        if (!resolved) {
+          resolved = true;
+          unsub();
+          resolve({ approved: false });
+        }
+      }, 60 * 60 * 1000); // 1 hour
     });
   }
 
@@ -528,7 +533,7 @@ export class SelfImprovementLoop {
    */
   async shutdown(): Promise<void> {
     for (const unsub of this.unsubscribers) {
-      unsub();
+      if (typeof unsub === 'function') unsub();
     }
     this.unsubscribers = [];
 

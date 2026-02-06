@@ -1,3 +1,5 @@
+/// <reference lib="dom" />
+/// <reference lib="dom.iterable" />
 /**
  * Web Navigation Tool — Playwright-based web interaction for ARI
  *
@@ -8,6 +10,9 @@
  * passed through sanitizer, all actions audit-logged via EventBus.
  *
  * Architecture: Layer 5 (Execution) — imports only from Kernel.
+ *
+ * Note: DOM types referenced in page.evaluate() callbacks run in
+ * Playwright's browser context, not Node.js.
  */
 
 import { chromium, type Browser, type Page, type BrowserContext } from 'playwright';

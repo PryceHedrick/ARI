@@ -107,6 +107,22 @@ export class Executor {
   }
 
   /**
+   * Dual-write migration status. After Phase 4 cutover, the new
+   * PolicyEngine is primary and dual-write is disabled.
+   */
+  getDualWriteStats(): { totalChecks: number; divergentChecks: number } {
+    return { totalChecks: 0, divergentChecks: 0 };
+  }
+
+  isNewPolicyEngineEnabled(): boolean {
+    return true; // Phase 4 cutover complete
+  }
+
+  isDualWriteEnabled(): boolean {
+    return false; // Dual-write disabled after Phase 4 cutover
+  }
+
+  /**
    * Register a new tool (legacy interface, kept for backwards compatibility)
    */
   registerTool(tool: ToolDefinition): void {
