@@ -107,23 +107,7 @@ export class Executor {
   }
 
   /**
-   * Dual-write migration status. After Phase 4 cutover, the new
-   * PolicyEngine is primary and dual-write is disabled.
-   */
-  getDualWriteStats(): { totalChecks: number; divergentChecks: number } {
-    return { totalChecks: 0, divergentChecks: 0 };
-  }
-
-  isNewPolicyEngineEnabled(): boolean {
-    return true; // Phase 4 cutover complete
-  }
-
-  isDualWriteEnabled(): boolean {
-    return false; // Dual-write disabled after Phase 4 cutover
-  }
-
-  /**
-   * Register a new tool (legacy interface, kept for backwards compatibility)
+   * Register a new tool
    */
   registerTool(tool: ToolDefinition): void {
     this.tools.set(tool.id, tool);
@@ -513,10 +497,30 @@ export class Executor {
           throw new Error(`Failed to read file: ${message}`);
         }
       }
-      case 'file_write':
-        return { written: true, path: call.parameters.path };
-      case 'file_delete':
-        return { deleted: true, path: call.parameters.path };
+      case 'file_write': {
+        const writePath = String(call.parameters.path || '');
+        const writeContent = String(call.parameters.content || '');
+        if (!writePath) throw new Error('file_write requires path parameter');
+        if (!writeContent) throw new Error('file_write requires content parameter');
+        try {
+          await fs.writeFile(writePath, writeContent, 'utf-8');
+          return { written: true, path: writePath, bytes: Buffer.byteLength(writeContent) };
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          throw new Error(`Failed to write file: ${message}`);
+        }
+      }
+      case 'file_delete': {
+        const deletePath = String(call.parameters.path || '');
+        if (!deletePath) throw new Error('file_delete requires path parameter');
+        try {
+          await fs.unlink(deletePath);
+          return { deleted: true, path: deletePath };
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          throw new Error(`Failed to delete file: ${message}`);
+        }
+      }
       case 'system_config': {
         const key = String(call.parameters.key || '');
         try {
@@ -622,7 +626,19 @@ export class Executor {
             content: { type: 'string', required: true, description: 'Content to write' },
           },
         },
-        handler: (params) => Promise.resolve({ written: true, path: params.path }),
+        handler: async (params) => {
+          const path = String(params.path || '');
+          const content = String(params.content || '');
+          if (!path) throw new Error('file_write requires path parameter');
+          if (!content) throw new Error('file_write requires content parameter');
+          try {
+            await fs.writeFile(path, content, 'utf-8');
+            return { written: true, path, bytes: Buffer.byteLength(content) };
+          } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            throw new Error(`Failed to write file: ${message}`);
+          }
+        },
       },
       {
         definition: {
@@ -638,7 +654,17 @@ export class Executor {
             path: { type: 'string', required: true, description: 'File path to delete' },
           },
         },
-        handler: (params) => Promise.resolve({ deleted: true, path: params.path }),
+        handler: async (params) => {
+          const path = String(params.path || '');
+          if (!path) throw new Error('file_delete requires path parameter');
+          try {
+            await fs.unlink(path);
+            return { deleted: true, path };
+          } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            throw new Error(`Failed to delete file: ${message}`);
+          }
+        },
       },
       {
         definition: {

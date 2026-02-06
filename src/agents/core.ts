@@ -8,8 +8,26 @@ import type { Executor } from './executor.js';
 import type { Planner } from './planner.js';
 import type { Scratchpad } from './scratchpad.js';
 import type { LearningMachine } from './learning-machine.js';
-import type { SOULManager } from '../governance/soul.js';
 import type { ContextLayerManager } from '../system/context-layers.js';
+
+/**
+ * AIProvider interface — allows Core to use AI capabilities
+ * without directly importing from the AI layer (preserves layer boundaries).
+ * Injected by the gateway at startup.
+ */
+export interface AIProvider {
+  query(question: string, agent?: string): Promise<string>;
+  chat(
+    messages: Array<{ role: 'user' | 'assistant'; content: string }>,
+    systemPrompt?: string,
+    agent?: string,
+  ): Promise<string>;
+}
+
+/**
+ * Message classification result from the AI provider or heuristics.
+ */
+type MessageIntent = 'conversation' | 'tool_use' | 'system_command';
 
 interface CoreConfig {
   guardian: Guardian;
@@ -19,7 +37,6 @@ interface CoreConfig {
   // Optional new components
   scratchpad?: Scratchpad;
   learningMachine?: LearningMachine;
-  soulManager?: SOULManager;
   contextLayerManager?: ContextLayerManager;
 }
 
@@ -59,8 +76,10 @@ export class Core {
   // New cognitive components
   private readonly scratchpad: Scratchpad | null;
   private readonly learningMachine: LearningMachine | null;
-  private readonly soulManager: SOULManager | null;
   private readonly contextLayerManager: ContextLayerManager | null;
+
+  // AI provider for intelligent message processing
+  private aiProvider: AIProvider | null = null;
 
   // Governance components (typed interfaces from kernel/types.ts)
   private council: CouncilInterface | null = null;
@@ -84,7 +103,6 @@ export class Core {
     // Initialize new cognitive components
     this.scratchpad = config.scratchpad || null;
     this.learningMachine = config.learningMachine || null;
-    this.soulManager = config.soulManager || null;
     this.contextLayerManager = config.contextLayerManager || null;
   }
 
@@ -95,6 +113,14 @@ export class Core {
     if (components.council) this.council = components.council;
     if (components.arbiter) this.arbiter = components.arbiter;
     if (components.overseer) this.overseer = components.overseer;
+  }
+
+  /**
+   * Set AI provider for intelligent message processing.
+   * The AIOrchestrator implements this interface.
+   */
+  setAIProvider(provider: AIProvider): void {
+    this.aiProvider = provider;
   }
 
   /**
@@ -118,10 +144,6 @@ export class Core {
       await this.learningMachine.loadFromMemory();
     }
 
-    if (this.soulManager) {
-      await this.soulManager.loadSouls();
-    }
-
     // Emit startup event
     this.eventBus.emit('agent:started', {
       agent: 'core',
@@ -131,7 +153,6 @@ export class Core {
     const components = ['guardian', 'memory_manager', 'executor', 'planner'];
     if (this.scratchpad) components.push('scratchpad');
     if (this.learningMachine) components.push('learning_machine');
-    if (this.soulManager) components.push('soul_manager');
     if (this.contextLayerManager) components.push('context_layer_manager');
 
     await this.auditLogger.log('core:start', 'core', 'system', {
@@ -286,24 +307,6 @@ export class Core {
       }
     }
 
-    // SOUL manager status
-    if (this.soulManager) {
-      try {
-        const stats = this.soulManager.getStats();
-        components.push({
-          name: 'soul_manager',
-          status: stats.totalLoaded > 0 ? 'healthy' : 'degraded',
-          details: { ...stats },
-        });
-      } catch (error) {
-        components.push({
-          name: 'soul_manager',
-          status: 'down',
-          details: { error: error instanceof Error ? error.message : String(error) },
-        });
-      }
-    }
-
     // Determine overall status
     const allHealthy = components.every((c) => c.status === 'healthy');
     const anyDown = components.some((c) => c.status === 'down');
@@ -361,42 +364,6 @@ export class Core {
 
     // Step 1: Guardian threat assessment (with cognitive enhancement)
     const assessment = await this.guardian.assessThreatEnhanced(message.content, message.source);
-
-    // Step 2: Apply SOUL influence if available
-    let soulInfluence: { confidence: number; reasoning: string } | undefined;
-    if (this.soulManager && this.soulManager.hasIdentity('core')) {
-      try {
-        const decision = {
-          action: message.content.substring(0, 100),
-          confidence: 1 - assessment.risk_score,
-          alternatives: ['process', 'block', 'escalate'],
-        };
-        const influenced = this.soulManager.influenceDecision('core', decision);
-        soulInfluence = { confidence: influenced.confidence, reasoning: influenced.reasoning };
-
-        // SOUL might recommend blocking
-        if (influenced.action === 'BLOCK') {
-          await this.auditLogger.log('core:message_blocked_by_soul', 'core', 'system', {
-            message_id: messageId,
-            reasoning: influenced.reasoning,
-          });
-          return {
-            blocked: true,
-            threat_level: 'soul_block',
-            tasks_executed: 0,
-            tasks_succeeded: 0,
-            tasks_failed: 0,
-          };
-        }
-      } catch {
-        this.eventBus.emit('audit:log', {
-          action: 'component:degraded',
-          agent: 'core',
-          trustLevel: 'system',
-          details: { component: 'soul_manager', operation: 'influence_decision' },
-        });
-      }
-    }
 
     if (assessment.should_block) {
       await this.auditLogger.log('core:message_blocked', 'core', 'system', {
@@ -494,7 +461,6 @@ export class Core {
       tasks_executed: executionResult.executed,
       tasks_succeeded: executionResult.succeeded,
       tasks_failed: executionResult.failed,
-      soul_influence: soulInfluence,
     });
 
     return {
@@ -508,9 +474,45 @@ export class Core {
   }
 
   /**
-   * Execute all available tasks in a plan through the Executor.
-   * Iterates next-available tasks (dependencies met), marks each in_progress,
-   * delegates to Executor, then marks completed or failed.
+   * Classify the intent of a message using simple heuristics.
+   * This avoids an LLM call for classification — fast and deterministic.
+   */
+  private classifyIntent(content: string): MessageIntent {
+    const lower = content.toLowerCase().trim();
+
+    // System commands start with known prefixes
+    const systemPrefixes = [
+      'status', 'health', 'stop', 'start', 'restart',
+      'audit', 'config', 'help', '//',
+    ];
+    if (systemPrefixes.some(p => lower.startsWith(p))) {
+      return 'system_command';
+    }
+
+    // Tool use patterns — explicit tool invocation or file operations
+    const toolPatterns = [
+      /^(read|write|delete|create|list|search|find|execute|run)\s/,
+      /^file[_:\s]/,
+      /^tool[_:\s]/,
+      /^web[_:\s](search|screenshot|extract)/,
+    ];
+    if (toolPatterns.some(p => p.test(lower))) {
+      return 'tool_use';
+    }
+
+    // Default: treat as conversation (route to AI)
+    return 'conversation';
+  }
+
+  /**
+   * Execute all available tasks in a plan.
+   *
+   * Routes intelligently based on message intent:
+   * - conversation → AIProvider (Claude API via AIOrchestrator)
+   * - tool_use → Executor with proper tool selection
+   * - system_command → Executor with system handler
+   *
+   * Falls back to Executor for tool-based tasks when no AI provider is set.
    */
   private async executePlanTasks(
     planId: string,
@@ -527,21 +529,90 @@ export class Core {
       executed++;
 
       try {
-        const result = await this.executor.execute({
-          id: randomUUID(),
-          tool_id: 'file_read',
-          parameters: { context: task.description },
-          requesting_agent: task.assigned_to ?? 'core',
-          trust_level: trustLevel,
-          timestamp: new Date(),
-        });
+        const intent = this.classifyIntent(task.description);
 
-        if (result.success) {
+        if (intent === 'conversation' && this.aiProvider) {
+          // Route to AI for conversational responses
+          const response = await this.aiProvider.query(task.description, 'core');
+
+          // Store the AI response in memory for context
+          try {
+            await this.memoryManager.store({
+              type: 'CONTEXT',
+              content: response,
+              provenance: {
+                source: 'ai_orchestrator',
+                trust_level: trustLevel,
+                agent: 'core',
+                chain: ['core:processMessage', 'aiProvider:query'],
+              },
+              confidence: 0.9,
+              partition: 'INTERNAL',
+            });
+          } catch {
+            // Memory storage is non-critical — continue
+          }
+
           succeeded++;
           await this.planner.updateTaskStatus(planId, task.id, 'completed');
+
+          // Emit the AI response for downstream consumers
+          this.eventBus.emit('message:response', {
+            content: response,
+            source: 'core',
+            timestamp: new Date(),
+          });
+        } else if (intent === 'tool_use') {
+          // Extract tool info from the task description
+          const toolMatch = task.description.match(/^(\w+)[\s_:]/);
+          const toolId = toolMatch ? toolMatch[1] : 'file_read';
+
+          const result = await this.executor.execute({
+            id: randomUUID(),
+            tool_id: toolId,
+            parameters: { content: task.description },
+            requesting_agent: task.assigned_to ?? 'core',
+            trust_level: trustLevel,
+            timestamp: new Date(),
+          });
+
+          if (result.success) {
+            succeeded++;
+            await this.planner.updateTaskStatus(planId, task.id, 'completed');
+          } else {
+            failed++;
+            await this.planner.updateTaskStatus(planId, task.id, 'failed');
+          }
         } else {
-          failed++;
-          await this.planner.updateTaskStatus(planId, task.id, 'failed');
+          // System command or no AI provider available — use executor
+          const result = await this.executor.execute({
+            id: randomUUID(),
+            tool_id: 'system_command',
+            parameters: { command: task.description },
+            requesting_agent: task.assigned_to ?? 'core',
+            trust_level: trustLevel,
+            timestamp: new Date(),
+          });
+
+          if (result.success) {
+            succeeded++;
+            await this.planner.updateTaskStatus(planId, task.id, 'completed');
+          } else {
+            // If system_command tool doesn't exist and we have AI, fall back
+            if (this.aiProvider) {
+              const response = await this.aiProvider.query(task.description, 'core');
+              this.eventBus.emit('message:response', {
+                content: response,
+                source: 'core',
+                timestamp: new Date(),
+              });
+              succeeded++;
+              await this.planner.updateTaskStatus(planId, task.id, 'completed');
+            } else {
+              failed++;
+              await this.planner.updateTaskStatus(planId, task.id, 'failed');
+            }
+          }
         }
       } catch {
         failed++;

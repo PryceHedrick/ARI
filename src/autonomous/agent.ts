@@ -801,45 +801,14 @@ export class AutonomousAgent {
     // Daily Performance Review at 9 PM
     this.scheduler.registerHandler('cognitive_performance_review', async () => {
       try {
-        const { runPerformanceReview } = await import('../cognition/learning/index.js');
-        const { getDecisionCollector } = await import('../cognition/learning/decision-collector.js');
-
-        // Collect actual decisions from the day's audit log
-        const collector = getDecisionCollector();
-        const decisions = await collector.getRecentDecisions(24);
-
-        // Transform collected decisions for performance review
-        const reviewDecisions = decisions.map(d => ({
-          id: d.id,
-          description: d.description,
-          outcome: d.outcome,
-          expectedValue: d.expectedValue,
-          actualValue: d.actualValue,
-          biasesDetected: d.biasesDetected,
-          emotionalRisk: d.emotionalRisk,
-        }));
-
-        const result = await runPerformanceReview(reviewDecisions);
-
-        // Save summary for monthly self-assessment
-        await collector.saveCurrentMonthSummary({
-          decisionsCount: result.decisions.total,
-          successRate: result.decisions.successRate,
-          biasCount: result.biasesDetected.total,
-          insightsGenerated: result.insights.length,
+        // Stub - learning module removed
+        this.eventBus.emit('audit:log', {
+          action: 'cognitive:performance_review_skipped',
+          agent: 'autonomous',
+          trustLevel: 'system',
+          details: { reason: 'Learning module removed' },
         });
-
-        this.eventBus.emit('learning:performance_review', {
-          period: `${result.period.start.toISOString()} - ${result.period.end.toISOString()}`,
-          successRate: result.decisions.successRate,
-          biasCount: result.biasesDetected.total,
-          insightCount: result.insights.length,
-          recommendations: result.recommendations,
-          timestamp: new Date().toISOString(),
-        });
-
-        // eslint-disable-next-line no-console
-        console.log(`[Cognitive] Performance review complete: ${result.decisions.total} decisions analyzed, ${result.insights.length} insights generated`);
+        return;
       } catch (error) {
         // eslint-disable-next-line no-console
         console.error('[Cognitive] Performance review failed:', error);
@@ -849,40 +818,14 @@ export class AutonomousAgent {
     // Weekly Gap Analysis on Sunday 8 PM
     this.scheduler.registerHandler('cognitive_gap_analysis', async () => {
       try {
-        const { runGapAnalysis } = await import('../cognition/learning/index.js');
-        const { getDecisionCollector } = await import('../cognition/learning/decision-collector.js');
-
-        // Collect recent queries and failures from storage
-        const collector = getDecisionCollector();
-        const queries = await collector.getRecentQueries(7);
-        const failures = await collector.getRecentFailures(7);
-
-        // Transform for gap analysis
-        const recentQueries = queries.map(q => ({
-          query: q.query,
-          domain: q.domain,
-          answered: q.answered,
-          confidence: q.confidence,
-        }));
-
-        const recentFailures = failures.map(f => ({
-          description: f.description,
-          domain: f.domain,
-          reason: f.reason,
-        }));
-
-        const result = await runGapAnalysis(recentQueries, recentFailures);
-
-        this.eventBus.emit('learning:gap_analysis', {
-          period: `${result.period.start.toISOString()} - ${result.period.end.toISOString()}`,
-          gapsFound: result.gaps.length,
-          topGaps: result.topGaps.map(g => ({ domain: g.description, severity: g.severity })),
-          sourceSuggestions: result.newSourceSuggestions.length,
-          timestamp: new Date().toISOString(),
+        // Stub - learning module removed
+        this.eventBus.emit('audit:log', {
+          action: 'cognitive:gap_analysis_skipped',
+          agent: 'autonomous',
+          trustLevel: 'system',
+          details: { reason: 'Learning module removed' },
         });
-
-        // eslint-disable-next-line no-console
-        console.log(`[Cognitive] Gap analysis complete: ${result.gaps.length} gaps identified, ${result.newSourceSuggestions.length} new sources suggested`);
+        return;
       } catch (error) {
         // eslint-disable-next-line no-console
         console.error('[Cognitive] Gap analysis failed:', error);
@@ -892,46 +835,14 @@ export class AutonomousAgent {
     // Monthly Self-Assessment on 1st at 9 AM
     this.scheduler.registerHandler('cognitive_self_assessment', async () => {
       try {
-        const { runSelfAssessment, getRecentInsights } = await import('../cognition/learning/index.js');
-        const { getDecisionCollector } = await import('../cognition/learning/decision-collector.js');
-
-        // Get previous month's data for comparison
-        const collector = getDecisionCollector();
-        const previousPeriod = await collector.getPreviousMonthSummary();
-
-        // Get current month's decisions
-        const now = new Date();
-        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-        const decisions = await collector.getDecisionsInRange(monthStart, now);
-
-        // Calculate current period metrics
-        const successCount = decisions.filter(d => d.outcome === 'success').length;
-        const biasCount = decisions.reduce((sum, d) => sum + (d.biasesDetected?.length || 0), 0);
-        const insights = getRecentInsights(100);
-        const monthInsights = insights.filter(i => i.timestamp >= monthStart);
-
-        const currentPeriod = {
-          reviews: [],
-          gapAnalyses: [],
-          decisionsCount: decisions.length,
-          successRate: decisions.length > 0 ? successCount / decisions.length : 0,
-          biasCount,
-          insightsGenerated: monthInsights.length,
-        };
-
-        const result = await runSelfAssessment(currentPeriod, previousPeriod);
-
-        this.eventBus.emit('learning:self_assessment', {
-          period: `${result.period.start.toISOString()} - ${result.period.end.toISOString()}`,
-          grade: result.grade,
-          improvement: result.overallImprovement,
-          trend: result.decisionQuality.trend,
-          recommendations: result.recommendations,
-          timestamp: new Date().toISOString(),
+        // Stub - learning module removed
+        this.eventBus.emit('audit:log', {
+          action: 'cognitive:self_assessment_skipped',
+          agent: 'autonomous',
+          trustLevel: 'system',
+          details: { reason: 'Learning module removed' },
         });
-
-        // eslint-disable-next-line no-console
-        console.log(`[Cognitive] Self-assessment complete: Grade ${result.grade}, ${result.overallImprovement > 0 ? '+' : ''}${(result.overallImprovement * 100).toFixed(1)}% improvement`);
+        return;
       } catch (error) {
         // eslint-disable-next-line no-console
         console.error('[Cognitive] Self-assessment failed:', error);
@@ -941,31 +852,8 @@ export class AutonomousAgent {
     // Daily spaced repetition review at 8 AM
     this.scheduler.registerHandler('spaced_repetition_review', async () => {
       try {
-        const { getSpacedRepetitionEngine } = await import('../cognition/learning/spaced-repetition.js');
-
-        // Get engine and check for due cards
-        const engine = await getSpacedRepetitionEngine();
-        const now = new Date();
-        const dueCards = engine.getReviewsDue(now);
-        const stats = engine.getStats();
-
-        if (dueCards.length > 0) {
-          await notificationManager.insight(
-            'Daily Review',
-            `${dueCards.length} concept${dueCards.length === 1 ? '' : 's'} ready for review. Use /ari-review to start.`
-          );
-        }
-
-        this.eventBus.emit('learning:spaced_repetition_due', {
-          due: dueCards.length,
-          totalCards: stats.totalCards,
-          reviewedToday: stats.reviewedToday,
-          averageEaseFactor: stats.averageEaseFactor,
-          timestamp: new Date().toISOString(),
-        });
-
-        // eslint-disable-next-line no-console
-        console.log(`[Cognitive] Spaced repetition: ${dueCards.length} due for review (${stats.totalCards} total cards, ${stats.reviewedToday} reviewed today)`);
+        // Stub - learning module removed
+        return;
       } catch (error) {
         // eslint-disable-next-line no-console
         console.error('[Cognitive] Spaced repetition review failed:', error);
