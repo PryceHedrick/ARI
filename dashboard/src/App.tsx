@@ -67,7 +67,7 @@ function AppContent() {
       <CommandPalette onNavigate={setCurrentPage} />
 
       <Layout currentPage={currentPage} onNavigate={setCurrentPage} wsStatus={wsStatus}>
-        <ErrorBoundary>
+        <ErrorBoundary key={currentPage}>
           {renderPage()}
         </ErrorBoundary>
       </Layout>
