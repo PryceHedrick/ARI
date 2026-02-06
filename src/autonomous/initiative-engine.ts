@@ -807,6 +807,16 @@ export class InitiativeEngine {
       initiative.result = outcome.summary;
       initiative.resultDetails = outcome.details;
 
+      // Emit initiative:executed for value tracking
+      if (initiative.status === 'COMPLETED') {
+        this.eventBus.emit('initiative:executed', {
+          initiativeId: initiative.id,
+          title: initiative.title,
+          category: initiative.category,
+          success: true,
+        });
+      }
+
       this.eventBus.emit('audit:log', {
         action: initiative.status === 'COMPLETED' ? 'initiative:completed' : 'initiative:orchestrated',
         agent: 'INITIATIVE',

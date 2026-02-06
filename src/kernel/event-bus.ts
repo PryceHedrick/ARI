@@ -58,11 +58,6 @@ export interface EventMap {
   'tool:registered': { toolId: string; toolName: string };
   'tool:unregistered': { toolId: string };
 
-  // ── Control Plane events ───────────────────────────────────────────────
-  'controlplane:client:connected': { clientId: string; clientType: string; connectedAt: Date };
-  'controlplane:client:disconnected': { clientId: string; reason: string; disconnectedAt: Date };
-  'controlplane:client:authenticated': { clientId: string; capabilities: string[]; authenticatedAt: Date };
-
   // ── Session events ─────────────────────────────────────────────────────
   'session:started': { sessionId: string; channel: string; senderId: string; groupId?: string; trustLevel: TrustLevel; startedAt: Date };
   'session:ended': { sessionId: string; reason: string; endedAt: Date };
@@ -76,7 +71,6 @@ export interface EventMap {
   // ── Channel events ─────────────────────────────────────────────────────
   'channel:connected': { channelId: string; channelName: string; connectedAt: Date };
   'channel:disconnected': { channelId: string; channelName: string; reason: string; disconnectedAt: Date };
-  'channel:status': { channelId: string; channelName: string; status: string; activeSessions: number; lastActivity?: Date };
   'channel:message:inbound': { channelId: string; messageId: string; senderId: string; content: string; timestamp: Date };
   'channel:message:outbound': { channelId: string; messageId: string; recipientId: string; content: string; timestamp: Date };
 
@@ -285,9 +279,6 @@ export interface EventMap {
   // ═══════════════════════════════════════════════════════════════════════
   // LEARNING LOOP events (Self-Improvement System)
   // ═══════════════════════════════════════════════════════════════════════
-  'learning:pattern_stored': { patternId: string; type: string; confidence: number };
-  'learning:pattern_updated': { patternId: string; success: boolean; newConfidence: number };
-  'learning:pattern_retrieved': { patternId: string; context: string; score: number };
   'learning:performance_review': {
     period: string;
     successRate: number;
@@ -442,14 +433,7 @@ export interface EventMap {
   // ═══════════════════════════════════════════════════════════════════════
   // SOUL events (Agent Identity & Personality)
   // ═══════════════════════════════════════════════════════════════════════
-  'soul:loaded': { agent: AgentId; name: string; pillarWeights: { logos: number; ethos: number; pathos: number } };
   'soul:decision_influenced': { agent: AgentId; action: string; confidence: number; appliedFrameworks: string[] };
-
-  // ═══════════════════════════════════════════════════════════════════════
-  // CONTEXT LAYER events (6-Layer Context Building)
-  // ═══════════════════════════════════════════════════════════════════════
-  'context:layer:loaded': { layer: string; size: number; hitRate?: number };
-  'context:built': { layers: number; totalSize: number; buildTimeMs: number };
 
   // ═══════════════════════════════════════════════════════════════════════
   // MODEL ROUTING events (Intelligent Model Selection)
@@ -459,7 +443,6 @@ export interface EventMap {
   // ═══════════════════════════════════════════════════════════════════════
   // E2E TESTING events (Playwright Integration)
   // ═══════════════════════════════════════════════════════════════════════
-  'e2e:run_started': { runId: string; scenarioCount: number; timestamp: string };
   'e2e:scenario_started': { runId: string; scenario: string };
   'e2e:scenario_complete': {
     runId: string;

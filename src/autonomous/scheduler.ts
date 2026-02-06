@@ -322,6 +322,7 @@ export class Scheduler {
   private handlers: Map<string, TaskHandler> = new Map();
   private running = false;
   private checkInterval: NodeJS.Timeout | null = null;
+  private lastDate: string = new Date().toISOString().split('T')[0];
 
   constructor(eventBus: EventBus) {
     this.eventBus = eventBus;
@@ -391,6 +392,23 @@ export class Scheduler {
    */
   async checkAndRun(options: CheckAndRunOptions = {}): Promise<void> {
     const now = new Date();
+    const currentDate = now.toISOString().split('T')[0];
+
+    // Check for date change (midnight rollover)
+    if (currentDate !== this.lastDate) {
+      this.eventBus.emit('scheduler:daily_reset', {
+        date: currentDate,
+        previousDate: this.lastDate,
+      });
+
+      // Emit budget:daily_reset for budget tracking components
+      this.eventBus.emit('budget:daily_reset', {
+        previousUsage: 0, // Budget tracker will update this internally
+        profile: 'balanced',
+      });
+
+      this.lastDate = currentDate;
+    }
 
     for (const [taskId, task] of this.tasks.entries()) {
       if (!task.enabled) continue;
