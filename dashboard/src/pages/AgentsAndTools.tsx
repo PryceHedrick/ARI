@@ -171,9 +171,16 @@ function AgentsTab({ agents, isLoading, isError, refetch }: { agents: Agent[]; i
     <div className="space-y-6">
       {/* Agent Council Grid */}
       <section>
-        <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-text-muted">
-          Agent Council
-        </h2>
+        <div className="mb-4 flex items-center justify-between">
+          <div>
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-text-muted">
+              Execution Agents
+            </h2>
+            <p className="mt-0.5 text-xs text-text-disabled">
+              5 autonomous agents that process, protect, plan, execute, and remember
+            </p>
+          </div>
+        </div>
 
         {isLoading ? (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 stagger-children">
@@ -289,6 +296,24 @@ function AgentsTab({ agents, isLoading, isError, refetch }: { agents: Agent[]; i
             })}
           </div>
         )}
+
+        {/* Governance cross-reference */}
+        <div className="mt-6 rounded-xl border border-border-muted bg-bg-secondary p-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-ari-warning-muted text-sm">
+              ⚖
+            </div>
+            <div className="flex-1">
+              <div className="text-sm font-medium text-text-secondary">
+                Governed by the 15-member Council
+              </div>
+              <div className="text-xs text-text-muted">
+                The Council votes on policies, permissions, and decisions that control these agents.
+              </div>
+            </div>
+            <span className="text-xs text-ari-purple">View Governance →</span>
+          </div>
+        </div>
       </section>
 
       {/* Advisor Pattern Flow */}

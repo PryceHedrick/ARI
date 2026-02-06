@@ -17,21 +17,58 @@ import { ErrorState } from '../components/ui/ErrorState';
 import { CardSkeleton, ProposalCardSkeleton, AuditEntrySkeleton } from '../components/ui/Skeleton';
 import { AuditEntry as AuditEntryComponent } from '../components/AuditEntry';
 
-// 15-member council from ARI's governance design
-const COUNCIL_MEMBERS = [
-  { id: 'router', name: 'Router', role: 'Event routing', type: 'system' },
-  { id: 'planner', name: 'Planner', role: 'Task decomposition', type: 'agent' },
-  { id: 'executor', name: 'Executor', role: 'Action execution', type: 'agent' },
-  { id: 'memory_manager', name: 'Memory Manager', role: 'Context storage', type: 'agent' },
-  { id: 'guardian', name: 'Guardian', role: 'Safety enforcement', type: 'agent' },
-  { id: 'research', name: 'Research', role: 'Information gathering', type: 'domain' },
-  { id: 'marketing', name: 'Marketing', role: 'Brand & outreach', type: 'domain' },
-  { id: 'sales', name: 'Sales', role: 'Revenue generation', type: 'domain' },
-  { id: 'content', name: 'Content', role: 'Content creation', type: 'domain' },
-  { id: 'seo', name: 'SEO', role: 'Search optimization', type: 'domain' },
-  { id: 'build', name: 'Build', role: 'Development', type: 'domain' },
-  { id: 'development', name: 'Development', role: 'Engineering', type: 'domain' },
-  { id: 'client_comms', name: 'Client Comms', role: 'Client relations', type: 'domain' },
+// 15-member council organized by pillar (from src/governance/council.ts)
+const COUNCIL_PILLARS = [
+  {
+    name: 'Infrastructure',
+    cssColor: 'var(--ari-purple)',
+    cssBg: 'var(--ari-purple-muted)',
+    members: [
+      { id: 'router', name: 'ATLAS', icon: '🧭', role: 'Message routing', veto: null },
+      { id: 'executor', name: 'BOLT', icon: '⚡', role: 'Action execution', veto: null },
+      { id: 'memory_keeper', name: 'ECHO', icon: '📚', role: 'Knowledge storage', veto: 'memory' },
+    ],
+  },
+  {
+    name: 'Protection',
+    cssColor: 'var(--ari-error)',
+    cssBg: 'var(--ari-error-muted)',
+    members: [
+      { id: 'guardian', name: 'AEGIS', icon: '🛡️', role: 'Safety enforcement', veto: 'security' },
+      { id: 'risk_assessor', name: 'SCOUT', icon: '📊', role: 'Risk assessment', veto: 'high_risk' },
+    ],
+  },
+  {
+    name: 'Strategy',
+    cssColor: 'var(--ari-info)',
+    cssBg: 'var(--ari-info-muted)',
+    members: [
+      { id: 'planner', name: 'TRUE', icon: '🎯', role: 'Task decomposition', veto: null },
+      { id: 'scheduler', name: 'TEMPO', icon: '⏰', role: 'Time management', veto: 'time_conflict' },
+      { id: 'resource_manager', name: 'OPAL', icon: '💎', role: 'Resource allocation', veto: 'resource_depletion' },
+    ],
+  },
+  {
+    name: 'Domains',
+    cssColor: 'var(--ari-success)',
+    cssBg: 'var(--ari-success-muted)',
+    members: [
+      { id: 'wellness', name: 'PULSE', icon: '💚', role: 'Health decisions', veto: 'health_harm' },
+      { id: 'relationships', name: 'EMBER', icon: '🤝', role: 'Social decisions', veto: null },
+      { id: 'creative', name: 'PRISM', icon: '✨', role: 'Innovation', veto: null },
+      { id: 'wealth', name: 'MINT', icon: '💰', role: 'Financial decisions', veto: 'major_financial' },
+      { id: 'growth', name: 'BLOOM', icon: '🌱', role: 'Learning & development', veto: null },
+    ],
+  },
+  {
+    name: 'Meta',
+    cssColor: 'var(--ari-warning)',
+    cssBg: 'var(--ari-warning-muted)',
+    members: [
+      { id: 'ethics', name: 'VERA', icon: '⚖️', role: 'Ethical oversight', veto: 'ethics_violation' },
+      { id: 'integrator', name: 'NEXUS', icon: '🔗', role: 'Synthesis & tie-breaker', veto: null },
+    ],
+  },
 ];
 
 // Constitutional rules from the audit
@@ -52,21 +89,6 @@ const QUALITY_GATES = [
   { id: 5, name: 'Permission Checks', desc: 'Agent allowlist, trust level, permission tier', threshold: 1.0 },
 ];
 
-// Member type styling
-const MEMBER_TYPE_STYLES = {
-  agent: {
-    cssColor: 'var(--ari-purple)',
-    cssBg: 'var(--ari-purple-muted)',
-  },
-  system: {
-    cssColor: 'var(--ari-info)',
-    cssBg: 'var(--ari-info-muted)',
-  },
-  domain: {
-    cssColor: 'var(--text-tertiary)',
-    cssBg: 'var(--bg-tertiary)',
-  },
-};
 
 // Action categories from audit findings
 const ACTION_CATEGORIES = {
@@ -242,51 +264,97 @@ export default function GovernanceAndAudit() {
         {/* Governance Tab */}
         {activeTab === 'governance' && (
           <div className="space-y-8">
-            {/* Council Members */}
-            <section>
-              <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-text-muted">
-                Governance Council (15 Members)
-              </h2>
-              <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 stagger-children">
-                {COUNCIL_MEMBERS.map((member) => {
-                  const typeStyle = MEMBER_TYPE_STYLES[member.type as keyof typeof MEMBER_TYPE_STYLES];
-                  return (
-                    <div
-                      key={member.id}
-                      className="card-ari rounded-xl p-4"
-                      style={{
-                        background: typeStyle.cssBg,
-                        border: `1px solid color-mix(in srgb, ${typeStyle.cssColor} 30%, transparent)`,
-                      }}
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium text-text-primary">
-                          {member.name}
-                        </span>
-                        <span
-                          className="rounded px-1.5 py-0.5 text-[10px]"
+            {/* Governance Council */}
+            <section className="mb-8">
+              <div className="mb-4 flex items-center justify-between">
+                <div>
+                  <h2 className="text-sm font-semibold uppercase tracking-wider text-text-muted">
+                    Governance Council
+                  </h2>
+                  <p className="mt-0.5 text-xs text-text-disabled">
+                    15 members deliberate and vote on policies, permissions, and decisions
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 text-xs text-text-muted">
+                  <span className="font-mono">Quorum: 8/15</span>
+                  <span>•</span>
+                  <span className="font-mono">Majority: 8+</span>
+                  <span>•</span>
+                  <span className="font-mono">Supermajority: 10+</span>
+                </div>
+              </div>
+
+              <div className="space-y-6">
+                {COUNCIL_PILLARS.map((pillar) => (
+                  <div key={pillar.name}>
+                    <div className="mb-3 flex items-center gap-2">
+                      <div
+                        className="h-1 w-6 rounded-full"
+                        style={{ background: pillar.cssColor }}
+                      />
+                      <span className="text-xs font-semibold uppercase tracking-wider text-text-muted">
+                        {pillar.name}
+                      </span>
+                      <span className="text-[10px] text-text-disabled">
+                        ({pillar.members.length} {pillar.members.length === 1 ? 'member' : 'members'})
+                      </span>
+                    </div>
+                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                      {pillar.members.map((member) => (
+                        <div
+                          key={member.id}
+                          className="rounded-xl border p-4 transition-all hover:brightness-110"
                           style={{
-                            background: `color-mix(in srgb, ${typeStyle.cssColor} 20%, transparent)`,
-                            color: typeStyle.cssColor,
+                            background: pillar.cssBg,
+                            borderColor: `color-mix(in srgb, ${pillar.cssColor} 20%, transparent)`,
                           }}
                         >
-                          {member.type}
-                        </span>
-                      </div>
-                      <div className="mt-1 text-xs text-text-muted">
-                        {member.role}
-                      </div>
+                          <div className="flex items-center gap-3">
+                            <span className="text-2xl">{member.icon}</span>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="font-semibold text-text-primary">{member.name}</span>
+                                {member.veto && (
+                                  <span
+                                    className="rounded px-1.5 py-0.5 text-[9px] font-bold uppercase"
+                                    style={{ background: `color-mix(in srgb, ${pillar.cssColor} 30%, transparent)`, color: pillar.cssColor }}
+                                  >
+                                    VETO
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-xs text-text-muted">{member.role}</div>
+                            </div>
+                          </div>
+                          {member.veto && (
+                            <div className="mt-2 text-[10px] text-text-disabled">
+                              Veto domain: <span className="font-mono" style={{ color: pillar.cssColor }}>{member.veto}</span>
+                            </div>
+                          )}
+                        </div>
+                      ))}
                     </div>
-                  );
-                })}
+                  </div>
+                ))}
               </div>
-              <Card className="mt-4" padding="md">
-                <p className="text-sm text-text-tertiary">
-                  <span className="font-medium text-text-primary">Voting:</span> 50%+1 (simple majority) required.
-                  <span className="ml-2 font-medium text-text-primary">Quorum:</span> 8/15 members.
-                  <span className="ml-2 font-medium text-text-primary">Operator:</span> Can override council decision (logged).
-                </p>
-              </Card>
+
+              {/* Agent cross-reference */}
+              <div className="mt-6 rounded-xl border border-border-muted bg-bg-secondary p-4">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-ari-purple-muted text-sm">
+                    ⬡
+                  </div>
+                  <div className="flex-1">
+                    <div className="text-sm font-medium text-text-secondary">
+                      Governs 5 Execution Agents
+                    </div>
+                    <div className="text-xs text-text-muted">
+                      Council members vote on policies and permissions that control the operational agents.
+                    </div>
+                  </div>
+                  <span className="text-xs text-ari-purple">View Agents →</span>
+                </div>
+              </div>
             </section>
 
             {/* Constitutional Rules */}
