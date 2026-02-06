@@ -1,18 +1,54 @@
 import { randomUUID } from 'crypto';
 import type { AuditLogger } from '../kernel/audit.js';
 import type { EventBus } from '../kernel/event-bus.js';
-import type { AgentId, Vote, VoteOption, VoteThreshold, VetoDomain } from '../kernel/types.js';
+import type { AgentId, Vote, VoteOption, VoteThreshold, VetoDomain, CouncilPillar } from '../kernel/types.js';
 import { VOTING_AGENTS, VETO_AUTHORITY } from '../kernel/types.js';
-import { COUNCIL_MEMBERS, canVeto } from './council-members.js';
-import type {
-  DeliberationResult,
-  ProposalAnalysis,
-} from './council-deliberation.js';
-import {
-  DeliberationEngine,
-  OutcomeTracker,
-} from './council-deliberation.js';
-import { SOULManager } from './soul.js';
+
+/**
+ * Voting behavior style
+ */
+type VotingStyle = 'cautious' | 'balanced' | 'progressive';
+
+/**
+ * A Council member's simple definition.
+ */
+interface CouncilMember {
+  id: AgentId;
+  name: string;
+  avatar: string;
+  pillar: CouncilPillar;
+  votingStyle: VotingStyle;
+}
+
+/**
+ * The 15 Council Members — Simplified inline definition
+ * Only voting agents are included (non-voting agents like 'core', 'arbiter', etc. are excluded)
+ */
+const COUNCIL_MEMBERS: Partial<Record<AgentId, CouncilMember>> = {
+  router: { id: 'router', name: 'ATLAS', avatar: '🧭', pillar: 'infrastructure', votingStyle: 'balanced' },
+  executor: { id: 'executor', name: 'BOLT', avatar: '⚡', pillar: 'infrastructure', votingStyle: 'progressive' },
+  memory_keeper: { id: 'memory_keeper', name: 'ECHO', avatar: '📚', pillar: 'infrastructure', votingStyle: 'cautious' },
+  guardian: { id: 'guardian', name: 'AEGIS', avatar: '🛡️', pillar: 'protection', votingStyle: 'cautious' },
+  risk_assessor: { id: 'risk_assessor', name: 'SCOUT', avatar: '📊', pillar: 'protection', votingStyle: 'cautious' },
+  planner: { id: 'planner', name: 'TRUE', avatar: '🎯', pillar: 'strategy', votingStyle: 'balanced' },
+  scheduler: { id: 'scheduler', name: 'TEMPO', avatar: '⏰', pillar: 'strategy', votingStyle: 'balanced' },
+  resource_manager: { id: 'resource_manager', name: 'OPAL', avatar: '💎', pillar: 'strategy', votingStyle: 'cautious' },
+  wellness: { id: 'wellness', name: 'PULSE', avatar: '💚', pillar: 'domains', votingStyle: 'cautious' },
+  relationships: { id: 'relationships', name: 'EMBER', avatar: '🤝', pillar: 'domains', votingStyle: 'balanced' },
+  creative: { id: 'creative', name: 'PRISM', avatar: '✨', pillar: 'domains', votingStyle: 'progressive' },
+  wealth: { id: 'wealth', name: 'MINT', avatar: '💰', pillar: 'domains', votingStyle: 'cautious' },
+  growth: { id: 'growth', name: 'BLOOM', avatar: '🌱', pillar: 'domains', votingStyle: 'progressive' },
+  ethics: { id: 'ethics', name: 'VERA', avatar: '⚖️', pillar: 'meta', votingStyle: 'cautious' },
+  integrator: { id: 'integrator', name: 'NEXUS', avatar: '🔗', pillar: 'meta', votingStyle: 'balanced' },
+};
+
+/**
+ * Check if an agent has veto authority for a domain.
+ */
+function canVeto(agentId: AgentId, domain: VetoDomain): boolean {
+  const domains = VETO_AUTHORITY[agentId];
+  return domains ? domains.includes(domain) : false;
+}
 
 interface CreateVoteRequest {
   topic: string;
@@ -76,10 +112,6 @@ export class Council {
   private votes: Map<string, Vote> = new Map();
   private vetoes: Map<string, VetoRecord> = new Map();
 
-  // Deliberation engine — enriches votes with SOUL + cognitive analysis
-  private deliberationEngine: DeliberationEngine;
-  private deliberationResults: Map<string, DeliberationResult> = new Map();
-
   // 15-member thresholds
   private readonly COUNCIL_SIZE = 15;
   private readonly QUORUM_PERCENTAGE = 0.5; // 50% = 8 members
@@ -97,41 +129,7 @@ export class Council {
   constructor(
     private auditLogger: AuditLogger,
     private eventBus: EventBus
-  ) {
-    const outcomeTracker = new OutcomeTracker(eventBus, auditLogger);
-    this.deliberationEngine = new DeliberationEngine(eventBus, auditLogger, outcomeTracker);
-  }
-
-  /**
-   * Initialize SOUL-driven deliberation.
-   * Call this after construction to load SOUL personalities.
-   */
-  async initializeDeliberation(soulsPath?: string): Promise<void> {
-    const soulManager = new SOULManager(soulsPath);
-    await soulManager.loadSouls();
-    this.deliberationEngine.setSoulManager(soulManager);
-  }
-
-  /**
-   * Set a custom SOULManager (useful for testing).
-   */
-  setSoulManager(soulManager: SOULManager): void {
-    this.deliberationEngine.setSoulManager(soulManager);
-  }
-
-  /**
-   * Get the deliberation engine (for external access).
-   */
-  getDeliberationEngine(): DeliberationEngine {
-    return this.deliberationEngine;
-  }
-
-  /**
-   * Get the outcome tracker (for recording results).
-   */
-  getOutcomeTracker(): OutcomeTracker {
-    return this.deliberationEngine.getOutcomeTracker();
-  }
+  ) {}
 
   /**
    * Creates a new vote.
@@ -160,16 +158,7 @@ export class Council {
 
     this.votes.set(voteId, vote);
 
-    // Run deliberation analysis on the proposal
-    const deliberationResult = this.deliberationEngine.deliberate({
-      topic: request.topic,
-      description: request.description,
-      domains: (request.domains as string[]) ?? [],
-      initiatedBy: request.initiated_by,
-    });
-    this.deliberationResults.set(voteId, deliberationResult);
-
-    // Audit the vote creation (enriched with deliberation)
+    // Audit the vote creation
     void this.auditLogger.log(
       'vote:created',
       request.initiated_by,
@@ -181,12 +170,6 @@ export class Council {
         deadline: deadline.toISOString(),
         council_size: this.COUNCIL_SIZE,
         domains: request.domains,
-        deliberation: {
-          risk: deliberationResult.analysis.risk,
-          aggregate_recommendation: deliberationResult.aggregateRecommendation,
-          consensus_strength: deliberationResult.consensusStrength,
-          bias_warnings: deliberationResult.analysis.biasWarnings.length,
-        },
       }
     );
 
@@ -243,10 +226,6 @@ export class Council {
     const member = COUNCIL_MEMBERS[agent];
     const memberName = member?.name ?? agent;
 
-    // Get deliberation recommendation for this member (if available)
-    const deliberation = this.deliberationResults.get(voteId);
-    const memberDeliberation = deliberation?.recommendations.find(r => r.agentId === agent);
-
     // Record the vote
     vote.votes[agent] = {
       agent,
@@ -255,12 +234,7 @@ export class Council {
       timestamp: new Date().toISOString(),
     };
 
-    // Determine if vote aligns with deliberation recommendation
-    const alignsWithDeliberation = memberDeliberation
-      ? option.toLowerCase() === memberDeliberation.recommendation
-      : undefined;
-
-    // Audit the vote cast (enriched with deliberation context)
+    // Audit the vote cast
     void this.auditLogger.log(
       'vote:cast',
       agent,
@@ -272,14 +246,6 @@ export class Council {
         member_name: memberName,
         pillar: member?.pillar,
         voting_style: member?.votingStyle,
-        deliberation: memberDeliberation ? {
-          soul_recommendation: memberDeliberation.recommendation,
-          soul_confidence: memberDeliberation.confidence,
-          soul_consulted: memberDeliberation.soulConsulted,
-          domain_relevance: memberDeliberation.domainRelevance,
-          weighted_influence: memberDeliberation.weightedInfluence,
-          aligns_with_deliberation: alignsWithDeliberation,
-        } : undefined,
       }
     );
 
@@ -679,19 +645,6 @@ export class Council {
     return { members, totals };
   }
 
-  /**
-   * Get the deliberation result for a vote.
-   */
-  getDeliberation(voteId: string): DeliberationResult | undefined {
-    return this.deliberationResults.get(voteId);
-  }
-
-  /**
-   * Get the proposal analysis for a vote (shortcut).
-   */
-  getProposalAnalysis(voteId: string): ProposalAnalysis | undefined {
-    return this.deliberationResults.get(voteId)?.analysis;
-  }
 
   /**
    * Get Council statistics.
