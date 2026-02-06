@@ -1,6 +1,7 @@
 import type { AuditLogger } from '../kernel/audit.js';
 import type { EventBus } from '../kernel/event-bus.js';
 import type { Message, TrustLevel } from '../kernel/types.js';
+import { getCognitionLayer } from '../cognition/index.js';
 
 type ThreatLevel = 'none' | 'low' | 'medium' | 'high' | 'critical';
 
@@ -10,6 +11,11 @@ interface ThreatAssessment {
   patterns_detected: string[];
   should_block: boolean;
   should_escalate: boolean;
+  details?: {
+    cognitive_biases?: string[];
+    cognitive_risk?: string;
+    [key: string]: unknown;
+  };
 }
 
 interface SourceBaseline {
@@ -334,6 +340,77 @@ export class Guardian {
    */
   private getSourceKey(source: TrustLevel): string {
     return `trust:${source}`;
+  }
+
+  /**
+   * Enhanced threat assessment with cognitive layer augmentation.
+   * Falls back to standard assessThreat() if cognitive layer unavailable.
+   *
+   * This method augments security analysis with bias detection to identify
+   * social engineering patterns that traditional injection detection misses.
+   *
+   * @param content - Message content to assess
+   * @param source - Trust level of the message source
+   * @returns Enhanced threat assessment with cognitive insights
+   */
+  async assessThreatEnhanced(content: string, source: TrustLevel): Promise<ThreatAssessment> {
+    // Get the baseline assessment from synchronous method
+    const assessment = this.assessThreat(content, source);
+
+    // Augment with cognitive analysis if available
+    try {
+      const cognition = getCognitionLayer(this.eventBus);
+
+      // Only proceed if cognition is initialized and ETHOS pillar is loaded
+      if (cognition.isInitialized() && cognition.ethos) {
+        const biasAnalysis = await cognition.ethos.detectCognitiveBias(content, {
+          domain: 'security'
+        });
+
+        // Social engineering often exploits cognitive biases
+        // High-risk biases indicate potential manipulation attempts
+        if (biasAnalysis.riskLevel === 'HIGH' || biasAnalysis.riskLevel === 'CRITICAL') {
+          // Increase risk score for bias-influenced content
+          assessment.risk_score = Math.min(1.0, assessment.risk_score + 0.1);
+          assessment.should_block = assessment.risk_score >= 0.8;
+
+          // Attach cognitive insights to assessment
+          assessment.details = {
+            ...assessment.details,
+            cognitive_biases: biasAnalysis.biasesDetected.map(b => b.type),
+            cognitive_risk: biasAnalysis.riskLevel,
+          };
+
+          // Log the cognitive threat detection
+          await this.auditLogger.log(
+            'guardian:cognitive_threat_detected',
+            'guardian',
+            'system',
+            {
+              content_preview: content.substring(0, 100),
+              source,
+              biases: biasAnalysis.biasesDetected.map(b => b.type),
+              risk_level: biasAnalysis.riskLevel,
+              adjusted_risk_score: assessment.risk_score,
+            }
+          );
+        }
+      }
+    } catch (error) {
+      // Cognitive layer is optional — baseline assessment stands
+      // Log error but don't fail the threat assessment
+      await this.auditLogger.log(
+        'guardian:cognitive_enhancement_failed',
+        'guardian',
+        'system',
+        {
+          error: error instanceof Error ? error.message : String(error),
+          fallback: 'using baseline assessment',
+        }
+      );
+    }
+
+    return assessment;
   }
 
   /**

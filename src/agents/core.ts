@@ -11,7 +11,7 @@ import type { LearningMachine } from './learning-machine.js';
 import type { SOULManager } from '../governance/soul.js';
 import type { ContextLayerManager } from '../system/context-layers.js';
 
-interface OrchestratorConfig {
+interface CoreConfig {
   guardian: Guardian;
   memoryManager: MemoryManager;
   executor: Executor;
@@ -72,7 +72,7 @@ export class Core {
   constructor(
     auditLogger: AuditLogger,
     eventBus: EventBus,
-    config: OrchestratorConfig
+    config: CoreConfig
   ) {
     this.auditLogger = auditLogger;
     this.eventBus = eventBus;
@@ -359,8 +359,8 @@ export class Core {
       }
     }
 
-    // Step 1: Guardian threat assessment
-    const assessment = this.guardian.assessThreat(message.content, message.source);
+    // Step 1: Guardian threat assessment (with cognitive enhancement)
+    const assessment = await this.guardian.assessThreatEnhanced(message.content, message.source);
 
     // Step 2: Apply SOUL influence if available
     let soulInfluence: { confidence: number; reasoning: string } | undefined;
