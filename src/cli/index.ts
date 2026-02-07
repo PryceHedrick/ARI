@@ -14,6 +14,9 @@ import { createAuditReportCommand } from './commands/audit-report.js';
 import { registerBudgetCommand } from './commands/budget.js';
 import { registerChatCommand } from './commands/chat.js';
 import { registerAskCommand } from './commands/ask.js';
+import { registerTaskCommand } from './commands/task.js';
+import { registerNoteCommand } from './commands/note.js';
+import { registerRemindCommand } from './commands/remind.js';
 
 const program = new Command();
 
@@ -36,5 +39,8 @@ program.addCommand(createAuditReportCommand());
 registerBudgetCommand(program);
 registerChatCommand(program);
 registerAskCommand(program);
+registerTaskCommand(program);
+registerNoteCommand(program);
+registerRemindCommand(program);
 
 program.parse();
