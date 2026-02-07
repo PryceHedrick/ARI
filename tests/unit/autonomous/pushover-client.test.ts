@@ -87,17 +87,11 @@ describe('PushoverClient (Permanently Disabled)', () => {
       expect(result).toBe(false);
     });
 
-    it('should log disabled message to console', async () => {
-      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    it('should return false when disabled (no logging)', async () => {
+      const result = await client.send('Test', { title: 'Title' });
 
-      await client.send('Test', { title: 'Title' });
-
-      expect(consoleSpy).toHaveBeenCalledWith(
-        '[PUSHOVER DISABLED] Would have sent:',
-        'Title'
-      );
-
-      consoleSpy.mockRestore();
+      expect(result).toBe(false);
+      expect(mockFetch).not.toHaveBeenCalled();
     });
   });
 

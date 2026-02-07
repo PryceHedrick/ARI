@@ -12,6 +12,12 @@ import { createAutonomousCommand } from './commands/autonomous.js';
 import { createKnowledgeCommand } from './commands/knowledge.js';
 import { createAuditReportCommand } from './commands/audit-report.js';
 import { registerBudgetCommand } from './commands/budget.js';
+import { registerChatCommand } from './commands/chat.js';
+import { registerAskCommand } from './commands/ask.js';
+import { registerTaskCommand } from './commands/task.js';
+import { registerNoteCommand } from './commands/note.js';
+import { registerRemindCommand } from './commands/remind.js';
+import { registerPlanCommand } from './commands/plan.js';
 
 const program = new Command();
 
@@ -32,5 +38,11 @@ program.addCommand(createAutonomousCommand());
 program.addCommand(createKnowledgeCommand());
 program.addCommand(createAuditReportCommand());
 registerBudgetCommand(program);
+registerChatCommand(program);
+registerAskCommand(program);
+registerTaskCommand(program);
+registerNoteCommand(program);
+registerRemindCommand(program);
+registerPlanCommand(program);
 
 program.parse();

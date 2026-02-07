@@ -237,23 +237,21 @@ describe('AutonomousAgent', () => {
 
   describe('start()', () => {
     it('should return early if disabled', async () => {
-      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-
       await agent.start();
 
-      expect(consoleSpy).toHaveBeenCalledWith('Autonomous agent is disabled in config');
-      consoleSpy.mockRestore();
+      // Agent remains disabled, no polling starts
+      const status = agent.getStatus();
+      expect(status.running).toBe(false);
     });
 
     it('should start polling when enabled', async () => {
       mockReadFile.mockResolvedValueOnce(JSON.stringify({ enabled: true }));
 
-      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-
       await agent.start();
 
-      expect(consoleSpy).toHaveBeenCalledWith('Autonomous agent started');
-      consoleSpy.mockRestore();
+      // Agent should be running after start
+      const status = agent.getStatus();
+      expect(status.running).toBe(true);
     });
 
     it('should not start twice', async () => {
@@ -281,14 +279,10 @@ describe('AutonomousAgent', () => {
     it('should stop the agent', async () => {
       mockReadFile.mockResolvedValue(JSON.stringify({ enabled: true }));
 
-      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-
       await agent.start();
       await agent.stop();
 
-      expect(consoleSpy).toHaveBeenCalledWith('Autonomous agent stopped');
       expect(mockEventBusEmit).toHaveBeenCalledWith('agent:stopped', expect.any(Object));
-      consoleSpy.mockRestore();
     });
 
     it('should do nothing if not running', async () => {
@@ -360,13 +354,11 @@ describe('AutonomousAgent', () => {
 
       await agent.start();
 
-      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-
       await agent.updateConfig({ pollIntervalMs: 10000 });
 
-      expect(consoleSpy).toHaveBeenCalledWith('Autonomous agent stopped');
-      expect(consoleSpy).toHaveBeenCalledWith('Autonomous agent started');
-      consoleSpy.mockRestore();
+      // Agent should still be running after config update
+      const status = agent.getStatus();
+      expect(status.running).toBe(true);
     });
   });
 
@@ -502,14 +494,16 @@ describe('AutonomousAgent', () => {
     it('should handle poll errors', async () => {
       mockPushoverFetchMessages.mockRejectedValueOnce(new Error('Network error'));
 
-      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-
       await agent.start();
+
+      const errorsBefore = agent.getStatus().errors;
+
       await vi.advanceTimersByTimeAsync(100);
 
-      expect(consoleErrorSpy).toHaveBeenCalledWith('Poll error:', expect.any(Error));
+      // Error count should increment when poll fails
+      const errorsAfter = agent.getStatus().errors;
+      expect(errorsAfter).toBeGreaterThan(errorsBefore);
 
-      consoleErrorSpy.mockRestore();
       await agent.stop();
     });
 

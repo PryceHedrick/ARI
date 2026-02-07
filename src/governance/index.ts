@@ -27,10 +27,3 @@ export type {
   ReviewType,
   ReviewOptions,
 } from './plan-reviewer.js';
-export { SOULManager } from './soul.js';
-export type {
-  SOULIdentity,
-  VotingStyle,
-  DecisionContext,
-  InfluencedDecision,
-} from './soul.js';

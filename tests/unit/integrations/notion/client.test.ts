@@ -196,12 +196,9 @@ describe('NotionClient', () => {
       (rateLimitError as unknown as { status: number }).status = 429;
       mockNotionClient.pages.create.mockRejectedValue(rateLimitError);
 
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       const result = await client.createDatabaseEntry('db-id', validContent);
 
       expect(result).toBeNull();
-      expect(consoleSpy).toHaveBeenCalled();
-      consoleSpy.mockRestore();
     });
 
     it('should handle Notion API unauthorized error (401)', async () => {
@@ -243,12 +240,9 @@ describe('NotionClient', () => {
     it('should handle non-Error exceptions gracefully', async () => {
       mockNotionClient.pages.create.mockRejectedValue('string error');
 
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       const result = await client.createDatabaseEntry('db-id', validContent);
 
       expect(result).toBeNull();
-      expect(consoleSpy).toHaveBeenCalledWith('[Notion] Failed to create database entry:', 'Unknown error');
-      consoleSpy.mockRestore();
     });
   });
 

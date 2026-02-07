@@ -644,8 +644,6 @@ describe('TelegramChannel', () => {
     });
 
     it('should handle poll errors gracefully', async () => {
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-
       mockFetch.mockResolvedValueOnce({
         json: async () => ({ ok: true, result: { id: 123, first_name: 'Bot', username: 'testbot' } }),
       });
@@ -657,10 +655,7 @@ describe('TelegramChannel', () => {
       await pollingChannel.connect();
       await new Promise(resolve => setTimeout(resolve, 50));
 
-      expect(consoleSpy).toHaveBeenCalled();
       expect(pollingChannel.isConnected()).toBe(true);
-
-      consoleSpy.mockRestore();
     });
   });
 

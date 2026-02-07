@@ -18,6 +18,9 @@ import * as Storage from '../../system/storage.js';
 import { AutonomousAgent } from '../../autonomous/agent.js';
 import { dailyAudit } from '../../autonomous/daily-audit.js';
 
+// AI Orchestrator — the unified LLM pipeline
+import { AIOrchestrator } from '../../ai/orchestrator.js';
+
 // Budget and analytics components
 import { CostTracker } from '../../observability/cost-tracker.js';
 import { ApprovalQueue } from '../../autonomous/approval-queue.js';
@@ -97,6 +100,27 @@ export function registerGatewayCommand(program: Command): void {
       const adaptiveLearner = new AdaptiveLearner(eventBus);
       console.log('Budget and analytics components initialized');
 
+      // Initialize AI Orchestrator if API key is available
+      let aiOrchestrator: AIOrchestrator | null = null;
+      const apiKey = process.env.ANTHROPIC_API_KEY;
+      if (apiKey) {
+        try {
+          aiOrchestrator = new AIOrchestrator(eventBus, {
+            apiKey,
+            defaultModel: 'claude-sonnet-4',
+            costTracker,
+          });
+          core.setAIProvider(aiOrchestrator);
+          console.log('AI Orchestrator initialized — intelligent message processing enabled');
+        } catch (error) {
+          console.warn('AI Orchestrator failed to initialize:', error);
+          console.warn('ARI will continue without AI-powered responses');
+        }
+      } else {
+        console.log('No ANTHROPIC_API_KEY found — AI responses disabled');
+        console.log('Set ANTHROPIC_API_KEY to enable intelligent message processing');
+      }
+
       // Initialize heartbeat monitor
       const heartbeat = new HeartbeatMonitor(eventBus);
       heartbeat.register('gateway', 'kernel', async () => ({ status: 'up' }));
@@ -123,6 +147,8 @@ export function registerGatewayCommand(program: Command): void {
             memoryManager,
             executor,
             storage: Storage,
+            // AI Orchestrator
+            aiOrchestrator,
             // Budget and analytics
             costTracker,
             approvalQueue,
@@ -152,6 +178,11 @@ export function registerGatewayCommand(program: Command): void {
         try {
           // Stop autonomous agent first
           await autonomousAgent.stop();
+
+          // Shutdown AI Orchestrator
+          if (aiOrchestrator) {
+            await aiOrchestrator.shutdown();
+          }
 
           // Shutdown persistence layers
           await memoryManager.shutdown();
