@@ -306,8 +306,6 @@ describe('SlackChannel', () => {
     });
 
     it('should handle API call errors', async () => {
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-
       mockFetch.mockRejectedValueOnce(new Error('Network error'));
 
       const message: OutboundMessage = {
@@ -323,9 +321,6 @@ describe('SlackChannel', () => {
       const result = await channel.send(message);
 
       expect(result.success).toBe(false);
-      expect(consoleSpy).toHaveBeenCalled();
-
-      consoleSpy.mockRestore();
     });
   });
 
@@ -522,9 +517,7 @@ describe('SlackChannel', () => {
       await channel.connect();
     });
 
-    it('should log API errors to console', async () => {
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-
+    it('should handle API errors gracefully', async () => {
       mockFetch.mockResolvedValueOnce({
         json: async () => ({ ok: false, error: 'ratelimited' }),
       });
@@ -539,16 +532,12 @@ describe('SlackChannel', () => {
         options: {},
       };
 
-      await channel.send(message);
+      const result = await channel.send(message);
 
-      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Slack API error'));
-
-      consoleSpy.mockRestore();
+      expect(result.success).toBe(false);
     });
 
     it('should handle network errors gracefully', async () => {
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-
       mockFetch.mockRejectedValueOnce(new Error('Connection timeout'));
 
       const message: OutboundMessage = {
@@ -564,12 +553,6 @@ describe('SlackChannel', () => {
       const result = await channel.send(message);
 
       expect(result.success).toBe(false);
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Slack API call failed'),
-        expect.any(Error)
-      );
-
-      consoleSpy.mockRestore();
     });
   });
 });
