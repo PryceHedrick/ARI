@@ -488,6 +488,20 @@ export interface EventMap {
   'telegram:rate_limited': { userId: number; chatId: number; timestamp: string };
   'telegram:bot_started': { botUsername: string; timestamp: string };
   'telegram:bot_stopped': { reason: string; timestamp: string };
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // KNOWLEDGE MANAGEMENT events (Cognitive Layer)
+  // ═══════════════════════════════════════════════════════════════════════
+  'knowledge:source_fetched': { sourceId: string; contentLength: number; timestamp: string };
+  'knowledge:validated': { sourceId: string; contentId: string; passed: boolean; stage: string; stageNumber: number };
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // LEARNING LOOP events (Cognitive Layer)
+  // ═══════════════════════════════════════════════════════════════════════
+  'learning:review_complete': { grade: string; successRate: number; decisionsCount: number; timestamp: string };
+  'learning:gap_identified': { gapCount: number; topGapSeverity: string; timestamp: string };
+  'learning:assessment_complete': { grade: string; overallImprovement: number; trend: string; timestamp: string };
+  'learning:improvement_measured': { metric: string; previous: number; current: number; change: number };
 }
 
 /**
