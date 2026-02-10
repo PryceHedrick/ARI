@@ -18,6 +18,8 @@ import { registerTaskCommand } from './commands/task.js';
 import { registerNoteCommand } from './commands/note.js';
 import { registerRemindCommand } from './commands/remind.js';
 import { registerPlanCommand } from './commands/plan.js';
+import { registerPluginCommand } from './commands/plugin.js';
+import { registerProviderCommand } from './commands/provider.js';
 
 const program = new Command();
 
@@ -44,5 +46,7 @@ registerTaskCommand(program);
 registerNoteCommand(program);
 registerRemindCommand(program);
 registerPlanCommand(program);
+registerPluginCommand(program);
+registerProviderCommand(program);
 
 program.parse();

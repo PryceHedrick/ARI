@@ -430,6 +430,32 @@ export interface EventMap {
   // ── Web Navigation events (simplified) ─────────────────────────────────
   'web:navigate': { callId: string; url: string; action: string; agent: AgentId; trustLevel: TrustLevel; timestamp: Date };
   'web:error': { callId: string; url: string; action: string; error: string; timestamp: Date };
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // PROVIDER LIFECYCLE events (Multi-Model LLM Routing)
+  // ═══════════════════════════════════════════════════════════════════════
+  'provider:connected': { providerId: string; models: string[]; latencyMs: number };
+  'provider:disconnected': { providerId: string; reason: string };
+  'provider:error': { providerId: string; error: string; model: string; retryable: boolean };
+  'provider:health_changed': { providerId: string; status: 'healthy' | 'degraded' | 'down' };
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // CASCADE ROUTING events (FrugalGPT)
+  // ═══════════════════════════════════════════════════════════════════════
+  'cascade:started': { chain: string; queryLength: number };
+  'cascade:step_complete': { chain: string; step: number; model: string; quality: number; escalated: boolean; costCents: number };
+  'cascade:complete': { chain: string; finalModel: string; totalSteps: number; totalCostCents: number; durationMs: number };
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // PLUGIN SYSTEM events
+  // ═══════════════════════════════════════════════════════════════════════
+  'plugin:registered': { pluginId: string; name: string; capabilities: string[] };
+  'plugin:initialized': { pluginId: string; durationMs: number };
+  'plugin:error': { pluginId: string; error: string; fatal: boolean };
+  'plugin:shutdown': { pluginId: string };
+  'plugin:health_changed': { pluginId: string; healthy: boolean; details?: string };
+  'plugin:briefing_contributed': { pluginId: string; section: string; type: 'morning' | 'evening' | 'weekly' };
+  'plugin:alert_generated': { pluginId: string; severity: 'info' | 'warning' | 'critical'; title: string };
 }
 
 /**
