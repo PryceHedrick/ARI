@@ -49,6 +49,7 @@ EXCLUDE_PATTERNS=(
     "package.json"         # Author field belongs here
     "CLAUDE.md"            # Creator credit belongs here
     "CONTRIBUTING.md"      # May reference creator
+    ".claude"              # Claude Code local config (not committed)
 )
 
 # Build exclude arguments for grep

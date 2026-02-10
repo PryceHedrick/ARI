@@ -49,6 +49,9 @@ export { ChannelRegistry } from './registry.js';
 // Router
 export { ChannelRouter, type MessageHandler } from './router.js';
 
+// Bridge (connects channels → AI → reply)
+export { MessageBridge } from './message-bridge.js';
+
 // Middleware
 export {
   RateLimiter,

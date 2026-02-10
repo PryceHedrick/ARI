@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import 'dotenv/config';
 import { Command } from 'commander';
 import { registerGatewayCommand } from './commands/gateway.js';
 import { registerAuditCommand } from './commands/audit.js';

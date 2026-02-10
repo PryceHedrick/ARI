@@ -20,6 +20,8 @@ import { dailyAudit } from '../../autonomous/daily-audit.js';
 
 // AI Orchestrator — the unified LLM pipeline
 import { AIOrchestrator } from '../../ai/orchestrator.js';
+import { ProviderRegistry } from '../../ai/provider-registry.js';
+import { ModelRegistry } from '../../ai/model-registry.js';
 
 // Budget and analytics components
 import { CostTracker } from '../../observability/cost-tracker.js';
@@ -107,33 +109,40 @@ export function registerGatewayCommand(program: Command): void {
       const cognitionLayer = await initializeCognition(eventBus);
       console.log('Cognitive Layer 0 initialized');
 
-      // Initialize AI Orchestrator if API key is available
+      // Initialize AI Orchestrator with multi-provider support
       let aiOrchestrator: AIOrchestrator | null = null;
-      const apiKey = process.env.ANTHROPIC_API_KEY;
-      if (apiKey) {
-        try {
+      try {
+        const modelRegistry = new ModelRegistry();
+        const providerRegistry = new ProviderRegistry(eventBus, modelRegistry);
+        await providerRegistry.registerFromEnv();
+
+        const activeProviders = providerRegistry.getActiveProviders();
+        if (activeProviders.length > 0) {
           aiOrchestrator = new AIOrchestrator(eventBus, {
-            apiKey,
+            providerRegistry,
             defaultModel: 'claude-sonnet-4',
             costTracker,
           });
           core.setAIProvider(aiOrchestrator);
-          console.log('AI Orchestrator initialized — intelligent message processing enabled');
-        } catch (error) {
-          console.warn('AI Orchestrator failed to initialize:', error);
-          console.warn('ARI will continue without AI-powered responses');
+          console.log(`AI Orchestrator initialized — ${activeProviders.length} provider(s): ${activeProviders.join(', ')}`);
+        } else {
+          console.log('No LLM API keys found — AI responses disabled');
+          console.log('Add keys to .env: ANTHROPIC_API_KEY, OPENAI_API_KEY, GOOGLE_AI_API_KEY, XAI_API_KEY');
         }
-      } else {
-        console.log('No ANTHROPIC_API_KEY found — AI responses disabled');
-        console.log('Set ANTHROPIC_API_KEY to enable intelligent message processing');
+      } catch (error) {
+        console.warn('AI Orchestrator failed to initialize:', error);
+        console.warn('ARI will continue without AI-powered responses');
       }
 
       // Initialize heartbeat monitor
       const heartbeat = new HeartbeatMonitor(eventBus);
+      // eslint-disable-next-line @typescript-eslint/require-await
       heartbeat.register('gateway', 'kernel', async () => ({ status: 'up' }));
+      // eslint-disable-next-line @typescript-eslint/require-await
       heartbeat.register('audit', 'kernel', async () => ({
         entries: audit.getEvents().length,
       }));
+      // eslint-disable-next-line @typescript-eslint/require-await
       heartbeat.register('memory', 'agent', async () => ({
         entries: memoryManager.getStats().total_entries,
       }));
@@ -293,7 +302,7 @@ export function registerGatewayCommand(program: Command): void {
 
       try {
         const response = await fetch(url);
-        const data = await response.json();
+        const data: unknown = await response.json();
         console.log('Gateway Status:');
         console.log(JSON.stringify(data, null, 2));
       } catch {

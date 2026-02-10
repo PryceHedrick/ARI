@@ -16,6 +16,7 @@ import { Audit } from './pages/Audit';
 import { Cognition } from './pages/Cognition';
 import { E2E } from './pages/E2E';
 import { Budget } from './pages/Budget';
+import { Chat } from './pages/Chat';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -53,6 +54,8 @@ function AppContent() {
         return <E2E />;
       case 'budget':
         return <Budget />;
+      case 'chat':
+        return <Chat />;
       default:
         return <Home />;
     }
