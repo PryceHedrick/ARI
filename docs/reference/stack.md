@@ -327,7 +327,7 @@ jobs:
 |-----------|--------|--------|
 | Dashboard JS | <300KB | 258KB |
 | Dashboard CSS | <20KB | 16KB |
-| dist/ total | <2MB | TBD |
+| dist/ total | <2MB | 4.5MB |
 
 ---
 

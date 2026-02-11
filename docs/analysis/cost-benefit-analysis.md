@@ -924,7 +924,7 @@ Autonomous: No
 Context persistence: No
 Deliverables: No
 Value: Limited to coding time
-Net: +$XXX (hard to quantify)
+Net: Difficult to quantify (no autonomous capabilities)
 ```
 
 **Conclusion:** ARI Autonomous (Balanced) provides best value at $75/month.
