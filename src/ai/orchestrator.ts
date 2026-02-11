@@ -19,6 +19,7 @@ import { CircuitBreaker } from './circuit-breaker.js';
 import { ResponseEvaluator } from './response-evaluator.js';
 import { PromptAssembler } from './prompt-assembler.js';
 import type { PerformanceTracker } from './performance-tracker.js';
+import { RequestClassifier } from './request-classifier.js';
 
 /**
  * AIPolicyGovernor interface for dependency injection.
@@ -88,6 +89,7 @@ export class AIOrchestrator {
   private readonly circuitBreaker: CircuitBreaker;
   private readonly evaluator: ResponseEvaluator;
   private readonly assembler: PromptAssembler;
+  private readonly classifier: RequestClassifier;
   private readonly featureFlags: AIFeatureFlags;
   private readonly costTracker: CostTracker | null;
   private readonly policyGovernor: AIPolicyGovernorLike | null;
@@ -117,6 +119,9 @@ export class AIOrchestrator {
     this.assembler = new PromptAssembler(
       config.featureFlags?.AI_PROMPT_CACHING_ENABLED ?? true,
     );
+    this.classifier = new RequestClassifier({
+      performanceTracker: config.performanceTracker,
+    });
     this.featureFlags = AIFeatureFlagsSchema.parse(config.featureFlags ?? {});
     this.costTracker = config.costTracker ?? null;
     this.policyGovernor = config.policyGovernor ?? null;
@@ -132,17 +137,19 @@ export class AIOrchestrator {
     // Step 1: VALIDATE
     const validated = AIRequestSchema.parse({ ...request, requestId });
 
-    // Step 2: CLASSIFY
-    const complexity = this.scorer.classifyComplexity(
-      validated.content,
-      validated.category,
-    );
+    // Step 2: CLASSIFY (Multi-signal — replaces keyword-only classifier)
+    const classification = this.classifier.classify(validated);
+    const complexity = classification.complexity;
 
-    // Emit request received
+    // Emit request received with full classification data
     this.eventBus.emit('ai:request_received', {
       requestId,
       category: validated.category,
       complexity,
+      classificationScore: classification.score,
+      confidence: classification.confidence,
+      suggestedChain: classification.suggestedChain,
+      reasoning: classification.reasoning,
       agent: validated.agent,
       timestamp: new Date().toISOString(),
     });
@@ -230,7 +237,7 @@ export class AIOrchestrator {
           ? assembled.system[0].text
           : typeof assembled.system === 'string' ? assembled.system : undefined,
         messages: assembled.messages.map(m => ({
-          role: m.role as 'user' | 'assistant',
+          role: m.role,
           content: typeof m.content === 'string' ? m.content : JSON.stringify(m.content),
         })),
         maxTokens: assembled.maxTokens,
@@ -514,7 +521,7 @@ export class AIOrchestrator {
           ? assembled.system[0].text
           : typeof assembled.system === 'string' ? assembled.system : undefined,
         messages: assembled.messages.map(m => ({
-          role: m.role as 'user' | 'assistant',
+          role: m.role,
           content: typeof m.content === 'string' ? m.content : JSON.stringify(m.content),
         })),
         maxTokens: assembled.maxTokens,

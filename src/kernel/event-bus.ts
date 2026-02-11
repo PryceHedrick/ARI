@@ -361,6 +361,10 @@ export interface EventMap {
     requestId: string;
     category: string;
     complexity: string;
+    classificationScore: number;
+    confidence: number;
+    suggestedChain: string;
+    reasoning: string;
     agent: string;
     timestamp: string;
   };
