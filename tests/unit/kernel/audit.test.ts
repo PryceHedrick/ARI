@@ -77,6 +77,53 @@ describe('AuditLogger', () => {
     expect(checkpoint).toBeNull();
   });
 
+  it('should use explicit signing key when provided', () => {
+    const explicitLogger = new AuditLogger(testPath, { signingKey: 'test-key-123' });
+    // Explicit key means not persisted (used for testing)
+    expect(explicitLogger.isKeyPersisted()).toBe(false);
+  });
+
+  it('should attempt Keychain persistence when no key provided', () => {
+    // Default constructor tries Keychain on macOS, falls back to ephemeral
+    const defaultLogger = new AuditLogger(testPath);
+    // On macOS CI/local: may be true or false depending on Keychain access
+    // The important thing is it doesn't throw
+    expect(typeof defaultLogger.isKeyPersisted()).toBe('boolean');
+  });
+
+  it('should verify checkpoints across instances with same key', async () => {
+    const sharedKey = 'shared-test-key-for-persistence';
+    const logger1 = new AuditLogger(testPath, { signingKey: sharedKey });
+
+    await logger1.log('action_1', 'tester', 'system');
+    await logger1.log('action_2', 'tester', 'system');
+    await logger1.createCheckpoint();
+
+    // Simulate restart: new instance loads same data with same key
+    const logger2 = new AuditLogger(testPath, { signingKey: sharedKey });
+    await logger2.load();
+
+    const result = logger2.verifyCheckpoints();
+    expect(result.valid).toBe(true);
+    expect(result.checked).toBe(1);
+  });
+
+  it('should detect checkpoint mismatch with different key', async () => {
+    const logger1 = new AuditLogger(testPath, { signingKey: 'key-session-1' });
+
+    await logger1.log('action_1', 'tester', 'system');
+    await logger1.createCheckpoint();
+
+    // Simulate restart with DIFFERENT key (the old vulnerability)
+    const logger2 = new AuditLogger(testPath, { signingKey: 'key-session-2' });
+    await logger2.load();
+
+    const result = logger2.verifyCheckpoints();
+    expect(result.valid).toBe(false);
+    expect(result.mismatches).toHaveLength(1);
+    expect(result.mismatches[0].field).toBe('signature');
+  });
+
   it('should log and retrieve security events', async () => {
     await logger.log('normal_action', 'user', 'standard');
     await logger.logSecurity({

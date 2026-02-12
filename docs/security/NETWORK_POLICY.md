@@ -46,7 +46,7 @@ All outbound connections:
 
 ## Enforcement Points
 
-### Inbound (Gateway)
+### Inbound (Gateway) — Hardcoded Constant
 
 Enforced in `src/kernel/gateway.ts:20`:
 ```typescript
@@ -63,18 +63,29 @@ export const RULE_LOOPBACK_ONLY = Object.freeze({
 
 Enforced by pre-commit hook: any file containing `0.0.0.0` binding is blocked.
 
-### Outbound (Integration Layer)
+**Where is this enforced?** In code as a hardcoded constant. Not in config. Not in the PolicyEngine. It's a `private readonly` property — unchangeable at runtime, unchangeable by configuration, blocked at commit time by hooks.
 
-Outbound calls happen through:
+### Outbound (Integration Layer) — Code-Level Per-Integration
+
+Outbound calls happen through specific integration modules:
 - `src/integrations/telegram/sender.ts` — Telegram Bot API
 - `src/ai/orchestrator.ts` — AI provider routing
 - Notion client (when enabled)
+
+**Where is the allowlist enforced?** In code, per integration module. Each module has its API base URL as a constant (e.g., `https://api.telegram.org`). There is no central "allowlist config file" — the allowlist is the set of integration modules that exist in the codebase. Adding a new outbound destination requires writing new code and passing code review.
 
 Each integration:
 1. Validates credentials exist before attempting connection
 2. Has rate limiting (e.g., Telegram: 30 messages/hour)
 3. Logs all outbound calls to the audit trail
 4. Fails gracefully if the service is unreachable
+
+### What Happens if a DNS/IP Changes
+
+ARI connects to services by domain name (e.g., `api.telegram.org`), not by IP address. If a service's IP changes:
+- **Normal DNS change**: Transparent. Node.js resolves DNS on each connection. No ARI change needed.
+- **Domain takeover**: ARI would connect to the new server. Mitigated by TLS — the attacker would need the service's TLS certificate to complete the handshake. API keys provide a second layer (the attacker can't forge valid API responses without them).
+- **DNS poisoning on the Mac Mini**: The attacker could redirect ARI to a fake endpoint. Mitigated by TLS certificate validation (Node.js verifies certificates by default). ARI would get a TLS error, log it, and fail gracefully.
 
 ## What ARI Cannot Do
 

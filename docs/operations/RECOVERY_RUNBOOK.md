@@ -218,6 +218,26 @@ scripts/macos/install.sh
 | Source code | `~/ARI/` | Git (not backup script) |
 | Environment | `~/ARI/.env` | No (contains secrets) |
 
+## Safe Mode Boot
+
+If a critical subsystem is broken on startup, ARI should degrade gracefully instead of crashing or running without safety checks.
+
+| Subsystem Failure | Safe Mode Behavior |
+|-------------------|--------------------|
+| Audit chain fails verification | Start with **no tool execution**. Log-only mode. P0 alert. |
+| PolicyEngine fails to initialize | Start **read-only**. No write/execute tools. P0 alert. |
+| Budget state corrupted | Default to **conservative** profile ($1/day). P1 alert. |
+| Keychain key unavailable | Use ephemeral signing key. Log warning. Checkpoint signatures won't survive next restart. |
+| Telegram unavailable | Start normally. Log warnings. Alerts go to local log only. |
+
+**Principle**: If a safety system is broken, restrict capabilities — don't disable safety.
+
+```bash
+# Check if ARI started in safe mode
+curl http://127.0.0.1:3141/health
+# Look for "safeMode": true in the response
+```
+
 ## Emergency Contacts
 
 If ARI sends a P0 alert:

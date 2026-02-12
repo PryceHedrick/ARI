@@ -64,6 +64,27 @@ When spending approaches limits, ARI automatically degrades service:
 | reduce | Essential only | Critical only | Batched | Cheapest available |
 | pause | None | None | Emergency only | N/A |
 
+## Essential Operations (Explicit List)
+
+When the budget reaches `reduce` level, only these operations are allowed:
+
+| Operation | Why It's Essential |
+|-----------|-------------------|
+| Respond to direct operator commands | The operator must always be able to control ARI |
+| Health check responses | Monitoring must continue to detect failures |
+| Security event processing | Threats don't pause for budgets |
+| Audit logging | Constitutional requirement — never paused |
+| P0/P1 alert delivery | Operator must know about critical issues |
+
+**Everything else is non-essential** during brownout:
+- Morning/evening briefings
+- Autonomous task execution
+- Proactive research
+- Non-critical scheduled tasks
+- Routine notifications (batched instead)
+
+This list is intentionally short. "Essential" must not expand over time — if something isn't on this list, it waits until the budget resets.
+
 ## Cost Tracking
 
 The `CostTracker` (`src/observability/cost-tracker.ts`) tracks:

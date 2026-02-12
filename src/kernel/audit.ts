@@ -1,3 +1,4 @@
+import { execFileSync } from 'child_process';
 import { createHash, createHmac, randomUUID } from 'crypto';
 import { promises as fs } from 'fs';
 import { homedir } from 'os';
@@ -42,8 +43,14 @@ export class AuditLogger {
   private readonly CHECKPOINT_INTERVAL: number;
   /** Signing key for checkpoint HMAC signatures */
   private readonly signingKey: string;
+  /** Whether the signing key is persisted (Keychain) or ephemeral (memory-only) */
+  private readonly keyPersisted: boolean;
   /** Events logged since last checkpoint */
   private eventsSinceCheckpoint = 0;
+
+  /** Keychain identifiers for the signing key */
+  private static readonly KEYCHAIN_SERVICE = 'ari-audit-signing-key';
+  private static readonly KEYCHAIN_ACCOUNT = 'ari';
 
   constructor(auditPath?: string, options?: { checkpointInterval?: number; signingKey?: string }) {
     // Resolve ~ to home directory
@@ -53,7 +60,71 @@ export class AuditLogger {
       : path;
     this.checkpointPath = this.auditPath.replace(/\.json$/, '-checkpoints.json');
     this.CHECKPOINT_INTERVAL = options?.checkpointInterval ?? 100;
-    this.signingKey = options?.signingKey ?? randomUUID() + randomUUID();
+
+    if (options?.signingKey) {
+      // Explicit key provided (e.g., testing) — use it directly
+      this.signingKey = options.signingKey;
+      this.keyPersisted = false;
+    } else {
+      // Production: load from macOS Keychain or generate + store
+      const result = AuditLogger.loadOrCreateSigningKey();
+      this.signingKey = result.key;
+      this.keyPersisted = result.persisted;
+    }
+  }
+
+  /**
+   * Loads the checkpoint signing key from macOS Keychain.
+   * If no key exists, generates a new one and stores it in Keychain.
+   * If Keychain is unavailable (non-macOS, permissions), falls back to ephemeral key.
+   *
+   * The Keychain is backed by the Secure Enclave on Apple Silicon and requires
+   * the user's login session to access — an attacker with only filesystem access
+   * cannot read or forge Keychain entries.
+   */
+  static loadOrCreateSigningKey(): { key: string; persisted: boolean } {
+    // Only macOS has the Keychain
+    if (process.platform !== 'darwin') {
+      return { key: randomUUID() + randomUUID(), persisted: false };
+    }
+
+    // Try to load existing key from Keychain
+    try {
+      const key = execFileSync(
+        'security',
+        ['find-generic-password', '-a', AuditLogger.KEYCHAIN_ACCOUNT, '-s', AuditLogger.KEYCHAIN_SERVICE, '-w'],
+        { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] }
+      ).trim();
+      if (key) {
+        return { key, persisted: true };
+      }
+    } catch {
+      // Key not found in Keychain — will generate new one
+    }
+
+    // Generate new key
+    const newKey = randomUUID() + randomUUID();
+
+    // Store in Keychain (add or update)
+    try {
+      execFileSync(
+        'security',
+        ['add-generic-password', '-a', AuditLogger.KEYCHAIN_ACCOUNT, '-s', AuditLogger.KEYCHAIN_SERVICE, '-w', newKey, '-U'],
+        { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] }
+      );
+      return { key: newKey, persisted: true };
+    } catch {
+      // Keychain unavailable — fall back to ephemeral key
+      return { key: newKey, persisted: false };
+    }
+  }
+
+  /**
+   * Returns whether the signing key is persisted in Keychain.
+   * If false, checkpoint signatures cannot be verified after restart.
+   */
+  isKeyPersisted(): boolean {
+    return this.keyPersisted;
   }
 
   /**

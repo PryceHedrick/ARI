@@ -73,7 +73,25 @@ Periodically (every 100 events by default), ARI creates a **checkpoint** — a s
 }
 ```
 
-The HMAC signature uses a key that only exists in the running process's memory. An attacker who replaces the audit file can't forge matching checkpoints because they don't have the signing key.
+The HMAC signature uses a key stored in macOS Keychain (backed by the Secure Enclave on Apple Silicon). An attacker who replaces the audit file can't forge matching checkpoints because:
+1. They don't have the signing key
+2. The key is in Keychain, not on the filesystem
+3. Keychain access requires the user's login session
+
+### Signing Key Persistence
+
+The signing key is stored in macOS Keychain under `ari-audit-signing-key`. This means:
+- **Key survives restarts** — same key is loaded each time ARI starts
+- **Key survives file replacement** — Keychain is separate from filesystem
+- **Key requires login** — only the logged-in user can access it
+
+On startup, ARI:
+1. Tries to load the key from Keychain
+2. If found: uses it (all old checkpoints remain verifiable)
+3. If not found: generates a new key and stores it in Keychain
+4. If Keychain unavailable (non-macOS): falls back to ephemeral key with a warning
+
+You can check key status via `isKeyPersisted()` on the AuditLogger instance.
 
 ### Checkpoint Verification
 
@@ -81,7 +99,7 @@ The HMAC signature uses a key that only exists in the running process's memory. 
 1. Does the chain have at least as many events as the checkpoint recorded?
 2. Does the event at position N have the hash the checkpoint recorded?
 3. Does the first event still have the same hash?
-4. Does the HMAC signature verify?
+4. Does the HMAC signature verify (using the Keychain-persisted key)?
 
 Any mismatch means the chain was replaced after the checkpoint was taken.
 
@@ -90,6 +108,7 @@ Any mismatch means the chain was replaced after the checkpoint was taken.
 Checkpoints are stored separately from the main audit log:
 - Audit log: `~/.ari/audit.json`
 - Checkpoints: `~/.ari/audit-checkpoints.json`
+- Signing key: macOS Keychain (`ari-audit-signing-key`)
 
 ## Retention
 
@@ -136,12 +155,25 @@ npx ari audit status
 | Timestamped | Events have accurate timestamps | System clock |
 | Attributed | Events have actor identity | Trust level assignment |
 
+## What Counts as Compromise?
+
+Different levels of attacker access break different guarantees:
+
+| Attacker Access Level | What Still Holds | What Breaks |
+|----------------------|-----------------|-------------|
+| **Can read log files** | Chain integrity, checkpoint signatures | Event details are visible (timestamps, actions, actors). No secrets are stored in audit events. |
+| **Can modify files** | Checkpoint signatures detect it. Keychain key is not on filesystem. | Hash chain can be modified (detected on verify). Audit file can be replaced (detected by checkpoints). |
+| **Has local user access** | Keychain requires login password for programmatic access. TLS protects outbound. | If the attacker IS the logged-in user, they can access Keychain and forge checkpoints. |
+| **Has root access** | Nothing. | Root can access Keychain, modify files, and forge everything. This is a "game over" scenario for any local-only system. |
+
+**Bottom line**: The audit system protects against file-level tampering. It does not protect against a compromised operating system. If you suspect OS-level compromise, the audit trail should be treated as untrustworthy.
+
 ## Limitations
 
 - **Not tamper-proof**: A sufficiently motivated attacker with filesystem access can modify the file. The hash chain detects this, but doesn't prevent it.
 - **Clock trust**: Timestamps come from the system clock. If the clock is wrong, timestamps are wrong.
 - **Single-machine**: Audit data is stored on one machine. Hardware failure loses the audit trail unless backed up.
-- **Signing key lifecycle**: The HMAC signing key is generated per-process. Restarting ARI generates a new key, so new checkpoints can't be verified against old ones (old checkpoints can still detect tampering from before the restart).
+- **Root access**: macOS Keychain protects the signing key from filesystem-only attackers, but root access can read Keychain entries.
 
 ## Recommendations
 
