@@ -14,7 +14,7 @@ import { createLogger } from '../kernel/logger.js';
 import { EventBus } from '../kernel/event-bus.js';
 import { TaskQueue, taskQueue } from './task-queue.js';
 import { ClaudeClient } from './claude-client.js';
-import { AutonomousConfig, Task } from './types.js';
+import { AutonomousConfig, Task, SMSConfigSchema, NotionConfigSchema } from './types.js';
 import { notificationManager } from './notification-manager.js';
 import { auditReporter } from './audit-reporter.js';
 import { dailyAudit } from './daily-audit.js';
@@ -161,8 +161,22 @@ export class AutonomousAgent {
     const throttleStatus = this.costTracker.getThrottleStatus();
     log.info({ usagePercent: throttleStatus.usagePercent.toFixed(1), level: throttleStatus.level }, 'Budget initialized');
 
-    // Initialize notification manager
-    notificationManager.initLegacy();
+    // Initialize notification manager with configured channels
+    const telegramToken = process.env.TELEGRAM_BOT_TOKEN;
+    const telegramOwnerId = process.env.TELEGRAM_OWNER_USER_ID;
+    const notifResults = await notificationManager.init({
+      sms: SMSConfigSchema.parse({ enabled: false }),
+      telegram: {
+        enabled: !!(telegramToken && telegramOwnerId),
+        botToken: telegramToken,
+        ownerChatId: telegramOwnerId ? Number(telegramOwnerId) : undefined,
+      },
+      notion: NotionConfigSchema.parse({ enabled: false }),
+    });
+    log.info({ telegram: notifResults.telegram, sms: notifResults.sms, notion: notifResults.notion }, 'Notification channels initialized');
+
+    // Initialize briefing generator for scheduled reports
+    this.briefingGenerator = new BriefingGenerator(notificationManager, this.eventBus);
 
     // Initialize Claude if configured
     if (this.config.claude?.apiKey) {

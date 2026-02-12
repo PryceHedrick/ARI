@@ -15,7 +15,7 @@ const {
   mockNotifyQuestion,
   mockNotifyGetBatchCount,
   mockNotifySendBatchSummary,
-  mockNotifyInitLegacy,
+  mockNotifyInit,
   mockAuditCheckThresholds,
   mockAuditMaybeSendDailyReport,
   mockDailyAuditLogActivity,
@@ -38,7 +38,7 @@ const {
   mockNotifyQuestion: vi.fn(),
   mockNotifyGetBatchCount: vi.fn(),
   mockNotifySendBatchSummary: vi.fn(),
-  mockNotifyInitLegacy: vi.fn(),
+  mockNotifyInit: vi.fn(),
   mockAuditCheckThresholds: vi.fn(),
   mockAuditMaybeSendDailyReport: vi.fn(),
   mockDailyAuditLogActivity: vi.fn(),
@@ -73,10 +73,11 @@ vi.mock('../../../src/autonomous/claude-client.js', () => ({
 // Mock NotificationManager
 vi.mock('../../../src/autonomous/notification-manager.js', () => ({
   notificationManager: {
-    initLegacy: mockNotifyInitLegacy,
+    init: mockNotifyInit,
     taskComplete: mockNotifyTaskComplete,
     error: mockNotifyError,
     question: mockNotifyQuestion,
+    insight: vi.fn().mockResolvedValue({ sent: true }),
     getBatchCount: mockNotifyGetBatchCount,
     sendBatchSummary: mockNotifySendBatchSummary,
   },
@@ -142,7 +143,7 @@ describe('AutonomousAgent', () => {
     mockNotifyQuestion.mockResolvedValue({ sent: true });
     mockNotifyGetBatchCount.mockReturnValue(0);
     mockNotifySendBatchSummary.mockResolvedValue(undefined);
-    mockNotifyInitLegacy.mockReturnValue(undefined);
+    mockNotifyInit.mockResolvedValue({ sms: false, telegram: false, notion: false });
     mockAuditCheckThresholds.mockResolvedValue(undefined);
     mockAuditMaybeSendDailyReport.mockResolvedValue(undefined);
     mockDailyAuditLogActivity.mockResolvedValue(undefined);
@@ -204,7 +205,7 @@ describe('AutonomousAgent', () => {
 
       await agent.init();
 
-      expect(mockNotifyInitLegacy).toHaveBeenCalled();
+      expect(mockNotifyInit).toHaveBeenCalled();
     });
 
     it('should emit agent:started event', async () => {
