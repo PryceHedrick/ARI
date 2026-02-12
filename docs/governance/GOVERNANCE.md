@@ -1,353 +1,217 @@
 # ARI Governance System
 
-This document describes the governance structure of ARI's multi-agent system, including the Council, Arbiter, and Overseer.
+Three-branch governance: Council (legislative), Arbiter (judicial), Overseer (executive quality).
 
 ## Overview
 
-ARI uses a three-tier governance system:
+| Branch | Component | Role | Decision Type |
+|--------|-----------|------|---------------|
+| Legislative | Council | Policy creation, democratic voting | Advisory proposals |
+| Judicial | Arbiter | Constitutional enforcement | Absolute (cannot be overridden) |
+| Executive | Overseer | Quality gate enforcement | Release blocking |
+| Runtime | PolicyEngine | Permission decisions | Deterministic (see `POLICY_ENGINE.md`) |
 
-1. **Council** - Democratic voting body (15 members)
-2. **Arbiter** - Constitutional enforcement (5 rules)
-3. **Overseer** - Quality gate enforcement (5 gates)
+## The Council of Fifteen
 
-## Council
+15-member deliberative body. Ratified 2026-02-01 by unanimous vote.
 
-The Council is the democratic decision-making body composed of 13 agent members.
+### Members
 
-### Composition
+| # | Icon | Name | Agent ID | Pillar | Voting Style | Veto Domain |
+|---|------|------|----------|--------|-------------|-------------|
+| 1 | 🧭 | ATLAS | router | Infrastructure | Balanced | — |
+| 2 | ⚡ | BOLT | executor | Infrastructure | Progressive | — |
+| 3 | 📚 | ECHO | memory_keeper | Infrastructure | Cautious | memory |
+| 4 | 🛡 | AEGIS | guardian | Protection | Cautious | security |
+| 5 | 📊 | SCOUT | risk_assessor | Protection | Cautious | high_risk |
+| 6 | 🎯 | TRUE | planner | Strategy | Balanced | — |
+| 7 | ⏰ | TEMPO | scheduler | Strategy | Balanced | time_conflict |
+| 8 | 💎 | OPAL | resource_manager | Strategy | Cautious | resource_depletion |
+| 9 | 💚 | PULSE | wellness | Domains | Cautious | health_harm |
+| 10 | 🤝 | EMBER | relationships | Domains | Balanced | — |
+| 11 | ✨ | PRISM | creative | Domains | Progressive | — |
+| 12 | 💰 | MINT | wealth | Domains | Cautious | major_financial |
+| 13 | 🌱 | BLOOM | growth | Domains | Progressive | — |
+| 14 | ⚖ | VERA | ethics | Meta | Cautious | ethics_violation |
+| 15 | 🔗 | NEXUS | integrator | Meta | Balanced (tie-breaker) | — |
 
-The Council consists of 15 members representing different domains:
+**Non-voting system agents**: core, arbiter, overseer, autonomous
 
-| Member ID | Role | Domain |
-|-----------|------|--------|
-| `router` | System orchestration | Routing and event management |
-| `planner` | Task planning | Task decomposition and DAG |
-| `executor` | Tool execution | Permission-gated operations |
-| `memory_manager` | Memory operations | Provenance-tracked storage |
-| `guardian` | Security | Threat detection and assessment |
-| `research` | Knowledge synthesis | Research and analysis |
-| `marketing` | Outreach | Marketing strategy |
-| `sales` | Revenue | Sales operations |
-| `content` | Communication | Content creation |
-| `seo` | Discovery | Search optimization |
-| `build` | Construction | Building and deployment |
-| `development` | Engineering | Code development |
-| `client_comms` | Relationships | Client communication |
+### Pillars
+
+| Pillar | Members | Purpose |
+|--------|---------|---------|
+| Infrastructure (3) | ATLAS, BOLT, ECHO | System operations and routing |
+| Protection (2) | AEGIS, SCOUT | Security and risk management |
+| Strategy (3) | TRUE, TEMPO, OPAL | Planning and resource allocation |
+| Domains (5) | PULSE, EMBER, PRISM, MINT, BLOOM | Life domain expertise |
+| Meta (2) | VERA, NEXUS | Ethics and integration |
 
 ### Voting Thresholds
 
-The Council supports three voting thresholds:
+| Threshold | Required | Count (of 15) | Use Cases |
+|-----------|----------|---------------|-----------|
+| MAJORITY | >50% | 8+ votes | Routine decisions |
+| SUPERMAJORITY | >=66% | 10+ votes | Significant changes |
+| UNANIMOUS | 100% | 15/15 votes | Critical/constitutional changes |
 
-| Threshold | Requirement | Use Cases |
-|-----------|-------------|-----------|
-| **MAJORITY** | >50% of votes | Routine decisions, feature prioritization |
-| **SUPERMAJORITY** | ≥66% of votes | Significant changes, policy updates |
-| **UNANIMOUS** | 100% of votes | Critical changes, security policies |
+**Quorum**: 50% (8 members) must participate for a valid vote.
 
-### Quorum
+### Voting Styles
 
-- **Minimum participation**: 50% of eligible voters must cast votes
-- **Early conclusion**: Voting ends early if outcome is mathematically determined
-- **No quorum**: Vote fails if quorum not met
+The Council is balanced by design:
+- **Cautious (5)**: ECHO, AEGIS, SCOUT, OPAL, PULSE, MINT, VERA — default to reject unless evidence is strong
+- **Balanced (5)**: ATLAS, TRUE, TEMPO, EMBER, NEXUS — weigh proportionally
+- **Progressive (3)**: BOLT, PRISM, BLOOM — default to approve unless risk is clear
 
-### Voting Process
+This means any proposal needs convincing evidence to pass, not just enthusiasm.
 
-1. **Proposal**: Issue is submitted to Council
-2. **Deliberation**: Members review and discuss
-3. **Voting**: Each member casts YES, NO, or ABSTAIN
-4. **Calculation**: Votes tallied, quorum checked
-5. **Outcome**: Result determined by threshold requirement
-6. **Audit**: Decision logged to audit trail
+### Veto Authority
 
-### Example Votes
+8 of 15 members hold veto power in specific domains. A veto immediately fails a vote.
 
-```typescript
-// Routine decision (MAJORITY)
-const result = await council.vote({
-  issue: 'Add rate limiting to API endpoint',
-  threshold: 'MAJORITY',
-  voters: ['router', 'guardian', 'executor', 'planner'],
-  votes: {
-    router: 'YES',
-    guardian: 'YES',
-    executor: 'NO',
-    planner: 'ABSTAIN',
-  },
-});
-// Result: PASSED (2 YES / 2 participating = >50%)
+| Agent | Domain | Example |
+|-------|--------|---------|
+| AEGIS (guardian) | security | Block exposing ports |
+| ECHO (memory_keeper) | memory | Block memory deletion |
+| SCOUT (risk_assessor) | high_risk | Block high-risk operations |
+| TEMPO (scheduler) | time_conflict | Block schedule conflicts |
+| OPAL (resource_manager) | resource_depletion | Block resource-draining requests |
+| PULSE (wellness) | health_harm | Block health-harming actions |
+| MINT (wealth) | major_financial | Block expensive operations |
+| VERA (ethics) | ethics_violation | Block unethical actions |
 
-// Critical decision (UNANIMOUS)
-const result = await council.vote({
-  issue: 'Modify audit log structure',
-  threshold: 'UNANIMOUS',
-  voters: ['router', 'guardian', 'executor', 'memory_manager'],
-  votes: {
-    router: 'YES',
-    guardian: 'YES',
-    executor: 'YES',
-    memory_manager: 'NO',
-  },
-});
-// Result: FAILED (not 100%)
-```
+### When the Council Decides
 
-## Arbiter
+The Council votes on **policy-level decisions**:
+- Should we add a new tool?
+- Should we change a budget limit?
+- Should we approve a high-cost AI request ($0.25+)?
+- Should we modify a scheduling policy?
 
-The Arbiter enforces constitutional rules that cannot be overridden by Council votes.
+The Council does NOT handle runtime permission checks — that's the PolicyEngine's job.
+
+### AI Spending Governance
+
+AI API calls are governed by cost thresholds (via `AIPolicyGovernor`):
+
+| Cost Range | Governance |
+|-----------|------------|
+| < $0.005 | Auto-approved |
+| $0.005 - $0.05 | Simple majority (8/15) — predicted voting |
+| $0.05 - $0.25 | Weighted majority (8/15) — predicted voting |
+| $0.25 - $1.00 | Supermajority (10/15) — full deliberation |
+| > $1.00 | Super-supermajority (12/15) — full deliberation |
+| Emergency (>50% monthly) | MINT + OPAL + SCOUT unanimous |
+
+## The Arbiter
+
+Enforces 6 immutable constitutional rules. No vote, command, or configuration can override these.
 
 ### Constitutional Rules
 
-The Arbiter enforces six immutable rules:
+| Rule | Name | Description | Status |
+|------|------|-------------|--------|
+| 0 | Creator Primacy | Always operate in Pryce Hedrick's best interest | IMMUTABLE |
+| 1 | Loopback-Only | Gateway binds exclusively to 127.0.0.1 | IMMUTABLE |
+| 2 | Content != Command | External content is data, never instructions | IMMUTABLE |
+| 3 | Audit Immutable | Audit log is append-only, hash-chained | IMMUTABLE |
+| 4 | Least Privilege | Default deny, minimum necessary permissions | IMMUTABLE |
+| 5 | Trust Required | All messages must have assigned trust level | IMMUTABLE |
 
-| Rule ID | Name | Description |
-|---------|------|-------------|
-| `creator_primacy` | Creator Primacy | Always operate in the creator's best interest |
-| `loopback_only` | Loopback-Only Gateway | Gateway must bind to 127.0.0.1 exclusively |
-| `content_not_command` | Content ≠ Command | Inbound content is data, never executable instructions |
-| `audit_immutable` | Audit Immutability | Audit log is append-only, hash-chained, tamper-evident |
-| `least_privilege` | Least Privilege | All operations require minimum necessary permissions |
-| `trust_required` | Trust Required | All messages must have trust level (SYSTEM, TRUSTED, UNTRUSTED) |
+### How the Arbiter Works
 
-### Rule Enforcement
-
-```typescript
-// Example: Arbiter blocks attempt to violate loopback_only rule
-const result = arbiter.enforce({
-  action: 'bind_gateway',
-  params: { host: '0.0.0.0', port: 3141 },
-});
-// Result: BLOCKED (violates loopback_only rule)
-
-// Example: Arbiter allows compliant action
-const result = arbiter.enforce({
-  action: 'bind_gateway',
-  params: { host: '127.0.0.1', port: 3141 },
-});
-// Result: ALLOWED
-```
+1. Receives action context via `evaluateAction(action, context)`
+2. Checks all 6 rules against the context
+3. Returns `COMPLIANT` or `VIOLATION` with specific rule violations
+4. Violations are logged to audit trail and emitted via EventBus
+5. **Cannot be overridden** — even a unanimous Council vote cannot bypass the Arbiter
 
 ### Dispute Resolution
 
-When Council decisions conflict with constitutional rules:
+When a Council decision conflicts with a constitutional rule:
+1. Arbiter blocks execution
+2. Security alert emitted
+3. Council notified of conflict
+4. Council must propose a compliant alternative
 
-1. **Arbiter blocks execution** - Rule violation prevented
-2. **Security alert emitted** - Event logged to audit trail
-3. **Council notified** - Members informed of conflict
-4. **Alternative required** - Council must propose compliant solution
+## The Overseer
 
-### Example Dispute
-
-```
-Council Vote: "Allow gateway to bind to 0.0.0.0 for remote access"
-Threshold: SUPERMAJORITY
-Result: PASSED (70% YES)
-
-Arbiter Review: BLOCKED
-Rule Violated: loopback_only
-Outcome: Decision not executed despite passing vote
-Next Step: Council must propose alternative solution
-```
-
-## Overseer
-
-The Overseer enforces quality gates for system releases and deployments.
+Enforces quality gates for releases and deployments.
 
 ### Quality Gates
 
-The Overseer evaluates five quality gates:
+| Gate | Requirement | Blocks Release If |
+|------|-------------|-------------------|
+| test_coverage | Tests must pass | Any test failing |
+| audit_integrity | Hash chain valid | Chain corrupted |
+| security_scan | No critical events | Critical events in 24h |
+| build_clean | TypeScript compiles | Build errors |
+| documentation | Required docs exist | README.md/CLAUDE.md missing |
 
-| Gate ID | Name | Requirement |
-|---------|------|-------------|
-| `test_coverage` | Test Coverage | ≥80% overall, 100% for security paths |
-| `audit_integrity` | Audit Integrity | Hash chain valid, no corruption |
-| `security_scan` | Security Scan | No high/critical vulnerabilities |
-| `build_clean` | Build Clean | TypeScript compiles with no errors |
-| `documentation` | Documentation | All public APIs documented |
+All gates must pass for `canRelease()` to return `approved: true`.
 
-### Gate Evaluation
+## Decision Flow
 
-Each gate returns:
-
-- **PASS**: Gate requirement met
-- **FAIL**: Gate requirement not met
-- **SKIP**: Gate not applicable (with reason)
-
-### Release Process
-
-1. **Pre-flight**: Overseer evaluates all gates
-2. **Results**: Each gate reports PASS/FAIL/SKIP
-3. **Aggregation**: Overall status determined
-4. **Decision**: Release proceeds only if all gates PASS or SKIP
-5. **Audit**: Gate results logged to audit trail
-
-### Example Evaluation
-
-```typescript
-const result = await overseer.evaluateGates({
-  context: 'release_12.0.1',
-  gates: ['test_coverage', 'audit_integrity', 'security_scan', 'build_clean'],
-});
-
-// Result:
-{
-  overall: 'PASS',
-  gates: {
-    test_coverage: { status: 'PASS', coverage: 85 },
-    audit_integrity: { status: 'PASS', chainValid: true },
-    security_scan: { status: 'PASS', vulnerabilities: 0 },
-    build_clean: { status: 'PASS', errors: 0 },
-  },
-}
+```
+Incoming Request
+     │
+     ▼
+┌────────────────┐     ┌─────────────────┐
+│ Arbiter Check  │────►│ Constitutional   │──► BLOCK if violation
+│ (always first) │     │ Violation?       │
+└────────┬───────┘     └─────────────────┘
+         │ COMPLIANT
+         ▼
+┌────────────────┐     ┌─────────────────┐
+│ PolicyEngine   │────►│ Permission      │──► DENY if not allowed
+│ (runtime)      │     │ Check           │    APPROVE if allowed
+└────────┬───────┘     └─────────────────┘
+         │ POLICY QUESTION
+         ▼
+┌────────────────┐     ┌─────────────────┐
+│ Council Vote   │────►│ Threshold       │──► PASS or FAIL
+│ (when needed)  │     │ Check + Veto    │
+└────────────────┘     └─────────────────┘
 ```
 
-## Decision Lifecycle
-
-### 1. Proposal
-
-- Issue raised by agent, operator, or automated process
-- Proposal includes context, rationale, and impact assessment
-
-### 2. Routing
-
-- **Council decisions**: Routine operations, feature requests, policy changes
-- **Arbiter checks**: Security-critical operations, system modifications
-- **Overseer gates**: Releases, deployments, system updates
-
-### 3. Evaluation
-
-- Council: Democratic vote with threshold
-- Arbiter: Constitutional rule enforcement
-- Overseer: Quality gate evaluation
-
-### 4. Execution
-
-- Decision executed if approved
-- Blocked if constitutional rule violated or quality gate failed
-- Logged to audit trail regardless of outcome
-
-### 5. Audit
-
-All decisions recorded with:
-
-- Timestamp
-- Decision body (Council, Arbiter, Overseer)
-- Issue/proposal
-- Votes/checks/gates
-- Outcome (PASSED, FAILED, BLOCKED)
-- Agent signatures
-
-## Integration with System
-
-### Event-Driven
+## Event-Driven Communication
 
 All governance operations emit events via EventBus:
 
-```typescript
-// Council vote event
-eventBus.emit('governance:vote_complete', {
-  issue: 'proposal_id',
-  threshold: 'MAJORITY',
-  result: 'PASSED',
-  votes: { yes: 5, no: 2, abstain: 1 },
-});
+| Event | Source | Payload |
+|-------|--------|---------|
+| `vote:started` | Council | voteId, topic, threshold |
+| `vote:cast` | Council | voteId, agent, option |
+| `vote:completed` | Council | voteId, status, result |
+| `vote:vetoed` | Council | voteId, vetoer, domain |
+| `arbiter:ruling` | Arbiter | ruleId, type, decision |
+| `overseer:gate` | Overseer | gateId, passed, reason |
+| `permission:granted` | PolicyEngine | requestId, toolId, tokenId |
+| `permission:denied` | PolicyEngine | requestId, toolId, reason |
 
-// Arbiter enforcement event
-eventBus.emit('governance:rule_enforced', {
-  rule: 'loopback_only',
-  action: 'bind_gateway',
-  result: 'BLOCKED',
-});
+## Implementation Files
 
-// Overseer gate event
-eventBus.emit('governance:gate_evaluated', {
-  gate: 'test_coverage',
-  status: 'PASS',
-  coverage: 85,
-});
-```
-
-### Audit Trail
-
-All governance decisions are logged to `~/.ari/audit.json`:
-
-```json
-{
-  "timestamp": "2026-01-27T12:00:00.000Z",
-  "action": "governance_vote",
-  "agent": "council",
-  "details": {
-    "issue": "add_rate_limiting",
-    "threshold": "MAJORITY",
-    "result": "PASSED",
-    "votes": { "yes": 5, "no": 2, "abstain": 1 }
-  },
-  "previousHash": "abc123...",
-  "hash": "def456..."
-}
-```
-
-## Configuration
-
-Governance configuration stored in `~/.ari/config.json`:
-
-```json
-{
-  "governance": {
-    "council": {
-      "members": [
-        "router", "planner", "executor", "memory_manager", "guardian",
-        "research", "marketing", "sales", "content", "seo",
-        "build", "development", "client_comms"
-      ],
-      "quorum": 0.5
-    },
-    "arbiter": {
-      "rules": [
-        "loopback_only",
-        "content_not_command",
-        "audit_immutable",
-        "least_privilege",
-        "trust_required"
-      ]
-    },
-    "overseer": {
-      "gates": [
-        "test_coverage",
-        "audit_integrity",
-        "security_scan",
-        "build_clean",
-        "documentation"
-      ]
-    }
-  }
-}
-```
+| File | Purpose |
+|------|---------|
+| `src/governance/council.ts` | Council voting, veto authority |
+| `src/governance/arbiter.ts` | Constitutional rule enforcement |
+| `src/governance/overseer.ts` | Quality gate evaluation |
+| `src/governance/policy-engine.ts` | Runtime permission decisions |
+| `src/ai/ai-policy-governor.ts` | AI spending governance |
+| `src/kernel/types.ts` | Vote, Proposal, ToolPolicy schemas |
+| `src/kernel/constitutional-invariants.ts` | Immutable rules |
 
 ## Testing
 
-Governance components have 100% test coverage:
-
-- **Council**: 10 tests (voting thresholds, quorum, early conclusion)
-- **Arbiter**: 10 tests (rule enforcement, dispute resolution)
-- **Overseer**: 8 tests (gate evaluation, release blocking)
-
-Run governance tests:
-
-```bash
-npm test -- tests/unit/governance/
-```
-
-## Future Enhancements
-
-Potential governance improvements (not yet implemented):
-
-- **Delegation**: Members delegate votes to trusted agents
-- **Vote history**: Query past decisions and voting patterns
-- **Proposal templates**: Standardized proposal formats
-- **Time-bound votes**: Automatic expiration after deadline
-- **Vote revision**: Members change votes before deadline
+| Component | Test File | Coverage |
+|-----------|-----------|----------|
+| Council | `tests/unit/governance/council.test.ts` | Voting, veto, thresholds |
+| Arbiter | `tests/unit/governance/arbiter.test.ts` | Rule enforcement, disputes |
+| Overseer | `tests/unit/governance/overseer.test.ts` | Gate evaluation, releases |
+| PolicyEngine | `tests/unit/governance/policy-engine.test.ts` | Permissions, tokens |
+| AIPolicyGovernor | `tests/unit/ai/ai-policy-governor.test.ts` | Cost governance |
 
 ---
 
-**Last Updated**: 2026-01-27
-**Version**: 2.0.0
+v3.0 - 2026-02-10

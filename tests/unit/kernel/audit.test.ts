@@ -39,6 +39,44 @@ describe('AuditLogger', () => {
     expect(result.details).toContain('3 events');
   });
 
+  it('should create and verify checkpoints', async () => {
+    await logger.log('action_1', 'tester', 'system');
+    await logger.log('action_2', 'tester', 'system');
+
+    const checkpoint = await logger.createCheckpoint();
+    expect(checkpoint).not.toBeNull();
+    expect(checkpoint!.eventCount).toBe(2);
+    expect(checkpoint!.headHash).toMatch(/^[a-f0-9]{64}$/);
+    expect(checkpoint!.signature).toMatch(/^[a-f0-9]{64}$/);
+
+    // Adding more events shouldn't break checkpoint verification
+    await logger.log('action_3', 'tester', 'system');
+
+    const result = logger.verifyCheckpoints();
+    expect(result.valid).toBe(true);
+    expect(result.checked).toBe(1);
+    expect(result.mismatches).toHaveLength(0);
+  });
+
+  it('should auto-checkpoint at configured interval', async () => {
+    const autoLogger = new AuditLogger(testPath, { checkpointInterval: 3 });
+
+    await autoLogger.log('action_1', 'tester', 'system');
+    expect(autoLogger.getCheckpoints()).toHaveLength(0);
+
+    await autoLogger.log('action_2', 'tester', 'system');
+    expect(autoLogger.getCheckpoints()).toHaveLength(0);
+
+    await autoLogger.log('action_3', 'tester', 'system');
+    expect(autoLogger.getCheckpoints()).toHaveLength(1);
+    expect(autoLogger.getCheckpoints()[0].eventCount).toBe(3);
+  });
+
+  it('should return null checkpoint for empty chain', async () => {
+    const checkpoint = await logger.createCheckpoint();
+    expect(checkpoint).toBeNull();
+  });
+
   it('should log and retrieve security events', async () => {
     await logger.log('normal_action', 'user', 'standard');
     await logger.logSecurity({

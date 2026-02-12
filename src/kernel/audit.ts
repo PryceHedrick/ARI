@@ -1,25 +1,59 @@
-import { createHash, randomUUID } from 'crypto';
+import { createHash, createHmac, randomUUID } from 'crypto';
 import { promises as fs } from 'fs';
 import { homedir } from 'os';
 import { dirname, join } from 'path';
 import { AuditEvent, SecurityEvent, TrustLevel } from './types.js';
 
 /**
+ * A checkpoint is a signed snapshot of the audit chain at a point in time.
+ * Used to detect wholesale chain replacement (where internal hash verification
+ * would still pass because the replacement chain is internally consistent).
+ */
+export interface AuditCheckpoint {
+  /** Unique checkpoint ID */
+  id: string;
+  /** ISO timestamp when checkpoint was created */
+  timestamp: string;
+  /** Number of events in the chain at checkpoint time */
+  eventCount: number;
+  /** Hash of the last event in the chain */
+  headHash: string;
+  /** Hash of the first event (should always chain from genesis) */
+  genesisEventHash: string;
+  /** HMAC-SHA256 signature of the checkpoint data */
+  signature: string;
+}
+
+/**
  * SHA-256 hash-chained audit logger for ARI.
  * Each event contains a hash of itself and the previous event's hash,
  * creating an immutable audit trail that can be verified.
+ *
+ * Supports checkpointing: periodic signed snapshots of chain state
+ * that can detect wholesale chain replacement attacks.
  */
 export class AuditLogger {
   private events: AuditEvent[] = [];
+  private checkpoints: AuditCheckpoint[] = [];
   private auditPath: string;
+  private checkpointPath: string;
   private readonly GENESIS_HASH = '0'.repeat(64);
+  /** Events between automatic checkpoints (0 = disabled) */
+  private readonly CHECKPOINT_INTERVAL: number;
+  /** Signing key for checkpoint HMAC signatures */
+  private readonly signingKey: string;
+  /** Events logged since last checkpoint */
+  private eventsSinceCheckpoint = 0;
 
-  constructor(auditPath?: string) {
+  constructor(auditPath?: string, options?: { checkpointInterval?: number; signingKey?: string }) {
     // Resolve ~ to home directory
     const path = auditPath || '~/.ari/audit.json';
     this.auditPath = path.startsWith('~')
       ? join(homedir(), path.slice(1))
       : path;
+    this.checkpointPath = this.auditPath.replace(/\.json$/, '-checkpoints.json');
+    this.CHECKPOINT_INTERVAL = options?.checkpointInterval ?? 100;
+    this.signingKey = options?.signingKey ?? randomUUID() + randomUUID();
   }
 
   /**
@@ -78,6 +112,12 @@ export class AuditLogger {
 
     this.events.push(event);
     await this.persist();
+
+    // Auto-checkpoint if interval is set and reached
+    this.eventsSinceCheckpoint++;
+    if (this.CHECKPOINT_INTERVAL > 0 && this.eventsSinceCheckpoint >= this.CHECKPOINT_INTERVAL) {
+      await this.createCheckpoint();
+    }
 
     return event;
   }
@@ -159,6 +199,127 @@ export class AuditLogger {
   }
 
   /**
+   * Creates a signed checkpoint of the current chain state.
+   * Checkpoints enable detection of wholesale chain replacement —
+   * even if a replacement chain is internally consistent, it won't
+   * match previously recorded checkpoints.
+   */
+  async createCheckpoint(): Promise<AuditCheckpoint | null> {
+    if (this.events.length === 0) {
+      return null;
+    }
+
+    const lastEvent = this.events[this.events.length - 1];
+    const firstEvent = this.events[0];
+
+    const checkpointData = {
+      eventCount: this.events.length,
+      headHash: lastEvent.hash,
+      genesisEventHash: firstEvent.hash,
+    };
+
+    const signature = createHmac('sha256', this.signingKey)
+      .update(JSON.stringify(checkpointData))
+      .digest('hex');
+
+    const checkpoint: AuditCheckpoint = {
+      id: randomUUID(),
+      timestamp: new Date().toISOString(),
+      eventCount: checkpointData.eventCount,
+      headHash: checkpointData.headHash,
+      genesisEventHash: checkpointData.genesisEventHash,
+      signature,
+    };
+
+    this.checkpoints.push(checkpoint);
+    this.eventsSinceCheckpoint = 0;
+    await this.persistCheckpoints();
+
+    return checkpoint;
+  }
+
+  /**
+   * Verifies that the current chain matches all recorded checkpoints.
+   * Returns details about any mismatches found.
+   *
+   * A checkpoint mismatch means the chain was replaced after the checkpoint
+   * was taken — even if the chain itself is internally valid.
+   */
+  verifyCheckpoints(): {
+    valid: boolean;
+    checked: number;
+    mismatches: Array<{ checkpointId: string; field: string; expected: string; actual: string }>;
+  } {
+    const mismatches: Array<{ checkpointId: string; field: string; expected: string; actual: string }> = [];
+
+    for (const cp of this.checkpoints) {
+      // Check event count: chain must have at least as many events as checkpoint recorded
+      if (this.events.length < cp.eventCount) {
+        mismatches.push({
+          checkpointId: cp.id,
+          field: 'eventCount',
+          expected: String(cp.eventCount),
+          actual: String(this.events.length),
+        });
+        continue;
+      }
+
+      // Check that the event at the checkpoint's position has the expected hash
+      const eventAtCheckpoint = this.events[cp.eventCount - 1];
+      if (eventAtCheckpoint.hash !== cp.headHash) {
+        mismatches.push({
+          checkpointId: cp.id,
+          field: 'headHash',
+          expected: cp.headHash,
+          actual: eventAtCheckpoint.hash,
+        });
+      }
+
+      // Check genesis event hash hasn't changed
+      if (this.events[0].hash !== cp.genesisEventHash) {
+        mismatches.push({
+          checkpointId: cp.id,
+          field: 'genesisEventHash',
+          expected: cp.genesisEventHash,
+          actual: this.events[0].hash,
+        });
+      }
+
+      // Verify checkpoint signature
+      const checkpointData = {
+        eventCount: cp.eventCount,
+        headHash: cp.headHash,
+        genesisEventHash: cp.genesisEventHash,
+      };
+      const expectedSig = createHmac('sha256', this.signingKey)
+        .update(JSON.stringify(checkpointData))
+        .digest('hex');
+
+      if (cp.signature !== expectedSig) {
+        mismatches.push({
+          checkpointId: cp.id,
+          field: 'signature',
+          expected: expectedSig,
+          actual: cp.signature,
+        });
+      }
+    }
+
+    return {
+      valid: mismatches.length === 0,
+      checked: this.checkpoints.length,
+      mismatches,
+    };
+  }
+
+  /**
+   * Returns all checkpoints.
+   */
+  getCheckpoints(): AuditCheckpoint[] {
+    return [...this.checkpoints];
+  }
+
+  /**
    * Loads audit events from disk.
    * Skips silently if the file doesn't exist.
    */
@@ -175,9 +336,18 @@ export class AuditLogger {
     } catch (error) {
       // Silently skip if file doesn't exist
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-        return;
+        // Still try to load checkpoints
+      } else {
+        throw error;
       }
-      throw error;
+    }
+
+    // Load checkpoints
+    try {
+      const cpData = await fs.readFile(this.checkpointPath, 'utf-8');
+      this.checkpoints = JSON.parse(cpData) as AuditCheckpoint[];
+    } catch {
+      // No checkpoints file yet — that's fine
     }
   }
 
@@ -195,6 +365,20 @@ export class AuditLogger {
     await fs.writeFile(
       this.auditPath,
       JSON.stringify(this.events, null, 2),
+      'utf-8'
+    );
+  }
+
+  /**
+   * Persists checkpoints to a separate file.
+   * Stored separately from the main audit log for integrity.
+   */
+  private async persistCheckpoints(): Promise<void> {
+    const dir = dirname(this.checkpointPath);
+    await fs.mkdir(dir, { recursive: true });
+    await fs.writeFile(
+      this.checkpointPath,
+      JSON.stringify(this.checkpoints, null, 2),
       'utf-8'
     );
   }
