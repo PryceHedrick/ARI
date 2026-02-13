@@ -178,8 +178,14 @@ export function registerGatewayCommand(program: Command): void {
         entries: memoryManager.getStats().total_entries,
       }));
 
-      // Create gateway
+      // Create gateway (uses Keychain-backed API key by default)
       const gatewayInstance = new Gateway(port, audit, eventBus);
+      const apiKey = gatewayInstance.getApiKey();
+      if (apiKey) {
+        console.log('API key authentication enabled (key stored in macOS Keychain)');
+      } else {
+        console.warn('Warning: API key authentication disabled');
+      }
 
       // Register API routes plugin BEFORE starting the server
       try {

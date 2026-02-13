@@ -9,6 +9,9 @@ import { randomUUID } from 'crypto';
 // Use random ports to avoid conflicts between parallel tests
 const getRandomPort = () => 10000 + Math.floor(Math.random() * 50000);
 
+/** Auth disabled for most tests — auth-specific tests use explicit keys */
+const noAuth = { apiKey: false as const };
+
 describe('Gateway', () => {
   let gateway: Gateway;
   let audit: AuditLogger;
@@ -21,7 +24,7 @@ describe('Gateway', () => {
     audit = new AuditLogger(testAuditPath);
     eventBus = new EventBus();
     testPort = getRandomPort();
-    gateway = new Gateway(testPort, audit, eventBus);
+    gateway = new Gateway(testPort, audit, eventBus, noAuth);
   });
 
   afterEach(async () => {
@@ -34,7 +37,7 @@ describe('Gateway', () => {
 
   describe('constructor', () => {
     it('should create gateway with default port', () => {
-      const defaultGateway = new Gateway();
+      const defaultGateway = new Gateway(undefined, undefined, undefined, noAuth);
       expect(defaultGateway.getAddress()).toBe('http://127.0.0.1:3141');
     });
 
@@ -49,7 +52,7 @@ describe('Gateway', () => {
 
     it('should create gateway with default audit and eventBus when not provided', () => {
       const port = getRandomPort();
-      const defaultGateway = new Gateway(port);
+      const defaultGateway = new Gateway(port, undefined, undefined, noAuth);
       expect(defaultGateway.getEventBus()).toBeDefined();
       expect(defaultGateway.getAuditLogger()).toBeDefined();
     });
@@ -214,6 +217,107 @@ describe('Gateway', () => {
     });
   });
 
+  describe('API Key Authentication', () => {
+    const testApiKey = 'test-api-key-12345';
+
+    it('should reject requests without API key when auth is enabled', async () => {
+      const port = getRandomPort();
+      const authGateway = new Gateway(port, audit, eventBus, { apiKey: testApiKey });
+      await authGateway.start();
+
+      const response = await fetch(`http://127.0.0.1:${port}/status`);
+      expect(response.status).toBe(401);
+
+      const data = await response.json();
+      expect(data.error).toBe('Authentication required');
+
+      await authGateway.stop();
+    });
+
+    it('should reject requests with wrong API key', async () => {
+      const port = getRandomPort();
+      const authGateway = new Gateway(port, audit, eventBus, { apiKey: testApiKey });
+      await authGateway.start();
+
+      const response = await fetch(`http://127.0.0.1:${port}/status`, {
+        headers: { 'X-ARI-Key': 'wrong-key' },
+      });
+      expect(response.status).toBe(401);
+
+      const data = await response.json();
+      expect(data.error).toBe('Invalid API key');
+
+      await authGateway.stop();
+    });
+
+    it('should accept requests with correct API key', async () => {
+      const port = getRandomPort();
+      const authGateway = new Gateway(port, audit, eventBus, { apiKey: testApiKey });
+      await authGateway.start();
+
+      const response = await fetch(`http://127.0.0.1:${port}/status`, {
+        headers: { 'X-ARI-Key': testApiKey },
+      });
+      expect(response.ok).toBe(true);
+
+      await authGateway.stop();
+    });
+
+    it('should allow /health without API key even when auth is enabled', async () => {
+      const port = getRandomPort();
+      const authGateway = new Gateway(port, audit, eventBus, { apiKey: testApiKey });
+      await authGateway.start();
+
+      const response = await fetch(`http://127.0.0.1:${port}/health`);
+      expect(response.ok).toBe(true);
+
+      const data = await response.json();
+      expect(data.status).toBe('healthy');
+
+      await authGateway.stop();
+    });
+
+    it('should log security events for failed auth attempts', async () => {
+      const port = getRandomPort();
+      const authAudit = new AuditLogger(join(tmpdir(), `ari-test-auth-${randomUUID()}.json`));
+      const authGateway = new Gateway(port, authAudit, eventBus, { apiKey: testApiKey });
+      await authGateway.start();
+
+      // Missing key
+      await fetch(`http://127.0.0.1:${port}/status`);
+
+      // Wrong key
+      await fetch(`http://127.0.0.1:${port}/status`, {
+        headers: { 'X-ARI-Key': 'wrong-key' },
+      });
+
+      const securityEvents = authAudit.getSecurityEvents();
+      expect(securityEvents.length).toBeGreaterThanOrEqual(2);
+
+      const authMissing = securityEvents.find(
+        e => (e.details as Record<string, unknown>)?.eventType === 'auth_missing'
+      );
+      const authFailed = securityEvents.find(
+        e => (e.details as Record<string, unknown>)?.eventType === 'auth_failed'
+      );
+
+      expect(authMissing).toBeDefined();
+      expect(authFailed).toBeDefined();
+
+      await authGateway.stop();
+    });
+
+    it('should disable auth when apiKey is false', () => {
+      const noAuthGateway = new Gateway(getRandomPort(), audit, eventBus, { apiKey: false });
+      expect(noAuthGateway.getApiKey()).toBeNull();
+    });
+
+    it('should expose API key via getApiKey()', () => {
+      const authGateway = new Gateway(getRandomPort(), audit, eventBus, { apiKey: testApiKey });
+      expect(authGateway.getApiKey()).toBe(testApiKey);
+    });
+  });
+
   describe('getAddress()', () => {
     it('should return formatted address', () => {
       expect(gateway.getAddress()).toBe(`http://127.0.0.1:${testPort}`);
@@ -244,7 +348,7 @@ describe('Gateway', () => {
     it('should register Fastify plugin before start', async () => {
       let pluginRegistered = false;
       const pluginPort = getRandomPort();
-      const testGateway = new Gateway(pluginPort, audit, eventBus);
+      const testGateway = new Gateway(pluginPort, audit, eventBus, noAuth);
 
       await testGateway.registerPlugin(async (fastify) => {
         fastify.get('/custom', async () => ({ custom: true }));
@@ -264,7 +368,7 @@ describe('Gateway', () => {
 
     it('should allow plugin registration', async () => {
       const pluginPort = getRandomPort();
-      const testGateway = new Gateway(pluginPort, audit, eventBus);
+      const testGateway = new Gateway(pluginPort, audit, eventBus, noAuth);
 
       await expect(
         testGateway.registerPlugin(async () => {

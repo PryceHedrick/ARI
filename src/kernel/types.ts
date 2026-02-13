@@ -171,7 +171,7 @@ export type AuditEvent = z.infer<typeof AuditEventSchema>;
 export const SecurityEventSchema = z.object({
   id: z.string().uuid().default(() => randomUUID()),
   timestamp: z.date().default(() => new Date()),
-  eventType: z.enum(['injection_detected', 'trust_violation', 'unauthorized_access', 'chain_tamper', 'constitutional_violation']),
+  eventType: z.enum(['injection_detected', 'trust_violation', 'unauthorized_access', 'chain_tamper', 'constitutional_violation', 'auth_missing', 'auth_failed']),
   severity: z.enum(['low', 'medium', 'high', 'critical']),
   source: z.string(),
   details: z.record(z.unknown()),

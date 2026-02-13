@@ -47,6 +47,7 @@ That's it. That's the whole security model. Everything below is just the details
 ## 🚪 1. The Front Door (Network Policy)
 
 ### The Question That Started This
+
 > "ARI says 'loopback-only' but also talks to Telegram and OpenAI. Isn't that a contradiction?"
 
 ### The Answer
@@ -69,14 +70,15 @@ That's it. That's the whole security model. Everything below is just the details
 
 ### Where Is This Enforced?
 
-| Direction | Where | How | Can It Be Changed? |
-|-----------|-------|-----|--------------------|
-| Inbound | `src/kernel/gateway.ts` line 20 | Hardcoded `'127.0.0.1'` constant | ❌ No. It's `private readonly`. Also blocked by pre-commit hook. |
-| Outbound | Each integration module | API URLs are constants per module | Only by adding new code + passing review |
+| Direction | Where                           | How                               | Can It Be Changed?                                               |
+| --------- | ------------------------------- | --------------------------------- | ---------------------------------------------------------------- |
+| Inbound   | `src/kernel/gateway.ts` line 20 | Hardcoded `'127.0.0.1'` constant  | ❌ No. It's `private readonly`. Also blocked by pre-commit hook. |
+| Outbound  | Each integration module         | API URLs are constants per module | Only by adding new code + passing review                         |
 
 ### What About DNS Attacks?
 
 If someone tries to redirect `api.telegram.org` to a fake server:
+
 - 🛡️ **TLS** blocks it — the fake server can't present Telegram's real certificate
 - 🔑 **API keys** add another layer — the fake server can't generate valid API responses
 - 📝 **ARI logs the TLS error** and fails gracefully
@@ -129,7 +131,9 @@ Risk Score = Base Severity × Trust Multiplier
 ```
 
 **Base Severity** (how dangerous is the tool type?):
-| Tool Type | Severity | Example |
+| Tool Type | Severity | Example
+
+|
 |-----------|----------|---------|
 | 📖 READ_ONLY | 0.1 | Reading a file |
 | ✏️ WRITE_SAFE | 0.3 | Writing to a safe location |
@@ -147,6 +151,7 @@ Risk Score = Base Severity × Trust Multiplier
 | 🚨 hostile | ×2.0 | Doubles the risk |
 
 **Worked Examples**:
+
 ```
 📖 You read a file:           0.1 × 0.6 = 0.06  ✅ Auto-approved
 ✏️ You write a file:          0.3 × 0.6 = 0.18  ✅ Auto-approved
@@ -188,16 +193,17 @@ When a request passes all 3 checks, ARI issues a token. Think of it like a conce
 
 Six rules that **cannot be broken by anyone or anything**:
 
-| # | Rule | What It Means | Example Violation |
-|---|------|--------------|-------------------|
-| 0 | 🧭 Creator Primacy | Always act in Pryce's best interest | Doing something harmful to you |
-| 1 | 🚪 Loopback-Only | Gateway only on 127.0.0.1 | Binding to 0.0.0.0 (internet-exposed) |
-| 2 | 📄 Content ≠ Command | Input is DATA, never instructions | Treating user text as executable code |
-| 3 | 📝 Audit Immutable | Logs are append-only, hash-chained | Deleting or editing an audit entry |
-| 4 | 🔒 Least Privilege | Default deny, minimum permissions | Giving an agent more access than needed |
-| 5 | 🏷️ Trust Required | All messages must have trust levels | Processing a message with no trust tag |
+| #   | Rule                 | What It Means                       | Example Violation                       |
+| --- | -------------------- | ----------------------------------- | --------------------------------------- |
+| 0   | 🧭 Creator Primacy   | Always act in Pryce's best interest | Doing something harmful to you          |
+| 1   | 🚪 Loopback-Only     | Gateway only on 127.0.0.1           | Binding to 0.0.0.0 (internet-exposed)   |
+| 2   | 📄 Content ≠ Command | Input is DATA, never instructions   | Treating user text as executable code   |
+| 3   | 📝 Audit Immutable   | Logs are append-only, hash-chained  | Deleting or editing an audit entry      |
+| 4   | 🔒 Least Privilege   | Default deny, minimum permissions   | Giving an agent more access than needed |
+| 5   | 🏷️ Trust Required    | All messages must have trust levels | Processing a message with no trust tag  |
 
 **The Arbiter** enforces these. It checks every action against all 6 rules. If any rule is violated:
+
 - ❌ Action is blocked
 - 🚨 Security alert fires
 - 📝 Violation is logged
@@ -250,6 +256,7 @@ Every 100 events, ARI records: "At this point, the chain had X events and the la
 
 **Before (the vulnerability)**:
 The signing key was generated fresh every time ARI started. So:
+
 1. Attacker replaces audit file
 2. Attacker restarts ARI
 3. New key generated → new checkpoints created → old checkpoints unverifiable
@@ -257,6 +264,7 @@ The signing key was generated fresh every time ARI started. So:
 
 **After (the fix)**:
 The signing key is stored in **macOS Keychain** (backed by Secure Enclave on Apple Silicon):
+
 1. Attacker replaces audit file
 2. Attacker restarts ARI
 3. ARI loads the SAME key from Keychain → old checkpoints still verifiable
@@ -277,12 +285,12 @@ The signing key is stored in **macOS Keychain** (backed by Secure Enclave on App
 
 ### What Holds Under Different Attack Scenarios?
 
-| 🎯 Attacker Can... | 🛡️ What Still Protects You | 💥 What Breaks |
-|---------------------|---------------------------|----------------|
-| Read log files | Chain integrity, signatures | Event details visible (no secrets stored though) |
-| Modify files on disk | Keychain key is NOT on disk. Checkpoints detect changes. | Hash chain is modified (but detected on verify) |
-| Log in as your user | TLS still protects outbound connections | They can access Keychain → can forge checkpoints |
-| Get root access | Nothing | Game over for any local system. Audit trail untrustworthy. |
+| 🎯 Attacker Can...   | 🛡️ What Still Protects You                               | 💥 What Breaks                                             |
+| -------------------- | -------------------------------------------------------- | ---------------------------------------------------------- |
+| Read log files       | Chain integrity, signatures                              | Event details visible (no secrets stored though)           |
+| Modify files on disk | Keychain key is NOT on disk. Checkpoints detect changes. | Hash chain is modified (but detected on verify)            |
+| Log in as your user  | TLS still protects outbound connections                  | They can access Keychain → can forge checkpoints           |
+| Get root access      | Nothing                                                  | Game over for any local system. Audit trail untrustworthy. |
 
 **Bottom line**: The audit protects against **file-level tampering**. If the OS itself is compromised, all bets are off (this is true for every local-only system, not just ARI).
 
@@ -313,17 +321,18 @@ ARI has three branches of government, like a country:
 
 ### The Council (15 Members, 5 Pillars)
 
-| Pillar | Members | Job |
-|--------|---------|-----|
-| 🏗️ Infrastructure | ATLAS, BOLT, ECHO | System operations, routing, memory |
-| 🛡️ Protection | AEGIS, SCOUT | Security, risk assessment |
-| 🎯 Strategy | TRUE, TEMPO, OPAL | Planning, scheduling, resources |
-| 🌍 Domains | PULSE, EMBER, PRISM, MINT, BLOOM | Health, relationships, creativity, wealth, growth |
-| ⚖️ Meta | VERA, NEXUS | Ethics, integration (NEXUS breaks ties) |
+| Pillar            | Members                          | Job                                               |
+| ----------------- | -------------------------------- | ------------------------------------------------- |
+| 🏗️ Infrastructure | ATLAS, BOLT, ECHO                | System operations, routing, memory                |
+| 🛡️ Protection     | AEGIS, SCOUT                     | Security, risk assessment                         |
+| 🎯 Strategy       | TRUE, TEMPO, OPAL                | Planning, scheduling, resources                   |
+| 🌍 Domains        | PULSE, EMBER, PRISM, MINT, BLOOM | Health, relationships, creativity, wealth, growth |
+| ⚖️ Meta           | VERA, NEXUS                      | Ethics, integration (NEXUS breaks ties)           |
 
 **Voting**: Majority (8+), Supermajority (10+), or Unanimous (15/15) depending on importance.
 
 **8 members have veto power** in their domain:
+
 - 🛡️ AEGIS can veto anything security-related
 - 💰 MINT can veto expensive operations
 - ⚖️ VERA can veto unethical actions
@@ -379,13 +388,13 @@ ARI has a daily spending limit that gets stricter as it approaches the cap:
 
 During REDUCE mode, only these operations are allowed:
 
-| ✅ Essential | ❌ Not Essential |
-|-------------|-----------------|
-| Responding to your direct commands | Morning/evening briefings |
-| Health checks | Autonomous task execution |
-| Security event processing | Proactive research |
-| Audit logging | Routine notifications |
-| P0/P1 alert delivery | Scheduled non-critical tasks |
+| ✅ Essential                       | ❌ Not Essential             |
+| ---------------------------------- | ---------------------------- |
+| Responding to your direct commands | Morning/evening briefings    |
+| Health checks                      | Autonomous task execution    |
+| Security event processing          | Proactive research           |
+| Audit logging                      | Routine notifications        |
+| P0/P1 alert delivery               | Scheduled non-critical tasks |
 
 This list is intentionally short and **does not expand** over time.
 
@@ -395,13 +404,13 @@ This list is intentionally short and **does not expand** over time.
 
 If a critical subsystem is broken on startup, ARI degrades instead of crashing:
 
-| 💥 What's Broken | 🛡️ Safe Mode Behavior |
-|-------------------|----------------------|
-| Audit chain fails verification | No tool execution. Log-only mode. P0 alert. |
-| PolicyEngine won't start | Read-only mode. No writes/executes. P0 alert. |
-| Budget state corrupted | Conservative mode ($1/day). P1 alert. |
-| Keychain key unavailable | Ephemeral key (checkpoints won't survive next restart). Warning. |
-| Telegram unavailable | Start normally. Alerts go to local logs only. |
+| 💥 What's Broken               | 🛡️ Safe Mode Behavior                                            |
+| ------------------------------ | ---------------------------------------------------------------- |
+| Audit chain fails verification | No tool execution. Log-only mode. P0 alert.                      |
+| PolicyEngine won't start       | Read-only mode. No writes/executes. P0 alert.                    |
+| Budget state corrupted         | Conservative mode ($1/day). P1 alert.                            |
+| Keychain key unavailable       | Ephemeral key (checkpoints won't survive next restart). Warning. |
+| Telegram unavailable           | Start normally. Alerts go to local logs only.                    |
 
 **Principle**: If a safety system is broken, restrict capabilities — don't disable safety.
 
@@ -411,56 +420,59 @@ If a critical subsystem is broken on startup, ARI degrades instead of crashing:
 
 The ChatGPT audit was useful but assumed several things were missing that already existed:
 
-| 🔍 Audit Said | 🏗️ Reality |
-|---------------|-----------|
-| "No Policy Engine" | ✅ 632-line PolicyEngine with full 3-layer checks |
-| "No risk scoring" | ✅ Risk scoring: `Severity × Trust Multiplier` |
-| "No ToolCallTokens" | ✅ HMAC-signed, single-use, time-bound, parameter-locked |
-| "Council is the authority" | ✅ Council is advisory; PolicyEngine is the runtime authority |
-| "Remove injection scanning" | ✅ Scanning AND capability control work together |
+| 🔍 Audit Said               | 🏗️ Reality                                                    |
+| --------------------------- | ------------------------------------------------------------- |
+| "No Policy Engine"          | ✅ 632-line PolicyEngine with full 3-layer checks             |
+| "No risk scoring"           | ✅ Risk scoring: `Severity × Trust Multiplier`                |
+| "No ToolCallTokens"         | ✅ HMAC-signed, single-use, time-bound, parameter-locked      |
+| "Council is the authority"  | ✅ Council is advisory; PolicyEngine is the runtime authority |
+| "Remove injection scanning" | ✅ Scanning AND capability control work together              |
 
 ### What Was Actually Missing
 
-| Gap | Fix | Status |
-|-----|-----|--------|
-| No checkpoint anchoring | Added HMAC-SHA256 checkpoints to audit chain | ✅ Fixed |
-| Signing key was ephemeral | Persisted in macOS Keychain | ✅ Fixed |
-| Docs out of date | 9 docs created/rewritten | ✅ Fixed |
-| Wrong council members in docs | Updated to current 15-member roster | ✅ Fixed |
-| No essential operations list | Explicit list in budget spec | ✅ Fixed |
-| No safe mode | Safe mode boot path in runbook | ✅ Fixed |
-| No compromise scenarios | "What holds under attack?" table | ✅ Fixed |
-| No DNS/IP change handling | Documented TLS + API key defense | ✅ Fixed |
-| Allowlist enforcement unclear | Documented: hardcoded constants, not config | ✅ Fixed |
+| Gap                           | Fix                                          | Status   |
+| ----------------------------- | -------------------------------------------- | -------- |
+| No checkpoint anchoring       | Added HMAC-SHA256 checkpoints to audit chain | ✅ Fixed |
+| Signing key was ephemeral     | Persisted in macOS Keychain                  | ✅ Fixed |
+| Docs out of date              | 9 docs created/rewritten                     | ✅ Fixed |
+| Wrong council members in docs | Updated to current 15-member roster          | ✅ Fixed |
+| No essential operations list  | Explicit list in budget spec                 | ✅ Fixed |
+| No safe mode                  | Safe mode boot path in runbook               | ✅ Fixed |
+| No compromise scenarios       | "What holds under attack?" table             | ✅ Fixed |
+| No DNS/IP change handling     | Documented TLS + API key defense             | ✅ Fixed |
+| Allowlist enforcement unclear | Documented: hardcoded constants, not config  | ✅ Fixed |
 
 ---
 
 ## 📁 All Files Changed
 
 ### Round 1 (Audit Response)
-| File | What |
-|------|------|
-| `src/kernel/audit.ts` | Checkpoint anchoring system |
-| `tests/unit/kernel/audit.test.ts` | 3 checkpoint tests |
-| `docs/security/NETWORK_POLICY.md` | Inbound vs outbound |
-| `docs/security/THREAT_MODEL.md` | OWASP LLM Top 10 mapping |
-| `docs/security/AUDIT_SECURITY.md` | Audit trail mechanics |
-| `docs/governance/GOVERNANCE.md` | Correct council, role clarity |
-| `docs/governance/POLICY_ENGINE.md` | Permission system docs |
-| `docs/operations/BUDGET_SPEC.md` | Spending and degradation |
-| `docs/operations/RECOVERY_RUNBOOK.md` | Failure recovery |
+
+| File                                  | What                          |
+| ------------------------------------- | ----------------------------- |
+| `src/kernel/audit.ts`                 | Checkpoint anchoring system   |
+| `tests/unit/kernel/audit.test.ts`     | 3 checkpoint tests            |
+| `docs/security/NETWORK_POLICY.md`     | Inbound vs outbound           |
+| `docs/security/THREAT_MODEL.md`       | OWASP LLM Top 10 mapping      |
+| `docs/security/AUDIT_SECURITY.md`     | Audit trail mechanics         |
+| `docs/governance/GOVERNANCE.md`       | Correct council, role clarity |
+| `docs/governance/POLICY_ENGINE.md`    | Permission system docs        |
+| `docs/operations/BUDGET_SPEC.md`      | Spending and degradation      |
+| `docs/operations/RECOVERY_RUNBOOK.md` | Failure recovery              |
 
 ### Round 2 (Review Feedback)
-| File | What |
-|------|------|
-| `src/kernel/audit.ts` | Keychain-persisted signing key |
-| `tests/unit/kernel/audit.test.ts` | 5 more tests (key persistence, cross-instance verification) |
-| `docs/security/NETWORK_POLICY.md` | Enforcement locations, DNS handling |
-| `docs/security/AUDIT_SECURITY.md` | Keychain persistence, compromise scenarios |
-| `docs/operations/BUDGET_SPEC.md` | Essential operations list |
-| `docs/operations/RECOVERY_RUNBOOK.md` | Safe mode boot path |
+
+| File                                  | What                                                        |
+| ------------------------------------- | ----------------------------------------------------------- |
+| `src/kernel/audit.ts`                 | Keychain-persisted signing key                              |
+| `tests/unit/kernel/audit.test.ts`     | 5 more tests (key persistence, cross-instance verification) |
+| `docs/security/NETWORK_POLICY.md`     | Enforcement locations, DNS handling                         |
+| `docs/security/AUDIT_SECURITY.md`     | Keychain persistence, compromise scenarios                  |
+| `docs/operations/BUDGET_SPEC.md`      | Essential operations list                                   |
+| `docs/operations/RECOVERY_RUNBOOK.md` | Safe mode boot path                                         |
 
 ### Verification
+
 - **Tests**: 3995/3995 passing
 - **TypeScript**: Compiles clean
 - **No breaking changes**: Fully backward compatible
@@ -469,14 +481,14 @@ The ChatGPT audit was useful but assumed several things were missing that alread
 
 ## 🗺️ Quick Reference: Where To Find Things
 
-| I Want To Understand... | Read This |
-|------------------------|-----------|
-| How the network works | `docs/security/NETWORK_POLICY.md` |
-| How permissions work | `docs/governance/POLICY_ENGINE.md` |
-| How the audit trail works | `docs/security/AUDIT_SECURITY.md` |
-| How governance works | `docs/governance/GOVERNANCE.md` |
-| What threats ARI defends against | `docs/security/THREAT_MODEL.md` |
-| How spending is managed | `docs/operations/BUDGET_SPEC.md` |
+| I Want To Understand...           | Read This                             |
+| --------------------------------- | ------------------------------------- |
+| How the network works             | `docs/security/NETWORK_POLICY.md`     |
+| How permissions work              | `docs/governance/POLICY_ENGINE.md`    |
+| How the audit trail works         | `docs/security/AUDIT_SECURITY.md`     |
+| How governance works              | `docs/governance/GOVERNANCE.md`       |
+| What threats ARI defends against  | `docs/security/THREAT_MODEL.md`       |
+| How spending is managed           | `docs/operations/BUDGET_SPEC.md`      |
 | How to fix things when they break | `docs/operations/RECOVERY_RUNBOOK.md` |
 
 ---

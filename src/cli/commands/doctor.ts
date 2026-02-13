@@ -4,6 +4,7 @@ import path from 'path';
 import { homedir } from 'os';
 import { CONFIG_DIR, CONFIG_PATH, loadConfig } from '../../kernel/config.js';
 import { AuditLogger } from '../../kernel/audit.js';
+import { Gateway } from '../../kernel/gateway.js';
 import { getContextsDir } from '../../system/storage.js';
 import { INJECTION_PATTERNS } from '../../kernel/sanitizer.js';
 
@@ -174,7 +175,15 @@ export function registerDoctorCommand(program: Command): void {
       // Check 10: Rate limiter active (check status endpoint)
       total++;
       try {
+        let authHeaders: Record<string, string> = {};
+        try {
+          const { key } = Gateway.loadOrCreateApiKey();
+          authHeaders = { 'X-ARI-Key': key };
+        } catch {
+          // Keychain unavailable — try without auth
+        }
         const response = await fetch('http://127.0.0.1:3141/status', {
+          headers: authHeaders,
           signal: AbortSignal.timeout(2000),
         });
         if (response.ok) {

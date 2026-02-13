@@ -1,6 +1,17 @@
 import { Command } from 'commander';
+import { Gateway } from '../../kernel/gateway.js';
 
 const GATEWAY_URL = 'http://127.0.0.1:3141';
+
+/** Load API key from Keychain for authenticating with the gateway */
+function getAuthHeaders(): Record<string, string> {
+  try {
+    const { key } = Gateway.loadOrCreateApiKey();
+    return { 'X-ARI-Key': key };
+  } catch {
+    return {};
+  }
+}
 
 // ── Type Definitions ────────────────────────────────────────────────────────
 
@@ -128,6 +139,7 @@ export function registerBudgetCommand(program: Command): void {
     .action(async (options: { json?: boolean }) => {
       try {
         const response = await fetch(`${GATEWAY_URL}/api/budget/status`, {
+          headers: getAuthHeaders(),
           signal: AbortSignal.timeout(5000),
         });
 
@@ -214,6 +226,7 @@ export function registerBudgetCommand(program: Command): void {
         if (!name) {
           // Get current profile
           const response = await fetch(`${GATEWAY_URL}/api/budget/status`, {
+            headers: getAuthHeaders(),
             signal: AbortSignal.timeout(5000),
           });
           const data = (await response.json()) as BudgetStatusResponse;
@@ -234,7 +247,7 @@ export function registerBudgetCommand(program: Command): void {
 
         const response = await fetch(`${GATEWAY_URL}/api/budget/profile`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
           body: JSON.stringify({ profile: name }),
           signal: AbortSignal.timeout(5000),
         });
@@ -261,6 +274,7 @@ export function registerBudgetCommand(program: Command): void {
     .action(async (options: { json?: boolean }) => {
       try {
         const response = await fetch(`${GATEWAY_URL}/api/billing/cycle`, {
+          headers: getAuthHeaders(),
           signal: AbortSignal.timeout(5000),
         });
 
@@ -350,6 +364,7 @@ export function registerBudgetCommand(program: Command): void {
       try {
         const endpoint = options.weekly ? '/api/analytics/value/weekly' : '/api/analytics/value/today';
         const response = await fetch(`${GATEWAY_URL}${endpoint}`, {
+          headers: getAuthHeaders(),
           signal: AbortSignal.timeout(5000),
         });
 
@@ -359,7 +374,7 @@ export function registerBudgetCommand(program: Command): void {
         }
 
         if (options.json) {
-          const data = await response.json();
+          const data = (await response.json()) as unknown;
           console.log(JSON.stringify(data, null, 2));
           return;
         }
@@ -443,6 +458,7 @@ export function registerBudgetCommand(program: Command): void {
         if (!id && !options?.all) {
           // List pending
           const response = await fetch(`${GATEWAY_URL}/api/approval-queue/pending`, {
+            headers: getAuthHeaders(),
             signal: AbortSignal.timeout(5000),
           });
           const pending = (await response.json()) as ApprovalItem[];
@@ -471,7 +487,7 @@ export function registerBudgetCommand(program: Command): void {
           // Approve single item
           const response = await fetch(`${GATEWAY_URL}/api/approval-queue/${id}/approve`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
             body: JSON.stringify({ approvedBy: 'cli' }),
             signal: AbortSignal.timeout(5000),
           });
