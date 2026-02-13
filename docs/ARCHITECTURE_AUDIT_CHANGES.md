@@ -3,15 +3,15 @@
 Your guide to understanding ARI's security, governance, and operations.
 Written to build understanding progressively — start at the top, everything builds on what came before.
 
-**When**: 2026-02-10
-**Why**: External architecture audit (ChatGPT) + follow-up review
-**Result**: 2 code changes, 9 doc updates, 3995/3995 tests passing
+**When**: 2026-02-10 → 2026-02-13
+**Why**: External architecture audit (ChatGPT) + follow-up review + auth gap closure
+**Result**: 4 code changes, 9 doc updates, 4002/4002 tests passing
 
 ---
 
 ## 🧠 The Big Picture (Start Here)
 
-ARI has **three layers of protection**. Think of them like the security of a building:
+ARI has **four layers of protection**. Think of them like the security of a building:
 
 ```
 🏢 THE ARI BUILDING
@@ -20,6 +20,11 @@ ARI has **three layers of protection**. Think of them like the security of a bui
   🚪 FRONT DOOR (Gateway)
   │  Only opens from inside (127.0.0.1)
   │  Nobody from the internet can knock
+  │
+  🔑 ID CHECK (API Key Auth)
+  │  Every visitor needs a badge (X-ARI-Key header)
+  │  Badge stored in macOS Keychain
+  │  Only /health is badge-free (monitoring)
   │
   🔒 SECURITY DESK (PolicyEngine)
   │  Checks every person (agent) + every action (tool)
@@ -72,7 +77,8 @@ That's it. That's the whole security model. Everything below is just the details
 
 | Direction | Where                           | How                               | Can It Be Changed?                                               |
 | --------- | ------------------------------- | --------------------------------- | ---------------------------------------------------------------- |
-| Inbound   | `src/kernel/gateway.ts` line 20 | Hardcoded `'127.0.0.1'` constant  | ❌ No. It's `private readonly`. Also blocked by pre-commit hook. |
+| Inbound   | `src/kernel/gateway.ts` line 34 | Hardcoded `'127.0.0.1'` constant  | ❌ No. It's `private readonly`. Also blocked by pre-commit hook. |
+| Auth      | `src/kernel/gateway.ts`         | `X-ARI-Key` header, Keychain key  | Key auto-generated, no config to change                          |
 | Outbound  | Each integration module         | API URLs are constants per module | Only by adding new code + passing review                         |
 
 ### What About DNS Attacks?
@@ -85,7 +91,69 @@ If someone tries to redirect `api.telegram.org` to a fake server:
 
 ---
 
-## 🔒 2. The Security Desk (PolicyEngine)
+## 🔑 2. The ID Check (API Key Authentication)
+
+### The Problem
+
+Even though ARI's gateway only listens on `127.0.0.1` (no internet access), **any local process** on your Mac could connect. Malware, a compromised app, or a rogue script could send requests without any credentials.
+
+### The Solution
+
+Every request to the gateway (except `/health`) must include an `X-ARI-Key` header with a valid API key.
+
+```
+Request arrives at 127.0.0.1:3141
+    │
+    ▼
+Rate Limiter (100 requests/min)
+    │
+    ▼
+┌─────────────────────────────────┐
+│ API KEY CHECK                    │
+│                                  │
+│ Is this /health?                 │──── YES → Skip (monitoring exempt)
+│                                  │
+│ Is X-ARI-Key header present?     │──── NO  → 401 + audit "auth_missing"
+│                                  │
+│ Does the key match?              │──── NO  → 401 + audit "auth_failed"
+│                                  │                + security alert event
+│ ✅ Key is valid                  │
+└──────────────┬───────────────────┘
+               │
+               ▼
+         Route handler
+```
+
+### Where Is the Key?
+
+```
+┌───────────────┐     ┌──────────────┐     ┌───────────────┐
+│ Gateway daemon │────►│ macOS        │◄────│ CLI tools     │
+│ (runs 24/7)   │     │ Keychain     │     │ (budget, etc) │
+│ Creates key   │     │              │     │ Load same key │
+│ if none exists│     │ Single shared│     │ automatically │
+└───────────────┘     │ key entry    │     └───────────────┘
+                      └──────────────┘
+```
+
+- **First start**: Gateway generates a UUID key and stores it in Keychain under `ari-gateway-api-key`
+- **Every start after**: Loads the same key from Keychain
+- **CLI commands**: Call `Gateway.loadOrCreateApiKey()` to get the same key
+- **No config files**: The key never touches the filesystem
+
+### Why Keychain?
+
+| Storage Method | Security | ARI Uses? |
+|---------------|----------|-----------|
+| Environment variable | Leaks in logs, process lists | ❌ |
+| Config file | Readable by any local process | ❌ |
+| **macOS Keychain** | **Protected by OS, needs user session** | **✅** |
+
+Even if malware reads your entire filesystem, it can't access Keychain entries without your login session.
+
+---
+
+## 🔒 3. The Security Desk (PolicyEngine)
 
 This is **the most important part** of ARI's security. Every tool use goes through this.
 
@@ -189,7 +257,7 @@ When a request passes all 3 checks, ARI issues a token. Think of it like a conce
 
 ---
 
-## 📋 3. The Rules (Constitution + Arbiter)
+## 📋 4. The Rules (Constitution + Arbiter)
 
 Six rules that **cannot be broken by anyone or anything**:
 
@@ -211,7 +279,7 @@ Six rules that **cannot be broken by anyone or anything**:
 
 ---
 
-## 📝 4. Security Cameras (Audit Chain)
+## 📝 5. Security Cameras (Audit Chain)
 
 ### How the Hash Chain Works
 
@@ -296,7 +364,7 @@ The signing key is stored in **macOS Keychain** (backed by Secure Enclave on App
 
 ---
 
-## 🗳️ 5. The Governance System (Who Decides What)
+## 🗳️ 6. The Governance System (Who Decides What)
 
 ARI has three branches of government, like a country:
 
@@ -354,7 +422,7 @@ How much approval is needed to spend money on AI calls:
 
 ---
 
-## 💰 6. Budget & Degradation
+## 💰 7. Budget & Degradation
 
 ARI has a daily spending limit that gets stricter as it approaches the cap:
 
@@ -400,7 +468,7 @@ This list is intentionally short and **does not expand** over time.
 
 ---
 
-## 🔧 7. Safe Mode (New)
+## 🔧 8. Safe Mode
 
 If a critical subsystem is broken on startup, ARI degrades instead of crashing:
 
@@ -441,6 +509,8 @@ The ChatGPT audit was useful but assumed several things were missing that alread
 | No compromise scenarios       | "What holds under attack?" table             | ✅ Fixed |
 | No DNS/IP change handling     | Documented TLS + API key defense             | ✅ Fixed |
 | Allowlist enforcement unclear | Documented: hardcoded constants, not config  | ✅ Fixed |
+| No gateway authentication     | Keychain-backed API key on all endpoints     | ✅ Fixed |
+| LaunchAgent plist broken      | Fixed placeholder substitution + PATH        | ✅ Fixed |
 
 ---
 
@@ -471,9 +541,22 @@ The ChatGPT audit was useful but assumed several things were missing that alread
 | `docs/operations/BUDGET_SPEC.md`      | Essential operations list                                   |
 | `docs/operations/RECOVERY_RUNBOOK.md` | Safe mode boot path                                         |
 
+### Round 3 (Authentication Gap)
+
+| File                                  | What                                                     |
+| ------------------------------------- | -------------------------------------------------------- |
+| `src/kernel/gateway.ts`               | API key auth (Keychain-backed, preHandler hook)          |
+| `src/kernel/types.ts`                 | Added `auth_missing`, `auth_failed` security event types |
+| `src/cli/commands/budget.ts`          | X-ARI-Key header on all gateway fetch calls              |
+| `src/cli/commands/doctor.ts`          | X-ARI-Key header on /status check                        |
+| `src/cli/commands/gateway.ts`         | Log API key auth status on startup                       |
+| `tests/unit/kernel/gateway.test.ts`   | 7 new auth tests + updated all existing tests            |
+| `scripts/macos/install.sh`            | Fixed LaunchAgent plist placeholder substitution         |
+| `scripts/macos/com.ari.gateway.plist` | Added /opt/homebrew/bin to PATH for Apple Silicon        |
+
 ### Verification
 
-- **Tests**: 3995/3995 passing
+- **Tests**: 4002/4002 passing
 - **TypeScript**: Compiles clean
 - **No breaking changes**: Fully backward compatible
 
@@ -493,4 +576,4 @@ The ChatGPT audit was useful but assumed several things were missing that alread
 
 ---
 
-v2.0 - 2026-02-10
+v3.0 - 2026-02-13
